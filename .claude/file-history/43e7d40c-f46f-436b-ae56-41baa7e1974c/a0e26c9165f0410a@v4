@@ -1,0 +1,345 @@
+"""
+kernel_timeline.py — DMA/MXU/VPU timeline for the RPAm fused kernel.
+
+Reproduces:
+  µs:   0        45        108      141       204       237     326    415    504    593    682    771
+        ├────────┼─────────┼────────┼─────────┼─────────┼───────┼──────┼──────┼──────┼──────┼──────┤
+  DMA:  [B][VVV][C]        [b][vvv][c]         [W─────] [W─────]
+  MXU:  ··[Q─────][KV────────][A──][KV────────][A──]   [q──][a][a] [q──][a][a] [q──][a][a] ×4 more
+           bq[0]   KV tile 0  attn  KV tile 1  attn      bq[1]       bq[2]       bq[3..6]
+  VPU:  [r][N──]            [n─]              [n─]       [n─]        [n─]  ...
+
+Usage:
+  python3 scripts/kernel_eval/kernel_timeline.py            # original
+  python3 scripts/kernel_eval/kernel_timeline.py --end-q    # Q at end, Q[0] in prologue
+  python3 scripts/kernel_eval/kernel_timeline.py --baseline # no projection
+"""
+
+import argparse, math
+
+# ── Timing model ─────────────────────────────────────────────────────────────
+
+def mxu_us(m, k, n, tflops=169): return 2*m*k*n / 1e9 / tflops * 1000
+def dma_us(B, bw=900):            return B / 1e9 / bw * 1000
+
+def get_tm(D=2560, Nq=32, Nkv=8, H=128, bq_sz=256, bkv_sz=1024):
+    T_Qm  = mxu_us(bq_sz,  D, Nq*H)
+    T_KVm = mxu_us(bkv_sz, D, Nkv*H*2)
+    return dict(
+        T_Q  = T_Qm*(1+0.88),    # Q matmul + norm+rope+store
+        T_KV = T_KVm*(1+0.29),   # KV matmul + K norm+rope
+        T_A  = 23.0,              # flash attention
+        T_ini= 10.0,              # l/m/acc init
+        T_on = 17.0,              # output_norm + bo_store
+    )
+
+
+# ── Column layout helpers ─────────────────────────────────────────────────────
+
+def build_tick_cols(ticks_us, seg_widths):
+    """
+    ticks_us   : list of N+1 time values (µs) including start=0 and end
+    seg_widths : list of N column widths (chars) for each segment
+    Returns list of (time_us, col_pos) pairs.
+    """
+    assert len(seg_widths) == len(ticks_us) - 1
+    cols = [0]
+    for w in seg_widths:
+        cols.append(cols[-1] + w)
+    return list(zip(ticks_us, cols))
+
+
+def t2c(t_us, tick_cols):
+    """Interpolate time → column position."""
+    for i in range(len(tick_cols)-1):
+        t0, c0 = tick_cols[i];  t1, c1 = tick_cols[i+1]
+        if t0 <= t_us <= t1:
+            f = (t_us-t0)/(t1-t0) if t1>t0 else 0
+            return int(round(c0 + f*(c1-c0)))
+    return tick_cols[-1][1]
+
+
+# ── Canvas ────────────────────────────────────────────────────────────────────
+
+class Canvas:
+    def __init__(self, width):
+        self.buf = [' '] * width
+
+    def put(self, col, text):
+        for i, ch in enumerate(text):
+            if 0 <= col+i < len(self.buf):
+                self.buf[col+i] = ch
+
+    def box(self, tc, t0, t1, ch):
+        """Place [X──] box spanning t0..t1 µs."""
+        c0 = t2c(t0, tc);  c1 = t2c(t1, tc)
+        w  = max(3, c1-c0)
+        self.put(c0, '[' + ch + '─'*(w-3) + ']')
+
+    def dot(self, tc, t0, t1):
+        c0 = t2c(t0, tc);  c1 = t2c(t1, tc)
+        for c in range(c0, min(c1, len(self.buf))):
+            self.buf[c] = '·'
+
+    def __str__(self):
+        return ''.join(self.buf).rstrip()
+
+
+# ── Original diagram ──────────────────────────────────────────────────────────
+
+def diagram_original(n_tok, D=2560, Nq=32, Nkv=8, H=128,
+                      bq_sz=256, bkv_sz=1024, has_proj=True):
+    tm = get_tm(D, Nq, Nkv, H, bq_sz, bkv_sz)
+    T_Q=tm['T_Q']; T_KV=tm['T_KV']; T_A=tm['T_A']; T_on=tm['T_on']
+
+    n_bq  = math.ceil(n_tok / bq_sz)
+    n_bkv = math.ceil(n_tok / bkv_sz)
+
+    # Key milestone times (µs) — these become the tick marks
+    t = [0]
+    t.append(t[-1] + T_Q)           # end of Q[0]             → tick 1
+    t.append(t[-1] + T_KV)          # end of KV[0]            → tick 2
+    t.append(t[-1] + T_A)           # end of Attn[0,0]        → tick 3
+    t.append(t[-1] + T_KV)          # end of KV[1]            → tick 4
+    t.append(t[-1] + T_A)           # end of Attn[0,1]=bq[0]  → tick 5
+    bq_step = T_Q + n_bkv * T_A     # per bq[1..N-1] (init hidden by Q)
+    for _ in range(n_bq - 1):
+        t.append(t[-1] + bq_step)
+
+    # Column widths: give bq[0] segments 9-10 chars each; later tiles 7 chars
+    w_bq0 = [9, 10, 9, 10, 10]      # 5 segments inside bq[0]
+    w_rest = [8] + [7]*(n_bq-1)     # gap segment + one per remaining tile
+    widths = (w_bq0 + w_rest)[:len(t)-1]
+    tc = build_tick_cols(t, widths)
+    W  = tc[-1][1] + 2
+
+    dma = Canvas(W);  mxu = Canvas(W);  vpu = Canvas(W)
+
+    # ── DMA track ──
+    # Prologue cluster at col 0: B/V/C are concurrent but shown sequentially.
+    # 11 chars intentionally overflow the first 9-char segment.
+    dma.put(0, '[B][VVV][C]')
+    # Prefetch cluster for bkv[1]: at tick t[2] (KV[0] end = bkv[1] read start).
+    # [b][vvv][c] is 11 chars; starts at tick 2 col to avoid overlap with prologue.
+    if n_bkv > 1:
+        c = t2c(t[2], tc)
+        dma.put(c, '[b][vvv][c]')
+    # KV cache writes: after the attention that follows each KV matmul.
+    # Place at t[3]+epsilon and t[5]-epsilon to land in the gap.
+    c_w0 = t2c(t[3], tc)
+    dma.put(c_w0, '[W─────]')
+    if n_bkv > 1:
+        c_w1 = t2c(t[5], tc)
+        dma.put(c_w1, '[W─────]')
+
+    # ── MXU track ──
+    if has_proj:
+        mxu.dot(tc, 0, t[0] + 0.05*T_Q)     # tiny wait (x_bq DMA)
+        mxu.box(tc, 0.05*T_Q, t[1], 'Q')
+    # bkv[0] fresh tiles
+    for bkv in range(n_bkv):
+        t0k = t[1] + bkv*(T_KV+T_A)
+        mxu.box(tc, t0k,       t0k+T_KV, 'K' if bkv==0 else 'k')
+        mxu.box(tc, t0k+T_KV,  t0k+T_KV+T_A, 'A' if bkv==0 else 'a')
+    # bq[1..N-1] cached tiles
+    for bq in range(1, n_bq):
+        t0 = t[5 + bq - 1]
+        if has_proj:
+            mxu.box(tc, t0, t0+T_Q, 'q')
+        for bkv in range(n_bkv):
+            t0a = t0 + T_Q + bkv*T_A
+            mxu.box(tc, t0a, t0a+T_A, 'a')
+        # output_norm gap → blank (no box)
+
+    # ── VPU track ──
+    vpu.put(0, '[r]')
+    if has_proj:
+        vpu.box(tc, 0.05*T_Q, t[1], 'N')
+    # K norm after each KV matmul
+    for bkv in range(n_bkv):
+        t0k = t[1] + bkv*(T_KV+T_A)
+        vpu.box(tc, t0k, t0k+T_KV, 'n')
+    # Q norm for bq[1..N-1]
+    if has_proj:
+        for bq in range(1, n_bq):
+            t0 = t[5 + bq - 1]
+            vpu.box(tc, t0, t0+T_Q, 'n')
+
+    # ── Label ──
+    lbl = Canvas(W)
+    if has_proj:
+        lbl.put(t2c(0.05*T_Q, tc)+1, 'bq[0]')
+    lbl.put(t2c(t[1], tc)+1,  'KV tile 0')
+    lbl.put(t2c(t[2], tc)+1,  'attn')
+    lbl.put(t2c(t[3], tc)+1,  'KV tile 1')
+    lbl.put(t2c(t[4], tc)+1,  'attn')
+    if n_bq > 1: lbl.put(t2c(t[5], tc)+1, 'bq[1]')
+    if n_bq > 2: lbl.put(t2c(t[6], tc)+1, 'bq[2]')
+    if n_bq > 3: lbl.put(t2c(t[7], tc)+1, f'bq[3..{n_bq-1}]')
+
+    return tc, dma, mxu, vpu, str(lbl), t[-1]
+
+
+# ── End-Q diagram ─────────────────────────────────────────────────────────────
+
+def diagram_end_q(n_tok, D=2560, Nq=32, Nkv=8, H=128,
+                   bq_sz=256, bkv_sz=1024):
+    tm = get_tm(D, Nq, Nkv, H, bq_sz, bkv_sz)
+    T_Q=tm['T_Q']; T_KV=tm['T_KV']; T_A=tm['T_A']
+    T_ini=tm['T_ini']; T_on=tm['T_on']
+
+    n_bq  = math.ceil(n_tok / bq_sz)
+    n_bkv = math.ceil(n_tok / bkv_sz)
+
+    # Key times
+    t = [0]
+    t.append(t[-1] + T_Q)                     # end prologue Q[0]
+    t.append(t[-1] + T_ini + T_KV)            # init exposed + KV[0]
+    t.append(t[-1] + T_A)                     # Attn[0,0]
+    t.append(t[-1] + T_KV)                    # KV[1]
+    t.append(t[-1] + T_A)                     # Attn[0,1]
+    t.append(t[-1] + T_on + T_Q)              # output_norm + Q[1] @pl.when
+
+    bq_step = T_ini + n_bkv*T_A + T_on + T_Q  # per bq[1..N-2]
+    bq_last = T_ini + n_bkv*T_A + T_on        # last tile (no Q at end)
+    for i in range(1, n_bq-1):
+        t.append(t[-1] + bq_step)
+    if n_bq > 1:
+        t.append(t[-1] + bq_last)
+
+    w_bq0 = [9, 10, 9, 10, 9, 9]
+    w_rest = [9] * max(0, len(t)-1-len(w_bq0))
+    widths = (w_bq0 + w_rest)[:len(t)-1]
+    tc = build_tick_cols(t, widths)
+    W  = tc[-1][1] + 2
+
+    dma = Canvas(W);  mxu = Canvas(W);  vpu = Canvas(W)
+
+    # Prologue
+    dma.put(0, '[B][VVV][C]')
+    mxu.dot(tc, 0, 0.05*T_Q)
+    mxu.box(tc, 0.05*T_Q, t[1], 'Q')
+    vpu.put(0, '[r]')
+    vpu.box(tc, 0.05*T_Q, t[1], 'N')
+
+    # Prefetch for bkv[1] shown after KV[0] completes
+    if n_bkv > 1:
+        c = t2c(t[2], tc)
+        dma.put(c, '[b][vvv][c]')
+
+    # bkv[0] (after exposed init)
+    t_loop = t[1] + T_ini
+    for bkv in range(n_bkv):
+        mxu.box(tc, t_loop, t_loop+T_KV, 'K' if bkv==0 else 'k')
+        vpu.box(tc, t_loop, t_loop+T_KV, 'n')
+        dma.put(t2c(t_loop+T_KV, tc), '[W─────]')
+        t_loop += T_KV
+        mxu.box(tc, t_loop, t_loop+T_A, 'A' if bkv==0 else 'a')
+        t_loop += T_A
+
+    # output_norm[0] + Q[1] (serialized)
+    vpu.box(tc, t_loop, t_loop+T_on, 'O')
+    t_loop += T_on
+    mxu.box(tc, t_loop, t_loop+T_Q, 'q')
+    vpu.box(tc, t_loop, t_loop+T_Q, 'n')
+
+    # bq[1..N-1]
+    t_loop = t[6]
+    for bq in range(1, n_bq):
+        t_loop += T_ini   # exposed init (gap in MXU)
+        for _ in range(n_bkv):
+            mxu.box(tc, t_loop, t_loop+T_A, 'a')
+            t_loop += T_A
+        vpu.box(tc, t_loop, t_loop+T_on, 'o')
+        t_loop += T_on
+        if bq < n_bq-1:
+            mxu.box(tc, t_loop, t_loop+T_Q, 'q')
+            vpu.box(tc, t_loop, t_loop+T_Q, 'n')
+            t_loop += T_Q
+
+    lbl = Canvas(W)
+    lbl.put(t2c(0.05*T_Q, tc)+1, 'bq[0]')
+    lbl.put(t2c(t[1]+T_ini, tc)+1, 'KV tile 0')
+    lbl.put(t2c(t[2], tc)+1, 'attn')
+    lbl.put(t2c(t[3], tc)+1, 'KV tile 1')
+    lbl.put(t2c(t[4], tc)+1, 'attn')
+    lbl.put(t2c(t[5], tc)+1, 'output_norm+Q[1]')
+    if n_bq > 1:
+        lbl.put(t2c(t[6], tc)+1,
+                f'bq[1..{n_bq-1}]: [init-exp][a][a][o][q] each')
+
+    return tc, dma, mxu, vpu, str(lbl), t[-1]
+
+
+# ── Render ────────────────────────────────────────────────────────────────────
+
+def render(title, n_tok, bq_sz, bkv_sz, tc, dma, mxu, vpu, lbl, total_us):
+    n_bq  = math.ceil(n_tok / bq_sz)
+    n_bkv = math.ceil(n_tok / bkv_sz)
+    W     = tc[-1][1] + 1
+
+    rul = [' '] * W
+    sep = ['─'] * W
+    for t_us, col in tc:
+        s = str(int(round(t_us)))
+        for i, ch in enumerate(s):
+            if col+i < W: rul[col+i] = ch
+        if   col == 0:   sep[col] = '├'
+        elif col >= W-1: sep[col] = '┤'
+        else:            sep[col] = '┼'
+    sep[-1] = '┤'
+
+    print()
+    print(f'  {title}')
+    print(f'  {n_tok} tokens  bq_sz={bq_sz} ({n_bq} tiles)  '
+          f'bkv_sz={bkv_sz} ({n_bkv} fresh KV tiles)  ≈{total_us:.0f}µs')
+    print()
+    print(f"  µs:   {''.join(rul)}")
+    print(f"        {''.join(sep)}")
+    print()
+    print(f"  DMA:  {dma}")
+    print()
+    print(f"  MXU:  {mxu}")
+    print(f"        {lbl}")
+    print()
+    print(f"  VPU:  {vpu}")
+    print()
+    print('  Legend')
+    print('  ──────')
+    print('  DMA : B/b=x_bq  V/v=x_bkv  C/c=KVcache-read  W=KVcache-write')
+    print('  MXU : Q/q=Q-matmul  K/k=KV-matmul  A/a=flash-attention')
+    print('  VPU : r=rope-ts  N/n=Q-norm+rope  O/o=output-norm+bo-store')
+    print('  (uppercase=bq[0]/bkv[0]  lowercase=subsequent tiles)')
+    print()
+
+
+def main():
+    ap = argparse.ArgumentParser()
+    ap.add_argument('--n-tok',    type=int, default=1560)
+    ap.add_argument('--bq-sz',    type=int, default=256)
+    ap.add_argument('--bkv-sz',   type=int, default=1024)
+    ap.add_argument('--D',        type=int, default=2560)
+    ap.add_argument('--Nq',       type=int, default=32)
+    ap.add_argument('--Nkv',      type=int, default=8)
+    ap.add_argument('--H',        type=int, default=128)
+    ap.add_argument('--baseline', action='store_true')
+    ap.add_argument('--end-q',    action='store_true')
+    args = ap.parse_args()
+
+    kw = dict(n_tok=args.n_tok, D=args.D, Nq=args.Nq, Nkv=args.Nkv,
+              H=args.H, bq_sz=args.bq_sz, bkv_sz=args.bkv_sz)
+
+    if args.end_q:
+        tc, d, m, v, lbl, t = diagram_end_q(**kw)
+        title = 'FUSED — end-Q  (Q[0] prologue · Q[i] at END via @pl.when · init VPU exposed)'
+    else:
+        has_proj = not args.baseline
+        tc, d, m, v, lbl, t = diagram_original(**kw, has_proj=has_proj)
+        title = ('BASELINE (no projection)' if args.baseline else
+                 'FUSED — original  (Q at START · init||Q overlap · 30µs output-norm gap)')
+
+    render(title, args.n_tok, args.bq_sz, args.bkv_sz, tc, d, m, v, lbl, t)
+
+
+if __name__ == '__main__':
+    main()

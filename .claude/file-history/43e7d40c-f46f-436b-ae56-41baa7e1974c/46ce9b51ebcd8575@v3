@@ -1,0 +1,150 @@
+#!/usr/bin/env python3
+"""
+Profile the pre-attention ops for Qwen3-4B (q_proj + q_norm + apply_rope)
+to check whether XLA fuses matmul+norm+rope into a single HLO cluster or
+emits them as separate ops that round-trip through HBM.
+"""
+import os, sys, json, gzip, re
+from pathlib import Path
+from collections import defaultdict
+
+import numpy as np
+import jax
+import jax.numpy as jnp
+
+sys.path.insert(0, "/home/tarading/tpu-inference")
+os.environ.setdefault("JAX_PLATFORMS", "tpu")
+
+from tpu_inference.layers.jax.rope_interface import apply_rope
+
+# ── Qwen3-4B shapes (v6e-1, TP=1) ──────────────────────────────────────────
+T   = 4096       # prefill tokens (matches Qwen3-4B serving: INPUT_LEN=4096)
+D   = 2560       # hidden_size
+N   = 32         # num_q_heads
+K   = 8          # num_kv_heads
+H   = 128        # head_dim
+ROPE_THETA = 1_000_000.0
+DTYPE = jnp.bfloat16
+N_REPS = 20
+TRACE_DIR = "/tmp/trace_pre_attn_4096"
+
+rng = np.random.default_rng(42)
+
+def rand(*shape):
+    return jnp.array(rng.random(shape, dtype=np.float32)).astype(DTYPE)
+
+# Weights
+W_q  = rand(D, N, H)   # q_proj kernel [D, N, H]
+W_k  = rand(D, K, H)   # k_proj kernel
+W_v  = rand(D, K, H)   # v_proj kernel
+# QK-norm scales (Qwen3 specific)
+qn_scale = rand(H)
+kn_scale = rand(H)
+
+x         = rand(T, D)
+positions = jnp.arange(T, dtype=jnp.int32)
+
+# ── RMS norm (per-head) ──────────────────────────────────────────────────────
+def rms_norm(x, scale, eps=1e-6):
+    x_f32 = x.astype(jnp.float32)
+    rms = jnp.sqrt(jnp.mean(x_f32 ** 2, axis=-1, keepdims=True) + eps)
+    return (x_f32 / rms * scale).astype(x.dtype)
+
+# ── Forward pass that matches Qwen3Attention with has_rope=False ─────────────
+@jax.jit
+def pre_attn_false(x, positions, W_q, W_k, W_v, qn_scale, kn_scale):
+    # q_proj + q_norm + apply_rope
+    q = jnp.einsum("TD,DNH->TNH", x, W_q)
+    q = rms_norm(q, qn_scale)
+    q = apply_rope(q, positions, H, ROPE_THETA)
+
+    # k_proj + k_norm + apply_rope
+    k = jnp.einsum("TD,DKH->TKH", x, W_k)
+    k = rms_norm(k, kn_scale)
+    k = apply_rope(k, positions, H, ROPE_THETA)
+
+    # v_proj (no norm, no rope)
+    v = jnp.einsum("TD,DKH->TKH", x, W_v)
+    return q, k, v
+
+fn_args = (x, positions, W_q, W_k, W_v, qn_scale, kn_scale)
+
+print("Compiling...", flush=True)
+out = jax.block_until_ready(pre_attn_false(*fn_args))
+
+import shutil
+if Path(TRACE_DIR).exists():
+    shutil.rmtree(TRACE_DIR)
+
+print(f"Profiling {N_REPS} reps → {TRACE_DIR}", flush=True)
+with jax.profiler.trace(TRACE_DIR):
+    for _ in range(N_REPS):
+        out = pre_attn_false(*fn_args)
+    jax.block_until_ready(out)
+
+# ── Parse the trace ──────────────────────────────────────────────────────────
+trace_file = None
+for pat in ["**/*.trace.json.gz", "**/trace.json"]:
+    matches = sorted(Path(TRACE_DIR).rglob(pat.lstrip("**/")))
+    if matches:
+        trace_file = matches[0]
+        break
+if trace_file is None:
+    raise FileNotFoundError(f"No trace in {TRACE_DIR}")
+
+opener = gzip.open if trace_file.suffix == ".gz" else open
+with opener(trace_file, "rt") as fh:
+    data = json.load(fh)
+events = data.get("traceEvents", []) if isinstance(data, dict) else data
+
+xla_ops = [
+    e for e in events
+    if isinstance(e, dict)
+    and e.get("pid") == 3 and e.get("tid") == 3
+    and "dur" in e and "ts" in e
+]
+xla_ops.sort(key=lambda e: e["ts"])
+
+# ── Report ────────────────────────────────────────────────────────────────────
+print(f"\n{'ts (µs)':>12}  {'dur (µs)':>10}  {'category':<22}  {'name':<55}  source")
+print("-" * 130)
+for e in xla_ops:
+    a = e.get("args", {})
+    if not isinstance(a, dict):
+        continue
+    src  = a.get("source", "")
+    name = e.get("name", "")
+    cat  = a.get("hlo_category", "?")
+    print(f"{e['ts']:>12.3f}  {e.get('dur',0):>10.3f}  {cat:<22}  {name:<55}  {src}")
+
+# ── Summary: ops from rope_interface ─────────────────────────────────────────
+print("\n=== Ops attributed to rope_interface / rope.py ===")
+rope_ops = [e for e in xla_ops
+            if "rope" in e.get("args", {}).get("source", "").lower()]
+by_family = defaultdict(list)
+for e in rope_ops:
+    fam = re.sub(r"\.\d+$", "", e.get("name", ""))
+    by_family[fam].append(e.get("dur", 0))
+
+if by_family:
+    for fam, durs in sorted(by_family.items(), key=lambda x: -sum(x[1])):
+        d = np.array(durs)
+        print(f"  {fam:<55}  n={len(d):3d}  mean={d.mean():8.2f} µs")
+else:
+    print("  (none — rope ops are already fused into einsum/norm clusters)")
+
+# ── Summary: what categories appear ──────────────────────────────────────────
+print("\n=== All HLO categories in trace (aggregated) ===")
+by_cat = defaultdict(list)
+for e in xla_ops:
+    a = e.get("args", {})
+    if isinstance(a, dict):
+        by_cat[a.get("hlo_category", "?")].append(e.get("dur", 0))
+for cat, durs in sorted(by_cat.items(), key=lambda x: -sum(x[1])):
+    d = np.array(durs)
+    print(f"  {cat:<30}  n={len(d):4d}  total={d.sum():10.1f} µs  mean={d.mean():8.2f} µs")
+
+print(f"\nTrace written to: {TRACE_DIR}")
+print("Re-analyse with:")
+print(f"  python scripts/kernel_eval/trace_tool.py stats --trace {TRACE_DIR} --all-pids")
+print(f"  python scripts/kernel_eval/trace_tool.py source --trace {TRACE_DIR} --source rope")

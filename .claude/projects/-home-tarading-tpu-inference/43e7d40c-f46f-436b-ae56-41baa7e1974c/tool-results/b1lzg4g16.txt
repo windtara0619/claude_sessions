@@ -1,0 +1,2392 @@
+============================= test session starts ==============================
+platform linux -- Python 3.12.13, pytest-9.0.3, pluggy-1.6.0 -- /home/tarading/vllm_env/bin/python3
+cachedir: .pytest_cache
+hypothesis profile 'default'
+rootdir: /home/tarading/tpu-inference
+configfile: pyproject.toml
+plugins: mock-3.15.1, hypothesis-6.151.9, jaxtyping-0.3.10, anyio-4.13.0
+collecting ... collected 74 items / 64 deselected / 10 selected
+
+tests/kernels/ragged_paged_attention_kernel_v3_test.py::RaggedPagedAttentionKernelTest::test_ragged_paged_attention_mega_kernel_multiseq0 FAILED [ 10%]
+tests/kernels/ragged_paged_attention_kernel_v3_test.py::RaggedPagedAttentionKernelTest::test_ragged_paged_attention_mega_kernel_multiseq1 FAILED [ 20%]
+tests/kernels/ragged_paged_attention_kernel_v3_test.py::RaggedPagedAttentionKernelTest::test_ragged_paged_attention_mega_kernel_multiseq_fresh0 FAILED [ 30%]
+tests/kernels/ragged_paged_attention_kernel_v3_test.py::RaggedPagedAttentionKernelTest::test_ragged_paged_attention_mega_kernel_multiseq_fresh1 FAILED [ 40%]
+tests/kernels/ragged_paged_attention_kernel_v3_test.py::RaggedPagedAttentionKernelTest::test_ragged_paged_attention_mega_kernel_multiseq_kv_gap0 FAILED [ 50%]
+tests/kernels/ragged_paged_attention_kernel_v3_test.py::RaggedPagedAttentionKernelTest::test_ragged_paged_attention_mega_kernel_multiseq_kv_gap1 FAILED [ 60%]
+tests/kernels/ragged_paged_attention_kernel_v3_test.py::RaggedPagedAttentionKernelTest::test_ragged_paged_attention_mega_kernel_multiseq_random_kvcache0 FAILED [ 70%]
+tests/kernels/ragged_paged_attention_kernel_v3_test.py::RaggedPagedAttentionKernelTest::test_ragged_paged_attention_mega_kernel_multiseq_random_kvcache1 FAILED [ 80%]
+tests/kernels/ragged_paged_attention_kernel_v3_test.py::RaggedPagedAttentionKernelTest::test_ragged_paged_attention_mega_kernel_single_seq0 FAILED [ 90%]
+tests/kernels/ragged_paged_attention_kernel_v3_test.py::RaggedPagedAttentionKernelTest::test_ragged_paged_attention_mega_kernel_single_seq1 FAILED [100%]
+
+=================================== FAILURES ===================================
+_ RaggedPagedAttentionKernelTest.test_ragged_paged_attention_mega_kernel_multiseq0 _
+
+self = <tests.kernels.ragged_paged_attention_kernel_v3_test.RaggedPagedAttentionKernelTest testMethod=test_ragged_paged_attention_mega_kernel_multiseq0>
+block_sizes = (64, 256, 32, 128)
+
+    @parameterized.product(
+        block_sizes=[
+            (64, 256, 32, 128),   # bq_sz=64 (multiple of 8)
+            (256, 1024, 128, 512),  # production config
+        ],
+    )
+    def test_ragged_paged_attention_mega_kernel_multiseq(self, block_sizes):
+        """mega_kernel=True must match the Qwen3-style baseline (proj→rms_norm→apply_rope).
+    
+        Three sequences with varying q_len / kv_len (including past-context cache).
+        Positions are global (kv_q_gap..kv_len-1) because the fused kernel places
+        new tokens at their true sequence positions when applying RoPE.
+        """
+        if not jtu.is_device_tpu_at_least(version=4):
+            self.skipTest("Expect TPUv4+")
+        dtype = jnp.bfloat16
+        # Seq lengths chosen so all cu_q boundaries are divisible by 8.
+        seq_lens = [(192, 328), (128, 180), (64, 255)]
+        num_q_heads, num_kv_heads = 32, 8
+        head_dim = 128
+        hidden_size = 512  # must be divisible by 128
+        page_size = 16
+        num_pages = 200
+        rope_theta = 1000000.0
+        bq_sz, bkv_sz, bq_csz, bkv_csz = block_sizes
+    
+        rng = np.random.default_rng(1234)
+    
+        def gen(shape):
+            return jnp.array(rng.random(size=shape, dtype=np.float32)).astype(dtype)
+    
+        cu_q_lens = [0]
+        kv_lens_list = []
+        for q_len, kv_len in seq_lens:
+            cu_q_lens.append(cu_q_lens[-1] + q_len)
+            kv_lens_list.append(kv_len)
+    
+        total_q = cu_q_lens[-1]
+        # max_tokens must be a multiple of bkv_sz for mega_kernel.
+        max_tokens = max(align_to(total_q, bkv_sz), bkv_sz)
+        max_num_seq = max(align_to(len(seq_lens), 8), 8)
+        max_kv_len = max(kv_lens_list)
+        pages_per_seq = cdiv(max_kv_len, page_size)
+        kv_packing = get_dtype_packing(dtype)
+        padded_head = align_to(head_dim, 128)
+        num_kv_x2 = align_to(num_kv_heads * 2, kv_packing)
+    
+        x = gen((max_tokens, hidden_size))
+    
+        # Build baseline q/k/v per-sequence via proj+norm+rope.
+        # Positions are global (kv_q_gap..kv_len-1) to match the fused kernel.
+        q_parts, k_parts, v_parts = [], [], []
+        w_q = qn_scale = w_k = kn_scale = w_v = None
+        for i, (q_len, kv_len) in enumerate(seq_lens):
+            q_start = cu_q_lens[i]
+            kv_q_gap_i = kv_len - q_len
+            positions = jnp.arange(kv_q_gap_i, kv_len, dtype=jnp.int32)
+            q_i, k_i, v_i, w_q, qn_scale, w_k, kn_scale, w_v = _build_qkv_baseline(
+                x[q_start:q_start + q_len], hidden_size, num_q_heads, num_kv_heads,
+                head_dim, rope_theta, positions, dtype)
+            q_parts.append(q_i)
+            k_parts.append(k_i)
+            v_parts.append(v_i)
+        zeros_kv = jnp.zeros((max_tokens - total_q, num_kv_heads, head_dim), dtype=dtype)
+        q_proj = jnp.pad(
+            jnp.concatenate(q_parts, axis=0),
+            ((0, max_tokens - total_q), (0, 0), (0, 0)),
+        )
+        k_proj = jnp.concatenate(k_parts + [zeros_kv], axis=0)
+        v_proj = jnp.concatenate(v_parts + [zeros_kv], axis=0)
+    
+        page_cnt = 0
+        page_indices_list = []
+        kv_pages_list = []
+        for kv_len in kv_lens_list:
+            kv = gen((kv_len, num_kv_x2 // kv_packing, kv_packing, padded_head))
+            kv = jnp.pad(
+                kv,
+                ((0, cdiv(kv_len, page_size) * page_size - kv_len), (0, 0), (0, 0), (0, 0)),
+                constant_values=jnp.nan,
+            ).reshape(-1, page_size, num_kv_x2 // kv_packing, kv_packing, padded_head)
+            indices = page_cnt + jnp.arange(kv.shape[0], dtype=jnp.int32)
+            indices = jnp.pad(indices, (0, pages_per_seq - indices.shape[0]),
+                              constant_values=0)
+            page_indices_list.append(indices)
+            page_cnt += kv.shape[0]
+            kv_pages_list.append(kv)
+    
+        kv_cache = jnp.concatenate(kv_pages_list, axis=0)
+        kv_cache = jnp.pad(kv_cache,
+                           ((0, num_pages - kv_cache.shape[0]),
+                            (0, 0), (0, 0), (0, 0), (0, 0)),
+                           constant_values=jnp.nan)
+        page_indices = jnp.stack(page_indices_list, axis=0)
+        page_indices = jnp.pad(page_indices,
+                               ((0, max_num_seq - page_indices.shape[0]), (0, 0)),
+                               constant_values=0).reshape(-1)
+    
+        cu_q = jnp.array(cu_q_lens, dtype=jnp.int32)
+        cu_q = jnp.pad(cu_q, (0, max_num_seq + 1 - cu_q.shape[0]))
+        kv_lens = jnp.array(kv_lens_list, dtype=jnp.int32)
+        kv_lens = jnp.pad(kv_lens, (0, max_num_seq - kv_lens.shape[0]))
+        distribution = jnp.array([0, 0, len(seq_lens)], dtype=jnp.int32)
+    
+        common = dict(
+            sm_scale=head_dim ** -0.5,
+            m_block_sizes=(bq_sz, bkv_sz, bq_csz, bkv_csz),
+        )
+    
+        kv_cache_np = np.array(kv_cache)
+    
+        # Baseline: pre-projected+normed+roped q/k/v.
+        out_base = ref_ragged_paged_attention(
+            jnp.array(np.array(q_proj)), jnp.array(np.array(k_proj)),
+            jnp.array(np.array(v_proj)),
+            jnp.array(kv_cache_np), kv_lens, page_indices, cu_q, distribution,
+            sm_scale=common['sm_scale'],
+        )
+        attn_base = jax.device_get(out_base[0])
+    
+>       out_fused = ragged_paged_attention(
+            jnp.zeros_like(q_proj), jnp.zeros_like(k_proj), jnp.zeros_like(v_proj),
+            jnp.array(kv_cache_np),
+            kv_lens, page_indices, cu_q, distribution,
+            **common,
+            rope_theta=rope_theta,
+            mega_kernel=True,
+            x=x,
+            w_q=w_q,
+            qn_scale=qn_scale,
+            w_k=w_k,
+            kn_scale=kn_scale,
+            w_v=w_v,
+        )
+
+tests/kernels/ragged_paged_attention_kernel_v3_test.py:723: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+../vllm_env/lib/python3.12/site-packages/jax/_src/pjit.py:250: in cache_miss
+    p, args_flat = _infer_params(fun, jit_info, args, kwargs)
+                   ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+../vllm_env/lib/python3.12/site-packages/jax/_src/pjit.py:620: in _infer_params
+    p = _trace_for_jit(fun, ji, ctx_mesh, dbg_fn(), avals, args, kwargs)
+        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+../vllm_env/lib/python3.12/site-packages/jax/_src/pjit.py:522: in _trace_for_jit
+    jaxpr, out_avals = pe.trace_to_jaxpr(fun, in_type, dbg, qdd_token)
+                       ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+../vllm_env/lib/python3.12/site-packages/jax/_src/interpreters/partial_eval.py:2338: in trace_to_jaxpr
+    ans_pytree = fun(*args, **kwargs)
+                 ^^^^^^^^^^^^^^^^^^^^
+tpu_inference/kernels/ragged_paged_attention/v3/kernel.py:2361: in ragged_paged_attention
+    q, kv_cache = run_rpa_kernel(
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+q = JitTracer(bfloat16[8,512,2,2,128])
+kv_cache = JitTracer(bfloat16[200,16,8,2,128])
+
+    def run_rpa_kernel(
+        q,
+        kv_cache,
+        *,
+        bq_sz,
+        bkv_sz,
+        bq_csz,
+        bkv_csz,
+        static_q_len=None,
+        case: RpaCase = RpaCase.MIXED,
+        mega_kernel: bool = False,
+        x=None,
+        w_q=None,
+        qn_scale=None,
+        w_k=None,
+        kn_scale=None,
+        w_v=None,
+    ):
+        if mega_kernel:
+            hidden_size = x.shape[1]
+            assert hidden_size % 128 == 0, (
+                f"mega_kernel requires hidden_size % 128 == 0, got {hidden_size}")
+            assert x.shape[0] == max_num_tokens, (
+                f"x.shape[0]={x.shape[0]} must equal max_num_tokens={max_num_tokens}")
+            x_input = x.reshape(max_num_tokens, hidden_size // 128, 128)
+        else:
+            hidden_size = 0
+            x_input = jnp.zeros((1, 1, 128), dtype=q.dtype)
+    
+        def vmem_or_dummy(arr, dummy_shape):
+            return arr if arr is not None else jnp.zeros(dummy_shape, dtype=q.dtype)
+    
+        qn_scale_input = vmem_or_dummy(qn_scale, (128,))
+        kn_scale_input = vmem_or_dummy(kn_scale, (128,))
+        # Fuse W_q, W_k, W_v into one W_qkv = [W_q | W_k | W_v] so Mosaic sees
+        # a single VMEM input and one matmul total.
+        if mega_kernel:
+            w_qkv_input = jnp.concatenate([w_q, w_k, w_v], axis=1)  # [D, (N+2K)*H]
+        else:
+            w_qkv_input = jnp.zeros((1, 128), dtype=q.dtype)
+    
+        in_specs = [
+            pl.BlockSpec(memory_space=pltpu.HBM),
+            pl.BlockSpec(memory_space=pltpu.HBM),
+            pl.BlockSpec(memory_space=pltpu.HBM),
+            pl.BlockSpec(memory_space=pltpu.HBM),   # x or dummy
+            pl.BlockSpec(memory_space=pltpu.VMEM),  # w_qkv or dummy
+            pl.BlockSpec(memory_space=pltpu.VMEM),  # qn_scale or dummy
+            pl.BlockSpec(memory_space=pltpu.VMEM),  # kn_scale or dummy
+        ]
+    
+        if mega_kernel:
+            assert bkv_sz % bq_sz == 0, (
+                f"mega_kernel=True requires bkv_sz divisible by bq_sz "
+                f"(got bkv_sz={bkv_sz}, bq_sz={bq_sz})")
+    
+        out_specs = [
+            pl.BlockSpec(memory_space=pltpu.HBM),
+            pl.BlockSpec(memory_space=pltpu.HBM),
+        ]
+    
+        bkv_stride = num_kv_heads_x2_per_kv_packing
+        if has_bank_conflicts(bkv_stride):
+            bkv_stride += 1
+    
+        # Doubled row count absorbs strided_store overflow from compute_kv_from_x_bkv:
+        # writes start at bkv_sz_frm_cache and span bkv_sz rows, so last write lands
+        # at bkv_sz_frm_cache + bkv_sz - 1 < 2 * bkv_sz — always in bounds.
+        bkv_double_buf = pltpu.VMEM(
+            (2, bkv_sz * 2, bkv_stride, *kv_cache.shape[3:]),
+            kv_cache.dtype,
+        )
+    
+        bq_double_buf = pltpu.VMEM(
+            (2, actual_num_kv_heads, bq_sz, *q.shape[2:]),
+            q.dtype,
+        )
+    
+        bo_double_buf = bq_double_buf
+    
+        l_scratch = pltpu.VMEM(
+            (actual_num_kv_heads, bq_sz * num_q_heads_per_kv_head, 128),
+            out_dtype,
+        )
+        m_scratch = l_scratch
+    
+        acc_scratch = pltpu.VMEM(
+            (actual_num_kv_heads, bq_sz * num_q_heads_per_kv_head, head_dim),
+            out_dtype,
+        )
+    
+        rope_timescale_scratch = pltpu.VMEM((1, padded_rope_dim), jnp.float32)
+    
+>       if any_proj:
+           ^^^^^^^^
+E       NameError: name 'any_proj' is not defined
+
+tpu_inference/kernels/ragged_paged_attention/v3/kernel.py:2211: NameError
+_ RaggedPagedAttentionKernelTest.test_ragged_paged_attention_mega_kernel_multiseq1 _
+
+self = <tests.kernels.ragged_paged_attention_kernel_v3_test.RaggedPagedAttentionKernelTest testMethod=test_ragged_paged_attention_mega_kernel_multiseq1>
+block_sizes = (256, 1024, 128, 512)
+
+    @parameterized.product(
+        block_sizes=[
+            (64, 256, 32, 128),   # bq_sz=64 (multiple of 8)
+            (256, 1024, 128, 512),  # production config
+        ],
+    )
+    def test_ragged_paged_attention_mega_kernel_multiseq(self, block_sizes):
+        """mega_kernel=True must match the Qwen3-style baseline (proj→rms_norm→apply_rope).
+    
+        Three sequences with varying q_len / kv_len (including past-context cache).
+        Positions are global (kv_q_gap..kv_len-1) because the fused kernel places
+        new tokens at their true sequence positions when applying RoPE.
+        """
+        if not jtu.is_device_tpu_at_least(version=4):
+            self.skipTest("Expect TPUv4+")
+        dtype = jnp.bfloat16
+        # Seq lengths chosen so all cu_q boundaries are divisible by 8.
+        seq_lens = [(192, 328), (128, 180), (64, 255)]
+        num_q_heads, num_kv_heads = 32, 8
+        head_dim = 128
+        hidden_size = 512  # must be divisible by 128
+        page_size = 16
+        num_pages = 200
+        rope_theta = 1000000.0
+        bq_sz, bkv_sz, bq_csz, bkv_csz = block_sizes
+    
+        rng = np.random.default_rng(1234)
+    
+        def gen(shape):
+            return jnp.array(rng.random(size=shape, dtype=np.float32)).astype(dtype)
+    
+        cu_q_lens = [0]
+        kv_lens_list = []
+        for q_len, kv_len in seq_lens:
+            cu_q_lens.append(cu_q_lens[-1] + q_len)
+            kv_lens_list.append(kv_len)
+    
+        total_q = cu_q_lens[-1]
+        # max_tokens must be a multiple of bkv_sz for mega_kernel.
+        max_tokens = max(align_to(total_q, bkv_sz), bkv_sz)
+        max_num_seq = max(align_to(len(seq_lens), 8), 8)
+        max_kv_len = max(kv_lens_list)
+        pages_per_seq = cdiv(max_kv_len, page_size)
+        kv_packing = get_dtype_packing(dtype)
+        padded_head = align_to(head_dim, 128)
+        num_kv_x2 = align_to(num_kv_heads * 2, kv_packing)
+    
+        x = gen((max_tokens, hidden_size))
+    
+        # Build baseline q/k/v per-sequence via proj+norm+rope.
+        # Positions are global (kv_q_gap..kv_len-1) to match the fused kernel.
+        q_parts, k_parts, v_parts = [], [], []
+        w_q = qn_scale = w_k = kn_scale = w_v = None
+        for i, (q_len, kv_len) in enumerate(seq_lens):
+            q_start = cu_q_lens[i]
+            kv_q_gap_i = kv_len - q_len
+            positions = jnp.arange(kv_q_gap_i, kv_len, dtype=jnp.int32)
+            q_i, k_i, v_i, w_q, qn_scale, w_k, kn_scale, w_v = _build_qkv_baseline(
+                x[q_start:q_start + q_len], hidden_size, num_q_heads, num_kv_heads,
+                head_dim, rope_theta, positions, dtype)
+            q_parts.append(q_i)
+            k_parts.append(k_i)
+            v_parts.append(v_i)
+        zeros_kv = jnp.zeros((max_tokens - total_q, num_kv_heads, head_dim), dtype=dtype)
+        q_proj = jnp.pad(
+            jnp.concatenate(q_parts, axis=0),
+            ((0, max_tokens - total_q), (0, 0), (0, 0)),
+        )
+        k_proj = jnp.concatenate(k_parts + [zeros_kv], axis=0)
+        v_proj = jnp.concatenate(v_parts + [zeros_kv], axis=0)
+    
+        page_cnt = 0
+        page_indices_list = []
+        kv_pages_list = []
+        for kv_len in kv_lens_list:
+            kv = gen((kv_len, num_kv_x2 // kv_packing, kv_packing, padded_head))
+            kv = jnp.pad(
+                kv,
+                ((0, cdiv(kv_len, page_size) * page_size - kv_len), (0, 0), (0, 0), (0, 0)),
+                constant_values=jnp.nan,
+            ).reshape(-1, page_size, num_kv_x2 // kv_packing, kv_packing, padded_head)
+            indices = page_cnt + jnp.arange(kv.shape[0], dtype=jnp.int32)
+            indices = jnp.pad(indices, (0, pages_per_seq - indices.shape[0]),
+                              constant_values=0)
+            page_indices_list.append(indices)
+            page_cnt += kv.shape[0]
+            kv_pages_list.append(kv)
+    
+        kv_cache = jnp.concatenate(kv_pages_list, axis=0)
+        kv_cache = jnp.pad(kv_cache,
+                           ((0, num_pages - kv_cache.shape[0]),
+                            (0, 0), (0, 0), (0, 0), (0, 0)),
+                           constant_values=jnp.nan)
+        page_indices = jnp.stack(page_indices_list, axis=0)
+        page_indices = jnp.pad(page_indices,
+                               ((0, max_num_seq - page_indices.shape[0]), (0, 0)),
+                               constant_values=0).reshape(-1)
+    
+        cu_q = jnp.array(cu_q_lens, dtype=jnp.int32)
+        cu_q = jnp.pad(cu_q, (0, max_num_seq + 1 - cu_q.shape[0]))
+        kv_lens = jnp.array(kv_lens_list, dtype=jnp.int32)
+        kv_lens = jnp.pad(kv_lens, (0, max_num_seq - kv_lens.shape[0]))
+        distribution = jnp.array([0, 0, len(seq_lens)], dtype=jnp.int32)
+    
+        common = dict(
+            sm_scale=head_dim ** -0.5,
+            m_block_sizes=(bq_sz, bkv_sz, bq_csz, bkv_csz),
+        )
+    
+        kv_cache_np = np.array(kv_cache)
+    
+        # Baseline: pre-projected+normed+roped q/k/v.
+        out_base = ref_ragged_paged_attention(
+            jnp.array(np.array(q_proj)), jnp.array(np.array(k_proj)),
+            jnp.array(np.array(v_proj)),
+            jnp.array(kv_cache_np), kv_lens, page_indices, cu_q, distribution,
+            sm_scale=common['sm_scale'],
+        )
+        attn_base = jax.device_get(out_base[0])
+    
+>       out_fused = ragged_paged_attention(
+            jnp.zeros_like(q_proj), jnp.zeros_like(k_proj), jnp.zeros_like(v_proj),
+            jnp.array(kv_cache_np),
+            kv_lens, page_indices, cu_q, distribution,
+            **common,
+            rope_theta=rope_theta,
+            mega_kernel=True,
+            x=x,
+            w_q=w_q,
+            qn_scale=qn_scale,
+            w_k=w_k,
+            kn_scale=kn_scale,
+            w_v=w_v,
+        )
+
+tests/kernels/ragged_paged_attention_kernel_v3_test.py:723: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+../vllm_env/lib/python3.12/site-packages/jax/_src/pjit.py:250: in cache_miss
+    p, args_flat = _infer_params(fun, jit_info, args, kwargs)
+                   ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+../vllm_env/lib/python3.12/site-packages/jax/_src/pjit.py:620: in _infer_params
+    p = _trace_for_jit(fun, ji, ctx_mesh, dbg_fn(), avals, args, kwargs)
+        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+../vllm_env/lib/python3.12/site-packages/jax/_src/pjit.py:522: in _trace_for_jit
+    jaxpr, out_avals = pe.trace_to_jaxpr(fun, in_type, dbg, qdd_token)
+                       ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+../vllm_env/lib/python3.12/site-packages/jax/_src/interpreters/partial_eval.py:2338: in trace_to_jaxpr
+    ans_pytree = fun(*args, **kwargs)
+                 ^^^^^^^^^^^^^^^^^^^^
+tpu_inference/kernels/ragged_paged_attention/v3/kernel.py:2361: in ragged_paged_attention
+    q, kv_cache = run_rpa_kernel(
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+q = JitTracer(bfloat16[8,1024,2,2,128])
+kv_cache = JitTracer(bfloat16[200,16,8,2,128])
+
+    def run_rpa_kernel(
+        q,
+        kv_cache,
+        *,
+        bq_sz,
+        bkv_sz,
+        bq_csz,
+        bkv_csz,
+        static_q_len=None,
+        case: RpaCase = RpaCase.MIXED,
+        mega_kernel: bool = False,
+        x=None,
+        w_q=None,
+        qn_scale=None,
+        w_k=None,
+        kn_scale=None,
+        w_v=None,
+    ):
+        if mega_kernel:
+            hidden_size = x.shape[1]
+            assert hidden_size % 128 == 0, (
+                f"mega_kernel requires hidden_size % 128 == 0, got {hidden_size}")
+            assert x.shape[0] == max_num_tokens, (
+                f"x.shape[0]={x.shape[0]} must equal max_num_tokens={max_num_tokens}")
+            x_input = x.reshape(max_num_tokens, hidden_size // 128, 128)
+        else:
+            hidden_size = 0
+            x_input = jnp.zeros((1, 1, 128), dtype=q.dtype)
+    
+        def vmem_or_dummy(arr, dummy_shape):
+            return arr if arr is not None else jnp.zeros(dummy_shape, dtype=q.dtype)
+    
+        qn_scale_input = vmem_or_dummy(qn_scale, (128,))
+        kn_scale_input = vmem_or_dummy(kn_scale, (128,))
+        # Fuse W_q, W_k, W_v into one W_qkv = [W_q | W_k | W_v] so Mosaic sees
+        # a single VMEM input and one matmul total.
+        if mega_kernel:
+            w_qkv_input = jnp.concatenate([w_q, w_k, w_v], axis=1)  # [D, (N+2K)*H]
+        else:
+            w_qkv_input = jnp.zeros((1, 128), dtype=q.dtype)
+    
+        in_specs = [
+            pl.BlockSpec(memory_space=pltpu.HBM),
+            pl.BlockSpec(memory_space=pltpu.HBM),
+            pl.BlockSpec(memory_space=pltpu.HBM),
+            pl.BlockSpec(memory_space=pltpu.HBM),   # x or dummy
+            pl.BlockSpec(memory_space=pltpu.VMEM),  # w_qkv or dummy
+            pl.BlockSpec(memory_space=pltpu.VMEM),  # qn_scale or dummy
+            pl.BlockSpec(memory_space=pltpu.VMEM),  # kn_scale or dummy
+        ]
+    
+        if mega_kernel:
+            assert bkv_sz % bq_sz == 0, (
+                f"mega_kernel=True requires bkv_sz divisible by bq_sz "
+                f"(got bkv_sz={bkv_sz}, bq_sz={bq_sz})")
+    
+        out_specs = [
+            pl.BlockSpec(memory_space=pltpu.HBM),
+            pl.BlockSpec(memory_space=pltpu.HBM),
+        ]
+    
+        bkv_stride = num_kv_heads_x2_per_kv_packing
+        if has_bank_conflicts(bkv_stride):
+            bkv_stride += 1
+    
+        # Doubled row count absorbs strided_store overflow from compute_kv_from_x_bkv:
+        # writes start at bkv_sz_frm_cache and span bkv_sz rows, so last write lands
+        # at bkv_sz_frm_cache + bkv_sz - 1 < 2 * bkv_sz — always in bounds.
+        bkv_double_buf = pltpu.VMEM(
+            (2, bkv_sz * 2, bkv_stride, *kv_cache.shape[3:]),
+            kv_cache.dtype,
+        )
+    
+        bq_double_buf = pltpu.VMEM(
+            (2, actual_num_kv_heads, bq_sz, *q.shape[2:]),
+            q.dtype,
+        )
+    
+        bo_double_buf = bq_double_buf
+    
+        l_scratch = pltpu.VMEM(
+            (actual_num_kv_heads, bq_sz * num_q_heads_per_kv_head, 128),
+            out_dtype,
+        )
+        m_scratch = l_scratch
+    
+        acc_scratch = pltpu.VMEM(
+            (actual_num_kv_heads, bq_sz * num_q_heads_per_kv_head, head_dim),
+            out_dtype,
+        )
+    
+        rope_timescale_scratch = pltpu.VMEM((1, padded_rope_dim), jnp.float32)
+    
+>       if any_proj:
+           ^^^^^^^^
+E       NameError: name 'any_proj' is not defined
+
+tpu_inference/kernels/ragged_paged_attention/v3/kernel.py:2211: NameError
+_ RaggedPagedAttentionKernelTest.test_ragged_paged_attention_mega_kernel_multiseq_fresh0 _
+
+self = <tests.kernels.ragged_paged_attention_kernel_v3_test.RaggedPagedAttentionKernelTest testMethod=test_ragged_paged_attention_mega_kernel_multiseq_fresh0>
+block_sizes = (64, 256, 32, 128)
+
+    @parameterized.product(
+        block_sizes=[
+            (64, 256, 32, 128),
+            (256, 1024, 128, 512),
+        ],
+    )
+    def test_ragged_paged_attention_mega_kernel_multiseq_fresh(self, block_sizes):
+        """mega_kernel=True with 2 sequences: K RoPE positions must be
+        sequence-local, not batch-global x-array offsets."""
+        if not jtu.is_device_tpu_at_least(version=4):
+            self.skipTest("Expect TPUv4+")
+        dtype = jnp.bfloat16
+        q_len = 192          # tokens per sequence (fresh prefill)
+        num_seqs = 2
+        total_q = q_len * num_seqs
+        num_q_heads, num_kv_heads = 32, 8
+        head_dim = 128
+        hidden_size = 512
+        page_size = 16
+        rope_theta = 1000000.0
+        bq_sz, bkv_sz, bq_csz, bkv_csz = block_sizes
+    
+        np_rng = np.random.default_rng(9999)
+    
+        def gen(shape):
+            return jnp.array(np_rng.random(size=shape, dtype=np.float32)).astype(dtype)
+    
+        # max_tokens must be a multiple of bkv_sz for mega_kernel.
+        max_tokens = align_to(max(total_q, bkv_sz), bkv_sz)
+        max_num_seq = 8
+        pages_per_seq = cdiv(q_len, page_size)
+        num_pages = num_seqs * pages_per_seq + 4
+        kv_packing = get_dtype_packing(dtype)
+        padded_head = align_to(head_dim, 128)
+        num_kv_x2 = align_to(num_kv_heads * 2, kv_packing)
+    
+        # x is packed: x[0:q_len]=seq0 tokens, x[q_len:2*q_len]=seq1 tokens.
+        x = gen((max_tokens, hidden_size))
+        positions = jnp.arange(q_len, dtype=jnp.int32)  # sequence-local 0..q_len-1
+    
+        # ── Baseline: per-sequence Q/K/V via Qwen3-style layers ──────────
+        # Both calls use nnx.Rngs(42) with identical layer order → same weights.
+        q0, k0, v0, w_q, qn_scale, w_k, kn_scale, w_v = _build_qkv_baseline(
+            x[:q_len], hidden_size, num_q_heads, num_kv_heads,
+            head_dim, rope_theta, positions, dtype,
+        )
+        q1, k1, v1, *_ = _build_qkv_baseline(
+            x[q_len:2 * q_len], hidden_size, num_q_heads, num_kv_heads,
+            head_dim, rope_theta, positions, dtype,
+        )
+    
+        zeros_q = jnp.zeros((max_tokens - total_q, num_q_heads, head_dim), dtype)
+        zeros_k = jnp.zeros((max_tokens - total_q, num_kv_heads, head_dim), dtype)
+        q_proj = jnp.concatenate([q0, q1, zeros_q], axis=0)
+        k_proj = jnp.concatenate([k0, k1, zeros_k], axis=0)
+        v_proj = jnp.concatenate([v0, v1, zeros_k], axis=0)
+    
+        # ── KV cache: seq 0 → pages 0..pps-1, seq 1 → pages pps..2*pps-1 ─
+        kv_cache = jnp.zeros(
+            (num_pages, page_size, num_kv_x2 // kv_packing, kv_packing, padded_head),
+            dtype=dtype,
+        )
+        pages_flat = jnp.concatenate([
+            jnp.arange(pages_per_seq, dtype=jnp.int32),
+            jnp.arange(pages_per_seq, 2 * pages_per_seq, dtype=jnp.int32),
+        ])
+        page_indices = jnp.pad(
+            pages_flat, (0, max_num_seq * pages_per_seq - len(pages_flat)))
+    
+        cu_q = jnp.pad(
+            jnp.array([0, q_len, total_q], dtype=jnp.int32),
+            (0, max_num_seq + 1 - (num_seqs + 1)))
+        kv_lens = jnp.pad(
+            jnp.array([q_len, q_len], dtype=jnp.int32),
+            (0, max_num_seq - num_seqs))
+        distribution = jnp.array([0, 0, num_seqs], dtype=jnp.int32)
+    
+        common = dict(
+            sm_scale=head_dim ** -0.5,
+            m_block_sizes=(bq_sz, bkv_sz, bq_csz, bkv_csz),
+        )
+    
+        kv_cache_np = np.array(kv_cache)
+    
+        out_base = ref_ragged_paged_attention(
+            jnp.array(np.array(q_proj)), jnp.array(np.array(k_proj)),
+            jnp.array(np.array(v_proj)), jnp.array(kv_cache_np),
+            kv_lens, page_indices, cu_q, distribution,
+            sm_scale=common['sm_scale'],
+        )
+        attn_base = jax.device_get(out_base[0])
+    
+>       out_fused = ragged_paged_attention(
+            jnp.zeros_like(q_proj), jnp.zeros_like(k_proj), jnp.zeros_like(v_proj),
+            jnp.array(kv_cache_np), kv_lens, page_indices, cu_q, distribution,
+            **common,
+            rope_theta=rope_theta,
+            mega_kernel=True,
+            x=x,
+            w_q=w_q,
+            qn_scale=qn_scale,
+            w_k=w_k,
+            kn_scale=kn_scale,
+            w_v=w_v,
+        )
+
+tests/kernels/ragged_paged_attention_kernel_v3_test.py:959: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+../vllm_env/lib/python3.12/site-packages/jax/_src/pjit.py:250: in cache_miss
+    p, args_flat = _infer_params(fun, jit_info, args, kwargs)
+                   ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+../vllm_env/lib/python3.12/site-packages/jax/_src/pjit.py:620: in _infer_params
+    p = _trace_for_jit(fun, ji, ctx_mesh, dbg_fn(), avals, args, kwargs)
+        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+../vllm_env/lib/python3.12/site-packages/jax/_src/pjit.py:522: in _trace_for_jit
+    jaxpr, out_avals = pe.trace_to_jaxpr(fun, in_type, dbg, qdd_token)
+                       ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+../vllm_env/lib/python3.12/site-packages/jax/_src/interpreters/partial_eval.py:2338: in trace_to_jaxpr
+    ans_pytree = fun(*args, **kwargs)
+                 ^^^^^^^^^^^^^^^^^^^^
+tpu_inference/kernels/ragged_paged_attention/v3/kernel.py:2361: in ragged_paged_attention
+    q, kv_cache = run_rpa_kernel(
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+q = JitTracer(bfloat16[8,512,2,2,128])
+kv_cache = JitTracer(bfloat16[28,16,8,2,128])
+
+    def run_rpa_kernel(
+        q,
+        kv_cache,
+        *,
+        bq_sz,
+        bkv_sz,
+        bq_csz,
+        bkv_csz,
+        static_q_len=None,
+        case: RpaCase = RpaCase.MIXED,
+        mega_kernel: bool = False,
+        x=None,
+        w_q=None,
+        qn_scale=None,
+        w_k=None,
+        kn_scale=None,
+        w_v=None,
+    ):
+        if mega_kernel:
+            hidden_size = x.shape[1]
+            assert hidden_size % 128 == 0, (
+                f"mega_kernel requires hidden_size % 128 == 0, got {hidden_size}")
+            assert x.shape[0] == max_num_tokens, (
+                f"x.shape[0]={x.shape[0]} must equal max_num_tokens={max_num_tokens}")
+            x_input = x.reshape(max_num_tokens, hidden_size // 128, 128)
+        else:
+            hidden_size = 0
+            x_input = jnp.zeros((1, 1, 128), dtype=q.dtype)
+    
+        def vmem_or_dummy(arr, dummy_shape):
+            return arr if arr is not None else jnp.zeros(dummy_shape, dtype=q.dtype)
+    
+        qn_scale_input = vmem_or_dummy(qn_scale, (128,))
+        kn_scale_input = vmem_or_dummy(kn_scale, (128,))
+        # Fuse W_q, W_k, W_v into one W_qkv = [W_q | W_k | W_v] so Mosaic sees
+        # a single VMEM input and one matmul total.
+        if mega_kernel:
+            w_qkv_input = jnp.concatenate([w_q, w_k, w_v], axis=1)  # [D, (N+2K)*H]
+        else:
+            w_qkv_input = jnp.zeros((1, 128), dtype=q.dtype)
+    
+        in_specs = [
+            pl.BlockSpec(memory_space=pltpu.HBM),
+            pl.BlockSpec(memory_space=pltpu.HBM),
+            pl.BlockSpec(memory_space=pltpu.HBM),
+            pl.BlockSpec(memory_space=pltpu.HBM),   # x or dummy
+            pl.BlockSpec(memory_space=pltpu.VMEM),  # w_qkv or dummy
+            pl.BlockSpec(memory_space=pltpu.VMEM),  # qn_scale or dummy
+            pl.BlockSpec(memory_space=pltpu.VMEM),  # kn_scale or dummy
+        ]
+    
+        if mega_kernel:
+            assert bkv_sz % bq_sz == 0, (
+                f"mega_kernel=True requires bkv_sz divisible by bq_sz "
+                f"(got bkv_sz={bkv_sz}, bq_sz={bq_sz})")
+    
+        out_specs = [
+            pl.BlockSpec(memory_space=pltpu.HBM),
+            pl.BlockSpec(memory_space=pltpu.HBM),
+        ]
+    
+        bkv_stride = num_kv_heads_x2_per_kv_packing
+        if has_bank_conflicts(bkv_stride):
+            bkv_stride += 1
+    
+        # Doubled row count absorbs strided_store overflow from compute_kv_from_x_bkv:
+        # writes start at bkv_sz_frm_cache and span bkv_sz rows, so last write lands
+        # at bkv_sz_frm_cache + bkv_sz - 1 < 2 * bkv_sz — always in bounds.
+        bkv_double_buf = pltpu.VMEM(
+            (2, bkv_sz * 2, bkv_stride, *kv_cache.shape[3:]),
+            kv_cache.dtype,
+        )
+    
+        bq_double_buf = pltpu.VMEM(
+            (2, actual_num_kv_heads, bq_sz, *q.shape[2:]),
+            q.dtype,
+        )
+    
+        bo_double_buf = bq_double_buf
+    
+        l_scratch = pltpu.VMEM(
+            (actual_num_kv_heads, bq_sz * num_q_heads_per_kv_head, 128),
+            out_dtype,
+        )
+        m_scratch = l_scratch
+    
+        acc_scratch = pltpu.VMEM(
+            (actual_num_kv_heads, bq_sz * num_q_heads_per_kv_head, head_dim),
+            out_dtype,
+        )
+    
+        rope_timescale_scratch = pltpu.VMEM((1, padded_rope_dim), jnp.float32)
+    
+>       if any_proj:
+           ^^^^^^^^
+E       NameError: name 'any_proj' is not defined
+
+tpu_inference/kernels/ragged_paged_attention/v3/kernel.py:2211: NameError
+_ RaggedPagedAttentionKernelTest.test_ragged_paged_attention_mega_kernel_multiseq_fresh1 _
+
+self = <tests.kernels.ragged_paged_attention_kernel_v3_test.RaggedPagedAttentionKernelTest testMethod=test_ragged_paged_attention_mega_kernel_multiseq_fresh1>
+block_sizes = (256, 1024, 128, 512)
+
+    @parameterized.product(
+        block_sizes=[
+            (64, 256, 32, 128),
+            (256, 1024, 128, 512),
+        ],
+    )
+    def test_ragged_paged_attention_mega_kernel_multiseq_fresh(self, block_sizes):
+        """mega_kernel=True with 2 sequences: K RoPE positions must be
+        sequence-local, not batch-global x-array offsets."""
+        if not jtu.is_device_tpu_at_least(version=4):
+            self.skipTest("Expect TPUv4+")
+        dtype = jnp.bfloat16
+        q_len = 192          # tokens per sequence (fresh prefill)
+        num_seqs = 2
+        total_q = q_len * num_seqs
+        num_q_heads, num_kv_heads = 32, 8
+        head_dim = 128
+        hidden_size = 512
+        page_size = 16
+        rope_theta = 1000000.0
+        bq_sz, bkv_sz, bq_csz, bkv_csz = block_sizes
+    
+        np_rng = np.random.default_rng(9999)
+    
+        def gen(shape):
+            return jnp.array(np_rng.random(size=shape, dtype=np.float32)).astype(dtype)
+    
+        # max_tokens must be a multiple of bkv_sz for mega_kernel.
+        max_tokens = align_to(max(total_q, bkv_sz), bkv_sz)
+        max_num_seq = 8
+        pages_per_seq = cdiv(q_len, page_size)
+        num_pages = num_seqs * pages_per_seq + 4
+        kv_packing = get_dtype_packing(dtype)
+        padded_head = align_to(head_dim, 128)
+        num_kv_x2 = align_to(num_kv_heads * 2, kv_packing)
+    
+        # x is packed: x[0:q_len]=seq0 tokens, x[q_len:2*q_len]=seq1 tokens.
+        x = gen((max_tokens, hidden_size))
+        positions = jnp.arange(q_len, dtype=jnp.int32)  # sequence-local 0..q_len-1
+    
+        # ── Baseline: per-sequence Q/K/V via Qwen3-style layers ──────────
+        # Both calls use nnx.Rngs(42) with identical layer order → same weights.
+        q0, k0, v0, w_q, qn_scale, w_k, kn_scale, w_v = _build_qkv_baseline(
+            x[:q_len], hidden_size, num_q_heads, num_kv_heads,
+            head_dim, rope_theta, positions, dtype,
+        )
+        q1, k1, v1, *_ = _build_qkv_baseline(
+            x[q_len:2 * q_len], hidden_size, num_q_heads, num_kv_heads,
+            head_dim, rope_theta, positions, dtype,
+        )
+    
+        zeros_q = jnp.zeros((max_tokens - total_q, num_q_heads, head_dim), dtype)
+        zeros_k = jnp.zeros((max_tokens - total_q, num_kv_heads, head_dim), dtype)
+        q_proj = jnp.concatenate([q0, q1, zeros_q], axis=0)
+        k_proj = jnp.concatenate([k0, k1, zeros_k], axis=0)
+        v_proj = jnp.concatenate([v0, v1, zeros_k], axis=0)
+    
+        # ── KV cache: seq 0 → pages 0..pps-1, seq 1 → pages pps..2*pps-1 ─
+        kv_cache = jnp.zeros(
+            (num_pages, page_size, num_kv_x2 // kv_packing, kv_packing, padded_head),
+            dtype=dtype,
+        )
+        pages_flat = jnp.concatenate([
+            jnp.arange(pages_per_seq, dtype=jnp.int32),
+            jnp.arange(pages_per_seq, 2 * pages_per_seq, dtype=jnp.int32),
+        ])
+        page_indices = jnp.pad(
+            pages_flat, (0, max_num_seq * pages_per_seq - len(pages_flat)))
+    
+        cu_q = jnp.pad(
+            jnp.array([0, q_len, total_q], dtype=jnp.int32),
+            (0, max_num_seq + 1 - (num_seqs + 1)))
+        kv_lens = jnp.pad(
+            jnp.array([q_len, q_len], dtype=jnp.int32),
+            (0, max_num_seq - num_seqs))
+        distribution = jnp.array([0, 0, num_seqs], dtype=jnp.int32)
+    
+        common = dict(
+            sm_scale=head_dim ** -0.5,
+            m_block_sizes=(bq_sz, bkv_sz, bq_csz, bkv_csz),
+        )
+    
+        kv_cache_np = np.array(kv_cache)
+    
+        out_base = ref_ragged_paged_attention(
+            jnp.array(np.array(q_proj)), jnp.array(np.array(k_proj)),
+            jnp.array(np.array(v_proj)), jnp.array(kv_cache_np),
+            kv_lens, page_indices, cu_q, distribution,
+            sm_scale=common['sm_scale'],
+        )
+        attn_base = jax.device_get(out_base[0])
+    
+>       out_fused = ragged_paged_attention(
+            jnp.zeros_like(q_proj), jnp.zeros_like(k_proj), jnp.zeros_like(v_proj),
+            jnp.array(kv_cache_np), kv_lens, page_indices, cu_q, distribution,
+            **common,
+            rope_theta=rope_theta,
+            mega_kernel=True,
+            x=x,
+            w_q=w_q,
+            qn_scale=qn_scale,
+            w_k=w_k,
+            kn_scale=kn_scale,
+            w_v=w_v,
+        )
+
+tests/kernels/ragged_paged_attention_kernel_v3_test.py:959: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+../vllm_env/lib/python3.12/site-packages/jax/_src/pjit.py:250: in cache_miss
+    p, args_flat = _infer_params(fun, jit_info, args, kwargs)
+                   ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+../vllm_env/lib/python3.12/site-packages/jax/_src/pjit.py:620: in _infer_params
+    p = _trace_for_jit(fun, ji, ctx_mesh, dbg_fn(), avals, args, kwargs)
+        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+../vllm_env/lib/python3.12/site-packages/jax/_src/pjit.py:522: in _trace_for_jit
+    jaxpr, out_avals = pe.trace_to_jaxpr(fun, in_type, dbg, qdd_token)
+                       ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+../vllm_env/lib/python3.12/site-packages/jax/_src/interpreters/partial_eval.py:2338: in trace_to_jaxpr
+    ans_pytree = fun(*args, **kwargs)
+                 ^^^^^^^^^^^^^^^^^^^^
+tpu_inference/kernels/ragged_paged_attention/v3/kernel.py:2361: in ragged_paged_attention
+    q, kv_cache = run_rpa_kernel(
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+q = JitTracer(bfloat16[8,1024,2,2,128])
+kv_cache = JitTracer(bfloat16[28,16,8,2,128])
+
+    def run_rpa_kernel(
+        q,
+        kv_cache,
+        *,
+        bq_sz,
+        bkv_sz,
+        bq_csz,
+        bkv_csz,
+        static_q_len=None,
+        case: RpaCase = RpaCase.MIXED,
+        mega_kernel: bool = False,
+        x=None,
+        w_q=None,
+        qn_scale=None,
+        w_k=None,
+        kn_scale=None,
+        w_v=None,
+    ):
+        if mega_kernel:
+            hidden_size = x.shape[1]
+            assert hidden_size % 128 == 0, (
+                f"mega_kernel requires hidden_size % 128 == 0, got {hidden_size}")
+            assert x.shape[0] == max_num_tokens, (
+                f"x.shape[0]={x.shape[0]} must equal max_num_tokens={max_num_tokens}")
+            x_input = x.reshape(max_num_tokens, hidden_size // 128, 128)
+        else:
+            hidden_size = 0
+            x_input = jnp.zeros((1, 1, 128), dtype=q.dtype)
+    
+        def vmem_or_dummy(arr, dummy_shape):
+            return arr if arr is not None else jnp.zeros(dummy_shape, dtype=q.dtype)
+    
+        qn_scale_input = vmem_or_dummy(qn_scale, (128,))
+        kn_scale_input = vmem_or_dummy(kn_scale, (128,))
+        # Fuse W_q, W_k, W_v into one W_qkv = [W_q | W_k | W_v] so Mosaic sees
+        # a single VMEM input and one matmul total.
+        if mega_kernel:
+            w_qkv_input = jnp.concatenate([w_q, w_k, w_v], axis=1)  # [D, (N+2K)*H]
+        else:
+            w_qkv_input = jnp.zeros((1, 128), dtype=q.dtype)
+    
+        in_specs = [
+            pl.BlockSpec(memory_space=pltpu.HBM),
+            pl.BlockSpec(memory_space=pltpu.HBM),
+            pl.BlockSpec(memory_space=pltpu.HBM),
+            pl.BlockSpec(memory_space=pltpu.HBM),   # x or dummy
+            pl.BlockSpec(memory_space=pltpu.VMEM),  # w_qkv or dummy
+            pl.BlockSpec(memory_space=pltpu.VMEM),  # qn_scale or dummy
+            pl.BlockSpec(memory_space=pltpu.VMEM),  # kn_scale or dummy
+        ]
+    
+        if mega_kernel:
+            assert bkv_sz % bq_sz == 0, (
+                f"mega_kernel=True requires bkv_sz divisible by bq_sz "
+                f"(got bkv_sz={bkv_sz}, bq_sz={bq_sz})")
+    
+        out_specs = [
+            pl.BlockSpec(memory_space=pltpu.HBM),
+            pl.BlockSpec(memory_space=pltpu.HBM),
+        ]
+    
+        bkv_stride = num_kv_heads_x2_per_kv_packing
+        if has_bank_conflicts(bkv_stride):
+            bkv_stride += 1
+    
+        # Doubled row count absorbs strided_store overflow from compute_kv_from_x_bkv:
+        # writes start at bkv_sz_frm_cache and span bkv_sz rows, so last write lands
+        # at bkv_sz_frm_cache + bkv_sz - 1 < 2 * bkv_sz — always in bounds.
+        bkv_double_buf = pltpu.VMEM(
+            (2, bkv_sz * 2, bkv_stride, *kv_cache.shape[3:]),
+            kv_cache.dtype,
+        )
+    
+        bq_double_buf = pltpu.VMEM(
+            (2, actual_num_kv_heads, bq_sz, *q.shape[2:]),
+            q.dtype,
+        )
+    
+        bo_double_buf = bq_double_buf
+    
+        l_scratch = pltpu.VMEM(
+            (actual_num_kv_heads, bq_sz * num_q_heads_per_kv_head, 128),
+            out_dtype,
+        )
+        m_scratch = l_scratch
+    
+        acc_scratch = pltpu.VMEM(
+            (actual_num_kv_heads, bq_sz * num_q_heads_per_kv_head, head_dim),
+            out_dtype,
+        )
+    
+        rope_timescale_scratch = pltpu.VMEM((1, padded_rope_dim), jnp.float32)
+    
+>       if any_proj:
+           ^^^^^^^^
+E       NameError: name 'any_proj' is not defined
+
+tpu_inference/kernels/ragged_paged_attention/v3/kernel.py:2211: NameError
+_ RaggedPagedAttentionKernelTest.test_ragged_paged_attention_mega_kernel_multiseq_kv_gap0 _
+
+self = <tests.kernels.ragged_paged_attention_kernel_v3_test.RaggedPagedAttentionKernelTest testMethod=test_ragged_paged_attention_mega_kernel_multiseq_kv_gap0>
+block_sizes = (64, 256, 32, 128)
+
+    @parameterized.product(
+        block_sizes=[
+            (64, 256, 32, 128),
+            (256, 1024, 128, 512),
+        ],
+    )
+    def test_ragged_paged_attention_mega_kernel_multiseq_kv_gap(self, block_sizes):
+        """mega_kernel=True with 2 sequences and non-zero kv_q_gap: exercises
+        the straddle case where the first bkv tile mixes cached tokens (positions
+        0..kv_q_gap-1) with newly computed tokens (positions kv_q_gap..bkv_sz-1).
+        Seq 1's straddle tile uses bkv_sem=1, which is the slot whose OOB
+        strided_store spills into overflow_scratch rather than bkv_x2_ref[0]."""
+        if not jtu.is_device_tpu_at_least(version=4):
+            self.skipTest("Expect TPUv4+")
+        dtype = jnp.bfloat16
+        q_len = 192
+        kv_len = 256   # kv_q_gap = 64 for both sequences
+        kv_q_gap = kv_len - q_len
+        num_seqs = 2
+        total_q = q_len * num_seqs
+        num_q_heads, num_kv_heads = 32, 8
+        head_dim = 128
+        hidden_size = 512
+        page_size = 16
+        rope_theta = 1000000.0
+        bq_sz, bkv_sz, bq_csz, bkv_csz = block_sizes
+    
+        np_rng = np.random.default_rng(7777)
+    
+        def gen(shape):
+            return jnp.array(np_rng.random(size=shape, dtype=np.float32)).astype(dtype)
+    
+        max_tokens = align_to(max(total_q, bkv_sz), bkv_sz)
+        max_num_seq = 8
+        pages_per_seq = cdiv(kv_len, page_size)
+        num_pages = num_seqs * pages_per_seq + 4
+        kv_packing = get_dtype_packing(dtype)
+        padded_head = align_to(head_dim, 128)
+        num_kv_x2 = align_to(num_kv_heads * 2, kv_packing)
+    
+        x = gen((max_tokens, hidden_size))
+        # Global positions: new tokens sit at kv_q_gap..kv_len-1.
+        positions = jnp.arange(kv_q_gap, kv_len, dtype=jnp.int32)
+    
+        q0, k0, v0, w_q, qn_scale, w_k, kn_scale, w_v = _build_qkv_baseline(
+            x[:q_len], hidden_size, num_q_heads, num_kv_heads,
+            head_dim, rope_theta, positions, dtype,
+        )
+        q1, k1, v1, *_ = _build_qkv_baseline(
+            x[q_len:2 * q_len], hidden_size, num_q_heads, num_kv_heads,
+            head_dim, rope_theta, positions, dtype,
+        )
+    
+        zeros_q = jnp.zeros((max_tokens - total_q, num_q_heads, head_dim), dtype)
+        zeros_k = jnp.zeros((max_tokens - total_q, num_kv_heads, head_dim), dtype)
+        q_proj = jnp.concatenate([q0, q1, zeros_q], axis=0)
+        k_proj = jnp.concatenate([k0, k1, zeros_k], axis=0)
+        v_proj = jnp.concatenate([v0, v1, zeros_k], axis=0)
+    
+        kv_cache = jnp.zeros(
+            (num_pages, page_size, num_kv_x2 // kv_packing, kv_packing, padded_head),
+            dtype=dtype,
+        )
+        pages_flat = jnp.concatenate([
+            jnp.arange(pages_per_seq, dtype=jnp.int32),
+            jnp.arange(pages_per_seq, 2 * pages_per_seq, dtype=jnp.int32),
+        ])
+        page_indices = jnp.pad(
+            pages_flat, (0, max_num_seq * pages_per_seq - len(pages_flat)))
+    
+        cu_q = jnp.pad(
+            jnp.array([0, q_len, total_q], dtype=jnp.int32),
+            (0, max_num_seq + 1 - (num_seqs + 1)))
+        kv_lens = jnp.pad(
+            jnp.array([kv_len, kv_len], dtype=jnp.int32),
+            (0, max_num_seq - num_seqs))
+        distribution = jnp.array([0, 0, num_seqs], dtype=jnp.int32)
+    
+        common = dict(
+            sm_scale=head_dim ** -0.5,
+            m_block_sizes=(bq_sz, bkv_sz, bq_csz, bkv_csz),
+        )
+    
+        kv_cache_np = np.array(kv_cache)
+    
+        out_base = ref_ragged_paged_attention(
+            jnp.array(np.array(q_proj)), jnp.array(np.array(k_proj)),
+            jnp.array(np.array(v_proj)), jnp.array(kv_cache_np),
+            kv_lens, page_indices, cu_q, distribution,
+            sm_scale=common['sm_scale'],
+        )
+        attn_base = jax.device_get(out_base[0])
+    
+>       out_fused = ragged_paged_attention(
+            jnp.zeros_like(q_proj), jnp.zeros_like(k_proj), jnp.zeros_like(v_proj),
+            jnp.array(kv_cache_np), kv_lens, page_indices, cu_q, distribution,
+            **common,
+            rope_theta=rope_theta,
+            mega_kernel=True,
+            x=x,
+            w_q=w_q,
+            qn_scale=qn_scale,
+            w_k=w_k,
+            kn_scale=kn_scale,
+            w_v=w_v,
+        )
+
+tests/kernels/ragged_paged_attention_kernel_v3_test.py:1069: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+../vllm_env/lib/python3.12/site-packages/jax/_src/pjit.py:250: in cache_miss
+    p, args_flat = _infer_params(fun, jit_info, args, kwargs)
+                   ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+../vllm_env/lib/python3.12/site-packages/jax/_src/pjit.py:620: in _infer_params
+    p = _trace_for_jit(fun, ji, ctx_mesh, dbg_fn(), avals, args, kwargs)
+        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+../vllm_env/lib/python3.12/site-packages/jax/_src/pjit.py:522: in _trace_for_jit
+    jaxpr, out_avals = pe.trace_to_jaxpr(fun, in_type, dbg, qdd_token)
+                       ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+../vllm_env/lib/python3.12/site-packages/jax/_src/interpreters/partial_eval.py:2338: in trace_to_jaxpr
+    ans_pytree = fun(*args, **kwargs)
+                 ^^^^^^^^^^^^^^^^^^^^
+tpu_inference/kernels/ragged_paged_attention/v3/kernel.py:2361: in ragged_paged_attention
+    q, kv_cache = run_rpa_kernel(
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+q = JitTracer(bfloat16[8,512,2,2,128])
+kv_cache = JitTracer(bfloat16[36,16,8,2,128])
+
+    def run_rpa_kernel(
+        q,
+        kv_cache,
+        *,
+        bq_sz,
+        bkv_sz,
+        bq_csz,
+        bkv_csz,
+        static_q_len=None,
+        case: RpaCase = RpaCase.MIXED,
+        mega_kernel: bool = False,
+        x=None,
+        w_q=None,
+        qn_scale=None,
+        w_k=None,
+        kn_scale=None,
+        w_v=None,
+    ):
+        if mega_kernel:
+            hidden_size = x.shape[1]
+            assert hidden_size % 128 == 0, (
+                f"mega_kernel requires hidden_size % 128 == 0, got {hidden_size}")
+            assert x.shape[0] == max_num_tokens, (
+                f"x.shape[0]={x.shape[0]} must equal max_num_tokens={max_num_tokens}")
+            x_input = x.reshape(max_num_tokens, hidden_size // 128, 128)
+        else:
+            hidden_size = 0
+            x_input = jnp.zeros((1, 1, 128), dtype=q.dtype)
+    
+        def vmem_or_dummy(arr, dummy_shape):
+            return arr if arr is not None else jnp.zeros(dummy_shape, dtype=q.dtype)
+    
+        qn_scale_input = vmem_or_dummy(qn_scale, (128,))
+        kn_scale_input = vmem_or_dummy(kn_scale, (128,))
+        # Fuse W_q, W_k, W_v into one W_qkv = [W_q | W_k | W_v] so Mosaic sees
+        # a single VMEM input and one matmul total.
+        if mega_kernel:
+            w_qkv_input = jnp.concatenate([w_q, w_k, w_v], axis=1)  # [D, (N+2K)*H]
+        else:
+            w_qkv_input = jnp.zeros((1, 128), dtype=q.dtype)
+    
+        in_specs = [
+            pl.BlockSpec(memory_space=pltpu.HBM),
+            pl.BlockSpec(memory_space=pltpu.HBM),
+            pl.BlockSpec(memory_space=pltpu.HBM),
+            pl.BlockSpec(memory_space=pltpu.HBM),   # x or dummy
+            pl.BlockSpec(memory_space=pltpu.VMEM),  # w_qkv or dummy
+            pl.BlockSpec(memory_space=pltpu.VMEM),  # qn_scale or dummy
+            pl.BlockSpec(memory_space=pltpu.VMEM),  # kn_scale or dummy
+        ]
+    
+        if mega_kernel:
+            assert bkv_sz % bq_sz == 0, (
+                f"mega_kernel=True requires bkv_sz divisible by bq_sz "
+                f"(got bkv_sz={bkv_sz}, bq_sz={bq_sz})")
+    
+        out_specs = [
+            pl.BlockSpec(memory_space=pltpu.HBM),
+            pl.BlockSpec(memory_space=pltpu.HBM),
+        ]
+    
+        bkv_stride = num_kv_heads_x2_per_kv_packing
+        if has_bank_conflicts(bkv_stride):
+            bkv_stride += 1
+    
+        # Doubled row count absorbs strided_store overflow from compute_kv_from_x_bkv:
+        # writes start at bkv_sz_frm_cache and span bkv_sz rows, so last write lands
+        # at bkv_sz_frm_cache + bkv_sz - 1 < 2 * bkv_sz — always in bounds.
+        bkv_double_buf = pltpu.VMEM(
+            (2, bkv_sz * 2, bkv_stride, *kv_cache.shape[3:]),
+            kv_cache.dtype,
+        )
+    
+        bq_double_buf = pltpu.VMEM(
+            (2, actual_num_kv_heads, bq_sz, *q.shape[2:]),
+            q.dtype,
+        )
+    
+        bo_double_buf = bq_double_buf
+    
+        l_scratch = pltpu.VMEM(
+            (actual_num_kv_heads, bq_sz * num_q_heads_per_kv_head, 128),
+            out_dtype,
+        )
+        m_scratch = l_scratch
+    
+        acc_scratch = pltpu.VMEM(
+            (actual_num_kv_heads, bq_sz * num_q_heads_per_kv_head, head_dim),
+            out_dtype,
+        )
+    
+        rope_timescale_scratch = pltpu.VMEM((1, padded_rope_dim), jnp.float32)
+    
+>       if any_proj:
+           ^^^^^^^^
+E       NameError: name 'any_proj' is not defined
+
+tpu_inference/kernels/ragged_paged_attention/v3/kernel.py:2211: NameError
+_ RaggedPagedAttentionKernelTest.test_ragged_paged_attention_mega_kernel_multiseq_kv_gap1 _
+
+self = <tests.kernels.ragged_paged_attention_kernel_v3_test.RaggedPagedAttentionKernelTest testMethod=test_ragged_paged_attention_mega_kernel_multiseq_kv_gap1>
+block_sizes = (256, 1024, 128, 512)
+
+    @parameterized.product(
+        block_sizes=[
+            (64, 256, 32, 128),
+            (256, 1024, 128, 512),
+        ],
+    )
+    def test_ragged_paged_attention_mega_kernel_multiseq_kv_gap(self, block_sizes):
+        """mega_kernel=True with 2 sequences and non-zero kv_q_gap: exercises
+        the straddle case where the first bkv tile mixes cached tokens (positions
+        0..kv_q_gap-1) with newly computed tokens (positions kv_q_gap..bkv_sz-1).
+        Seq 1's straddle tile uses bkv_sem=1, which is the slot whose OOB
+        strided_store spills into overflow_scratch rather than bkv_x2_ref[0]."""
+        if not jtu.is_device_tpu_at_least(version=4):
+            self.skipTest("Expect TPUv4+")
+        dtype = jnp.bfloat16
+        q_len = 192
+        kv_len = 256   # kv_q_gap = 64 for both sequences
+        kv_q_gap = kv_len - q_len
+        num_seqs = 2
+        total_q = q_len * num_seqs
+        num_q_heads, num_kv_heads = 32, 8
+        head_dim = 128
+        hidden_size = 512
+        page_size = 16
+        rope_theta = 1000000.0
+        bq_sz, bkv_sz, bq_csz, bkv_csz = block_sizes
+    
+        np_rng = np.random.default_rng(7777)
+    
+        def gen(shape):
+            return jnp.array(np_rng.random(size=shape, dtype=np.float32)).astype(dtype)
+    
+        max_tokens = align_to(max(total_q, bkv_sz), bkv_sz)
+        max_num_seq = 8
+        pages_per_seq = cdiv(kv_len, page_size)
+        num_pages = num_seqs * pages_per_seq + 4
+        kv_packing = get_dtype_packing(dtype)
+        padded_head = align_to(head_dim, 128)
+        num_kv_x2 = align_to(num_kv_heads * 2, kv_packing)
+    
+        x = gen((max_tokens, hidden_size))
+        # Global positions: new tokens sit at kv_q_gap..kv_len-1.
+        positions = jnp.arange(kv_q_gap, kv_len, dtype=jnp.int32)
+    
+        q0, k0, v0, w_q, qn_scale, w_k, kn_scale, w_v = _build_qkv_baseline(
+            x[:q_len], hidden_size, num_q_heads, num_kv_heads,
+            head_dim, rope_theta, positions, dtype,
+        )
+        q1, k1, v1, *_ = _build_qkv_baseline(
+            x[q_len:2 * q_len], hidden_size, num_q_heads, num_kv_heads,
+            head_dim, rope_theta, positions, dtype,
+        )
+    
+        zeros_q = jnp.zeros((max_tokens - total_q, num_q_heads, head_dim), dtype)
+        zeros_k = jnp.zeros((max_tokens - total_q, num_kv_heads, head_dim), dtype)
+        q_proj = jnp.concatenate([q0, q1, zeros_q], axis=0)
+        k_proj = jnp.concatenate([k0, k1, zeros_k], axis=0)
+        v_proj = jnp.concatenate([v0, v1, zeros_k], axis=0)
+    
+        kv_cache = jnp.zeros(
+            (num_pages, page_size, num_kv_x2 // kv_packing, kv_packing, padded_head),
+            dtype=dtype,
+        )
+        pages_flat = jnp.concatenate([
+            jnp.arange(pages_per_seq, dtype=jnp.int32),
+            jnp.arange(pages_per_seq, 2 * pages_per_seq, dtype=jnp.int32),
+        ])
+        page_indices = jnp.pad(
+            pages_flat, (0, max_num_seq * pages_per_seq - len(pages_flat)))
+    
+        cu_q = jnp.pad(
+            jnp.array([0, q_len, total_q], dtype=jnp.int32),
+            (0, max_num_seq + 1 - (num_seqs + 1)))
+        kv_lens = jnp.pad(
+            jnp.array([kv_len, kv_len], dtype=jnp.int32),
+            (0, max_num_seq - num_seqs))
+        distribution = jnp.array([0, 0, num_seqs], dtype=jnp.int32)
+    
+        common = dict(
+            sm_scale=head_dim ** -0.5,
+            m_block_sizes=(bq_sz, bkv_sz, bq_csz, bkv_csz),
+        )
+    
+        kv_cache_np = np.array(kv_cache)
+    
+        out_base = ref_ragged_paged_attention(
+            jnp.array(np.array(q_proj)), jnp.array(np.array(k_proj)),
+            jnp.array(np.array(v_proj)), jnp.array(kv_cache_np),
+            kv_lens, page_indices, cu_q, distribution,
+            sm_scale=common['sm_scale'],
+        )
+        attn_base = jax.device_get(out_base[0])
+    
+>       out_fused = ragged_paged_attention(
+            jnp.zeros_like(q_proj), jnp.zeros_like(k_proj), jnp.zeros_like(v_proj),
+            jnp.array(kv_cache_np), kv_lens, page_indices, cu_q, distribution,
+            **common,
+            rope_theta=rope_theta,
+            mega_kernel=True,
+            x=x,
+            w_q=w_q,
+            qn_scale=qn_scale,
+            w_k=w_k,
+            kn_scale=kn_scale,
+            w_v=w_v,
+        )
+
+tests/kernels/ragged_paged_attention_kernel_v3_test.py:1069: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+../vllm_env/lib/python3.12/site-packages/jax/_src/pjit.py:250: in cache_miss
+    p, args_flat = _infer_params(fun, jit_info, args, kwargs)
+                   ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+../vllm_env/lib/python3.12/site-packages/jax/_src/pjit.py:620: in _infer_params
+    p = _trace_for_jit(fun, ji, ctx_mesh, dbg_fn(), avals, args, kwargs)
+        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+../vllm_env/lib/python3.12/site-packages/jax/_src/pjit.py:522: in _trace_for_jit
+    jaxpr, out_avals = pe.trace_to_jaxpr(fun, in_type, dbg, qdd_token)
+                       ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+../vllm_env/lib/python3.12/site-packages/jax/_src/interpreters/partial_eval.py:2338: in trace_to_jaxpr
+    ans_pytree = fun(*args, **kwargs)
+                 ^^^^^^^^^^^^^^^^^^^^
+tpu_inference/kernels/ragged_paged_attention/v3/kernel.py:2361: in ragged_paged_attention
+    q, kv_cache = run_rpa_kernel(
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+q = JitTracer(bfloat16[8,1024,2,2,128])
+kv_cache = JitTracer(bfloat16[36,16,8,2,128])
+
+    def run_rpa_kernel(
+        q,
+        kv_cache,
+        *,
+        bq_sz,
+        bkv_sz,
+        bq_csz,
+        bkv_csz,
+        static_q_len=None,
+        case: RpaCase = RpaCase.MIXED,
+        mega_kernel: bool = False,
+        x=None,
+        w_q=None,
+        qn_scale=None,
+        w_k=None,
+        kn_scale=None,
+        w_v=None,
+    ):
+        if mega_kernel:
+            hidden_size = x.shape[1]
+            assert hidden_size % 128 == 0, (
+                f"mega_kernel requires hidden_size % 128 == 0, got {hidden_size}")
+            assert x.shape[0] == max_num_tokens, (
+                f"x.shape[0]={x.shape[0]} must equal max_num_tokens={max_num_tokens}")
+            x_input = x.reshape(max_num_tokens, hidden_size // 128, 128)
+        else:
+            hidden_size = 0
+            x_input = jnp.zeros((1, 1, 128), dtype=q.dtype)
+    
+        def vmem_or_dummy(arr, dummy_shape):
+            return arr if arr is not None else jnp.zeros(dummy_shape, dtype=q.dtype)
+    
+        qn_scale_input = vmem_or_dummy(qn_scale, (128,))
+        kn_scale_input = vmem_or_dummy(kn_scale, (128,))
+        # Fuse W_q, W_k, W_v into one W_qkv = [W_q | W_k | W_v] so Mosaic sees
+        # a single VMEM input and one matmul total.
+        if mega_kernel:
+            w_qkv_input = jnp.concatenate([w_q, w_k, w_v], axis=1)  # [D, (N+2K)*H]
+        else:
+            w_qkv_input = jnp.zeros((1, 128), dtype=q.dtype)
+    
+        in_specs = [
+            pl.BlockSpec(memory_space=pltpu.HBM),
+            pl.BlockSpec(memory_space=pltpu.HBM),
+            pl.BlockSpec(memory_space=pltpu.HBM),
+            pl.BlockSpec(memory_space=pltpu.HBM),   # x or dummy
+            pl.BlockSpec(memory_space=pltpu.VMEM),  # w_qkv or dummy
+            pl.BlockSpec(memory_space=pltpu.VMEM),  # qn_scale or dummy
+            pl.BlockSpec(memory_space=pltpu.VMEM),  # kn_scale or dummy
+        ]
+    
+        if mega_kernel:
+            assert bkv_sz % bq_sz == 0, (
+                f"mega_kernel=True requires bkv_sz divisible by bq_sz "
+                f"(got bkv_sz={bkv_sz}, bq_sz={bq_sz})")
+    
+        out_specs = [
+            pl.BlockSpec(memory_space=pltpu.HBM),
+            pl.BlockSpec(memory_space=pltpu.HBM),
+        ]
+    
+        bkv_stride = num_kv_heads_x2_per_kv_packing
+        if has_bank_conflicts(bkv_stride):
+            bkv_stride += 1
+    
+        # Doubled row count absorbs strided_store overflow from compute_kv_from_x_bkv:
+        # writes start at bkv_sz_frm_cache and span bkv_sz rows, so last write lands
+        # at bkv_sz_frm_cache + bkv_sz - 1 < 2 * bkv_sz — always in bounds.
+        bkv_double_buf = pltpu.VMEM(
+            (2, bkv_sz * 2, bkv_stride, *kv_cache.shape[3:]),
+            kv_cache.dtype,
+        )
+    
+        bq_double_buf = pltpu.VMEM(
+            (2, actual_num_kv_heads, bq_sz, *q.shape[2:]),
+            q.dtype,
+        )
+    
+        bo_double_buf = bq_double_buf
+    
+        l_scratch = pltpu.VMEM(
+            (actual_num_kv_heads, bq_sz * num_q_heads_per_kv_head, 128),
+            out_dtype,
+        )
+        m_scratch = l_scratch
+    
+        acc_scratch = pltpu.VMEM(
+            (actual_num_kv_heads, bq_sz * num_q_heads_per_kv_head, head_dim),
+            out_dtype,
+        )
+    
+        rope_timescale_scratch = pltpu.VMEM((1, padded_rope_dim), jnp.float32)
+    
+>       if any_proj:
+           ^^^^^^^^
+E       NameError: name 'any_proj' is not defined
+
+tpu_inference/kernels/ragged_paged_attention/v3/kernel.py:2211: NameError
+_ RaggedPagedAttentionKernelTest.test_ragged_paged_attention_mega_kernel_multiseq_random_kvcache0 _
+
+self = <tests.kernels.ragged_paged_attention_kernel_v3_test.RaggedPagedAttentionKernelTest testMethod=test_ragged_paged_attention_mega_kernel_multiseq_random_kvcache0>
+block_sizes = (64, 256, 32, 128)
+
+    @parameterized.product(
+        block_sizes=[
+            (64, 256, 32, 128),
+            (256, 1024, 128, 512),
+        ],
+    )
+    def test_ragged_paged_attention_mega_kernel_multiseq_random_kvcache(self, block_sizes):
+        """mega_kernel=True with 2 sequences and a random (non-zero) kv_cache:
+        verifies that pre-existing cache content does not corrupt attention output
+        when kv_q_gap=0 (all tokens are new, cache is entirely overwritten)."""
+        if not jtu.is_device_tpu_at_least(version=4):
+            self.skipTest("Expect TPUv4+")
+        dtype = jnp.bfloat16
+        q_len = 192
+        num_seqs = 2
+        total_q = q_len * num_seqs
+        num_q_heads, num_kv_heads = 32, 8
+        head_dim = 128
+        hidden_size = 512
+        page_size = 16
+        rope_theta = 1000000.0
+        bq_sz, bkv_sz, bq_csz, bkv_csz = block_sizes
+    
+        np_rng = np.random.default_rng(5555)
+    
+        def gen(shape):
+            return jnp.array(np_rng.random(size=shape, dtype=np.float32)).astype(dtype)
+    
+        max_tokens = align_to(max(total_q, bkv_sz), bkv_sz)
+        max_num_seq = 8
+        pages_per_seq = cdiv(q_len, page_size)
+        num_pages = num_seqs * pages_per_seq + 4
+        kv_packing = get_dtype_packing(dtype)
+        padded_head = align_to(head_dim, 128)
+        num_kv_x2 = align_to(num_kv_heads * 2, kv_packing)
+    
+        x = gen((max_tokens, hidden_size))
+        positions = jnp.arange(q_len, dtype=jnp.int32)
+    
+        q0, k0, v0, w_q, qn_scale, w_k, kn_scale, w_v = _build_qkv_baseline(
+            x[:q_len], hidden_size, num_q_heads, num_kv_heads,
+            head_dim, rope_theta, positions, dtype,
+        )
+        q1, k1, v1, *_ = _build_qkv_baseline(
+            x[q_len:2 * q_len], hidden_size, num_q_heads, num_kv_heads,
+            head_dim, rope_theta, positions, dtype,
+        )
+    
+        zeros_q = jnp.zeros((max_tokens - total_q, num_q_heads, head_dim), dtype)
+        zeros_k = jnp.zeros((max_tokens - total_q, num_kv_heads, head_dim), dtype)
+        q_proj = jnp.concatenate([q0, q1, zeros_q], axis=0)
+        k_proj = jnp.concatenate([k0, k1, zeros_k], axis=0)
+        v_proj = jnp.concatenate([v0, v1, zeros_k], axis=0)
+    
+        # Random cache: kv_q_gap=0 means none of these values are read for
+        # attention (every token is new), but they must not corrupt the output.
+        kv_cache = gen(
+            (num_pages, page_size, num_kv_x2 // kv_packing, kv_packing, padded_head))
+        pages_flat = jnp.concatenate([
+            jnp.arange(pages_per_seq, dtype=jnp.int32),
+            jnp.arange(pages_per_seq, 2 * pages_per_seq, dtype=jnp.int32),
+        ])
+        page_indices = jnp.pad(
+            pages_flat, (0, max_num_seq * pages_per_seq - len(pages_flat)))
+    
+        cu_q = jnp.pad(
+            jnp.array([0, q_len, total_q], dtype=jnp.int32),
+            (0, max_num_seq + 1 - (num_seqs + 1)))
+        kv_lens = jnp.pad(
+            jnp.array([q_len, q_len], dtype=jnp.int32),
+            (0, max_num_seq - num_seqs))
+        distribution = jnp.array([0, 0, num_seqs], dtype=jnp.int32)
+    
+        common = dict(
+            sm_scale=head_dim ** -0.5,
+            m_block_sizes=(bq_sz, bkv_sz, bq_csz, bkv_csz),
+        )
+    
+        kv_cache_np = np.array(kv_cache)
+    
+        out_base = ref_ragged_paged_attention(
+            jnp.array(np.array(q_proj)), jnp.array(np.array(k_proj)),
+            jnp.array(np.array(v_proj)), jnp.array(kv_cache_np),
+            kv_lens, page_indices, cu_q, distribution,
+            sm_scale=common['sm_scale'],
+        )
+        attn_base = jax.device_get(out_base[0])
+    
+>       out_fused = ragged_paged_attention(
+            jnp.zeros_like(q_proj), jnp.zeros_like(k_proj), jnp.zeros_like(v_proj),
+            jnp.array(kv_cache_np), kv_lens, page_indices, cu_q, distribution,
+            **common,
+            rope_theta=rope_theta,
+            mega_kernel=True,
+            x=x,
+            w_q=w_q,
+            qn_scale=qn_scale,
+            w_k=w_k,
+            kn_scale=kn_scale,
+            w_v=w_v,
+        )
+
+tests/kernels/ragged_paged_attention_kernel_v3_test.py:1174: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+../vllm_env/lib/python3.12/site-packages/jax/_src/pjit.py:250: in cache_miss
+    p, args_flat = _infer_params(fun, jit_info, args, kwargs)
+                   ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+../vllm_env/lib/python3.12/site-packages/jax/_src/pjit.py:620: in _infer_params
+    p = _trace_for_jit(fun, ji, ctx_mesh, dbg_fn(), avals, args, kwargs)
+        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+../vllm_env/lib/python3.12/site-packages/jax/_src/pjit.py:522: in _trace_for_jit
+    jaxpr, out_avals = pe.trace_to_jaxpr(fun, in_type, dbg, qdd_token)
+                       ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+../vllm_env/lib/python3.12/site-packages/jax/_src/interpreters/partial_eval.py:2338: in trace_to_jaxpr
+    ans_pytree = fun(*args, **kwargs)
+                 ^^^^^^^^^^^^^^^^^^^^
+tpu_inference/kernels/ragged_paged_attention/v3/kernel.py:2361: in ragged_paged_attention
+    q, kv_cache = run_rpa_kernel(
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+q = JitTracer(bfloat16[8,512,2,2,128])
+kv_cache = JitTracer(bfloat16[28,16,8,2,128])
+
+    def run_rpa_kernel(
+        q,
+        kv_cache,
+        *,
+        bq_sz,
+        bkv_sz,
+        bq_csz,
+        bkv_csz,
+        static_q_len=None,
+        case: RpaCase = RpaCase.MIXED,
+        mega_kernel: bool = False,
+        x=None,
+        w_q=None,
+        qn_scale=None,
+        w_k=None,
+        kn_scale=None,
+        w_v=None,
+    ):
+        if mega_kernel:
+            hidden_size = x.shape[1]
+            assert hidden_size % 128 == 0, (
+                f"mega_kernel requires hidden_size % 128 == 0, got {hidden_size}")
+            assert x.shape[0] == max_num_tokens, (
+                f"x.shape[0]={x.shape[0]} must equal max_num_tokens={max_num_tokens}")
+            x_input = x.reshape(max_num_tokens, hidden_size // 128, 128)
+        else:
+            hidden_size = 0
+            x_input = jnp.zeros((1, 1, 128), dtype=q.dtype)
+    
+        def vmem_or_dummy(arr, dummy_shape):
+            return arr if arr is not None else jnp.zeros(dummy_shape, dtype=q.dtype)
+    
+        qn_scale_input = vmem_or_dummy(qn_scale, (128,))
+        kn_scale_input = vmem_or_dummy(kn_scale, (128,))
+        # Fuse W_q, W_k, W_v into one W_qkv = [W_q | W_k | W_v] so Mosaic sees
+        # a single VMEM input and one matmul total.
+        if mega_kernel:
+            w_qkv_input = jnp.concatenate([w_q, w_k, w_v], axis=1)  # [D, (N+2K)*H]
+        else:
+            w_qkv_input = jnp.zeros((1, 128), dtype=q.dtype)
+    
+        in_specs = [
+            pl.BlockSpec(memory_space=pltpu.HBM),
+            pl.BlockSpec(memory_space=pltpu.HBM),
+            pl.BlockSpec(memory_space=pltpu.HBM),
+            pl.BlockSpec(memory_space=pltpu.HBM),   # x or dummy
+            pl.BlockSpec(memory_space=pltpu.VMEM),  # w_qkv or dummy
+            pl.BlockSpec(memory_space=pltpu.VMEM),  # qn_scale or dummy
+            pl.BlockSpec(memory_space=pltpu.VMEM),  # kn_scale or dummy
+        ]
+    
+        if mega_kernel:
+            assert bkv_sz % bq_sz == 0, (
+                f"mega_kernel=True requires bkv_sz divisible by bq_sz "
+                f"(got bkv_sz={bkv_sz}, bq_sz={bq_sz})")
+    
+        out_specs = [
+            pl.BlockSpec(memory_space=pltpu.HBM),
+            pl.BlockSpec(memory_space=pltpu.HBM),
+        ]
+    
+        bkv_stride = num_kv_heads_x2_per_kv_packing
+        if has_bank_conflicts(bkv_stride):
+            bkv_stride += 1
+    
+        # Doubled row count absorbs strided_store overflow from compute_kv_from_x_bkv:
+        # writes start at bkv_sz_frm_cache and span bkv_sz rows, so last write lands
+        # at bkv_sz_frm_cache + bkv_sz - 1 < 2 * bkv_sz — always in bounds.
+        bkv_double_buf = pltpu.VMEM(
+            (2, bkv_sz * 2, bkv_stride, *kv_cache.shape[3:]),
+            kv_cache.dtype,
+        )
+    
+        bq_double_buf = pltpu.VMEM(
+            (2, actual_num_kv_heads, bq_sz, *q.shape[2:]),
+            q.dtype,
+        )
+    
+        bo_double_buf = bq_double_buf
+    
+        l_scratch = pltpu.VMEM(
+            (actual_num_kv_heads, bq_sz * num_q_heads_per_kv_head, 128),
+            out_dtype,
+        )
+        m_scratch = l_scratch
+    
+        acc_scratch = pltpu.VMEM(
+            (actual_num_kv_heads, bq_sz * num_q_heads_per_kv_head, head_dim),
+            out_dtype,
+        )
+    
+        rope_timescale_scratch = pltpu.VMEM((1, padded_rope_dim), jnp.float32)
+    
+>       if any_proj:
+           ^^^^^^^^
+E       NameError: name 'any_proj' is not defined
+
+tpu_inference/kernels/ragged_paged_attention/v3/kernel.py:2211: NameError
+_ RaggedPagedAttentionKernelTest.test_ragged_paged_attention_mega_kernel_multiseq_random_kvcache1 _
+
+self = <tests.kernels.ragged_paged_attention_kernel_v3_test.RaggedPagedAttentionKernelTest testMethod=test_ragged_paged_attention_mega_kernel_multiseq_random_kvcache1>
+block_sizes = (256, 1024, 128, 512)
+
+    @parameterized.product(
+        block_sizes=[
+            (64, 256, 32, 128),
+            (256, 1024, 128, 512),
+        ],
+    )
+    def test_ragged_paged_attention_mega_kernel_multiseq_random_kvcache(self, block_sizes):
+        """mega_kernel=True with 2 sequences and a random (non-zero) kv_cache:
+        verifies that pre-existing cache content does not corrupt attention output
+        when kv_q_gap=0 (all tokens are new, cache is entirely overwritten)."""
+        if not jtu.is_device_tpu_at_least(version=4):
+            self.skipTest("Expect TPUv4+")
+        dtype = jnp.bfloat16
+        q_len = 192
+        num_seqs = 2
+        total_q = q_len * num_seqs
+        num_q_heads, num_kv_heads = 32, 8
+        head_dim = 128
+        hidden_size = 512
+        page_size = 16
+        rope_theta = 1000000.0
+        bq_sz, bkv_sz, bq_csz, bkv_csz = block_sizes
+    
+        np_rng = np.random.default_rng(5555)
+    
+        def gen(shape):
+            return jnp.array(np_rng.random(size=shape, dtype=np.float32)).astype(dtype)
+    
+        max_tokens = align_to(max(total_q, bkv_sz), bkv_sz)
+        max_num_seq = 8
+        pages_per_seq = cdiv(q_len, page_size)
+        num_pages = num_seqs * pages_per_seq + 4
+        kv_packing = get_dtype_packing(dtype)
+        padded_head = align_to(head_dim, 128)
+        num_kv_x2 = align_to(num_kv_heads * 2, kv_packing)
+    
+        x = gen((max_tokens, hidden_size))
+        positions = jnp.arange(q_len, dtype=jnp.int32)
+    
+        q0, k0, v0, w_q, qn_scale, w_k, kn_scale, w_v = _build_qkv_baseline(
+            x[:q_len], hidden_size, num_q_heads, num_kv_heads,
+            head_dim, rope_theta, positions, dtype,
+        )
+        q1, k1, v1, *_ = _build_qkv_baseline(
+            x[q_len:2 * q_len], hidden_size, num_q_heads, num_kv_heads,
+            head_dim, rope_theta, positions, dtype,
+        )
+    
+        zeros_q = jnp.zeros((max_tokens - total_q, num_q_heads, head_dim), dtype)
+        zeros_k = jnp.zeros((max_tokens - total_q, num_kv_heads, head_dim), dtype)
+        q_proj = jnp.concatenate([q0, q1, zeros_q], axis=0)
+        k_proj = jnp.concatenate([k0, k1, zeros_k], axis=0)
+        v_proj = jnp.concatenate([v0, v1, zeros_k], axis=0)
+    
+        # Random cache: kv_q_gap=0 means none of these values are read for
+        # attention (every token is new), but they must not corrupt the output.
+        kv_cache = gen(
+            (num_pages, page_size, num_kv_x2 // kv_packing, kv_packing, padded_head))
+        pages_flat = jnp.concatenate([
+            jnp.arange(pages_per_seq, dtype=jnp.int32),
+            jnp.arange(pages_per_seq, 2 * pages_per_seq, dtype=jnp.int32),
+        ])
+        page_indices = jnp.pad(
+            pages_flat, (0, max_num_seq * pages_per_seq - len(pages_flat)))
+    
+        cu_q = jnp.pad(
+            jnp.array([0, q_len, total_q], dtype=jnp.int32),
+            (0, max_num_seq + 1 - (num_seqs + 1)))
+        kv_lens = jnp.pad(
+            jnp.array([q_len, q_len], dtype=jnp.int32),
+            (0, max_num_seq - num_seqs))
+        distribution = jnp.array([0, 0, num_seqs], dtype=jnp.int32)
+    
+        common = dict(
+            sm_scale=head_dim ** -0.5,
+            m_block_sizes=(bq_sz, bkv_sz, bq_csz, bkv_csz),
+        )
+    
+        kv_cache_np = np.array(kv_cache)
+    
+        out_base = ref_ragged_paged_attention(
+            jnp.array(np.array(q_proj)), jnp.array(np.array(k_proj)),
+            jnp.array(np.array(v_proj)), jnp.array(kv_cache_np),
+            kv_lens, page_indices, cu_q, distribution,
+            sm_scale=common['sm_scale'],
+        )
+        attn_base = jax.device_get(out_base[0])
+    
+>       out_fused = ragged_paged_attention(
+            jnp.zeros_like(q_proj), jnp.zeros_like(k_proj), jnp.zeros_like(v_proj),
+            jnp.array(kv_cache_np), kv_lens, page_indices, cu_q, distribution,
+            **common,
+            rope_theta=rope_theta,
+            mega_kernel=True,
+            x=x,
+            w_q=w_q,
+            qn_scale=qn_scale,
+            w_k=w_k,
+            kn_scale=kn_scale,
+            w_v=w_v,
+        )
+
+tests/kernels/ragged_paged_attention_kernel_v3_test.py:1174: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+../vllm_env/lib/python3.12/site-packages/jax/_src/pjit.py:250: in cache_miss
+    p, args_flat = _infer_params(fun, jit_info, args, kwargs)
+                   ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+../vllm_env/lib/python3.12/site-packages/jax/_src/pjit.py:620: in _infer_params
+    p = _trace_for_jit(fun, ji, ctx_mesh, dbg_fn(), avals, args, kwargs)
+        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+../vllm_env/lib/python3.12/site-packages/jax/_src/pjit.py:522: in _trace_for_jit
+    jaxpr, out_avals = pe.trace_to_jaxpr(fun, in_type, dbg, qdd_token)
+                       ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+../vllm_env/lib/python3.12/site-packages/jax/_src/interpreters/partial_eval.py:2338: in trace_to_jaxpr
+    ans_pytree = fun(*args, **kwargs)
+                 ^^^^^^^^^^^^^^^^^^^^
+tpu_inference/kernels/ragged_paged_attention/v3/kernel.py:2361: in ragged_paged_attention
+    q, kv_cache = run_rpa_kernel(
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+q = JitTracer(bfloat16[8,1024,2,2,128])
+kv_cache = JitTracer(bfloat16[28,16,8,2,128])
+
+    def run_rpa_kernel(
+        q,
+        kv_cache,
+        *,
+        bq_sz,
+        bkv_sz,
+        bq_csz,
+        bkv_csz,
+        static_q_len=None,
+        case: RpaCase = RpaCase.MIXED,
+        mega_kernel: bool = False,
+        x=None,
+        w_q=None,
+        qn_scale=None,
+        w_k=None,
+        kn_scale=None,
+        w_v=None,
+    ):
+        if mega_kernel:
+            hidden_size = x.shape[1]
+            assert hidden_size % 128 == 0, (
+                f"mega_kernel requires hidden_size % 128 == 0, got {hidden_size}")
+            assert x.shape[0] == max_num_tokens, (
+                f"x.shape[0]={x.shape[0]} must equal max_num_tokens={max_num_tokens}")
+            x_input = x.reshape(max_num_tokens, hidden_size // 128, 128)
+        else:
+            hidden_size = 0
+            x_input = jnp.zeros((1, 1, 128), dtype=q.dtype)
+    
+        def vmem_or_dummy(arr, dummy_shape):
+            return arr if arr is not None else jnp.zeros(dummy_shape, dtype=q.dtype)
+    
+        qn_scale_input = vmem_or_dummy(qn_scale, (128,))
+        kn_scale_input = vmem_or_dummy(kn_scale, (128,))
+        # Fuse W_q, W_k, W_v into one W_qkv = [W_q | W_k | W_v] so Mosaic sees
+        # a single VMEM input and one matmul total.
+        if mega_kernel:
+            w_qkv_input = jnp.concatenate([w_q, w_k, w_v], axis=1)  # [D, (N+2K)*H]
+        else:
+            w_qkv_input = jnp.zeros((1, 128), dtype=q.dtype)
+    
+        in_specs = [
+            pl.BlockSpec(memory_space=pltpu.HBM),
+            pl.BlockSpec(memory_space=pltpu.HBM),
+            pl.BlockSpec(memory_space=pltpu.HBM),
+            pl.BlockSpec(memory_space=pltpu.HBM),   # x or dummy
+            pl.BlockSpec(memory_space=pltpu.VMEM),  # w_qkv or dummy
+            pl.BlockSpec(memory_space=pltpu.VMEM),  # qn_scale or dummy
+            pl.BlockSpec(memory_space=pltpu.VMEM),  # kn_scale or dummy
+        ]
+    
+        if mega_kernel:
+            assert bkv_sz % bq_sz == 0, (
+                f"mega_kernel=True requires bkv_sz divisible by bq_sz "
+                f"(got bkv_sz={bkv_sz}, bq_sz={bq_sz})")
+    
+        out_specs = [
+            pl.BlockSpec(memory_space=pltpu.HBM),
+            pl.BlockSpec(memory_space=pltpu.HBM),
+        ]
+    
+        bkv_stride = num_kv_heads_x2_per_kv_packing
+        if has_bank_conflicts(bkv_stride):
+            bkv_stride += 1
+    
+        # Doubled row count absorbs strided_store overflow from compute_kv_from_x_bkv:
+        # writes start at bkv_sz_frm_cache and span bkv_sz rows, so last write lands
+        # at bkv_sz_frm_cache + bkv_sz - 1 < 2 * bkv_sz — always in bounds.
+        bkv_double_buf = pltpu.VMEM(
+            (2, bkv_sz * 2, bkv_stride, *kv_cache.shape[3:]),
+            kv_cache.dtype,
+        )
+    
+        bq_double_buf = pltpu.VMEM(
+            (2, actual_num_kv_heads, bq_sz, *q.shape[2:]),
+            q.dtype,
+        )
+    
+        bo_double_buf = bq_double_buf
+    
+        l_scratch = pltpu.VMEM(
+            (actual_num_kv_heads, bq_sz * num_q_heads_per_kv_head, 128),
+            out_dtype,
+        )
+        m_scratch = l_scratch
+    
+        acc_scratch = pltpu.VMEM(
+            (actual_num_kv_heads, bq_sz * num_q_heads_per_kv_head, head_dim),
+            out_dtype,
+        )
+    
+        rope_timescale_scratch = pltpu.VMEM((1, padded_rope_dim), jnp.float32)
+    
+>       if any_proj:
+           ^^^^^^^^
+E       NameError: name 'any_proj' is not defined
+
+tpu_inference/kernels/ragged_paged_attention/v3/kernel.py:2211: NameError
+_ RaggedPagedAttentionKernelTest.test_ragged_paged_attention_mega_kernel_single_seq0 _
+
+self = <tests.kernels.ragged_paged_attention_kernel_v3_test.RaggedPagedAttentionKernelTest testMethod=test_ragged_paged_attention_mega_kernel_single_seq0>
+block_sizes = (64, 256, 32, 128)
+
+    @parameterized.product(
+        block_sizes=[
+            (64, 256, 32, 128),     # bq_sz=64
+            (256, 1024, 128, 512),  # production config
+        ],
+    )
+    def test_ragged_paged_attention_mega_kernel_single_seq(self, block_sizes):
+        """mega_kernel=True must match the Qwen3Attention-style baseline.
+    
+        Single sequence, fresh prefill (kv_q_gap=0).
+        """
+        if not jtu.is_device_tpu_at_least(version=4):
+            self.skipTest("Expect TPUv4+")
+        dtype = jnp.bfloat16
+        q_len = 384
+        num_q_heads, num_kv_heads = 32, 8
+        head_dim = 128
+        hidden_size = 512  # must be divisible by 128
+        page_size = 16
+        num_pages = 64
+        rope_theta = 1000000.0  # Qwen3 default
+        bq_sz, bkv_sz, bq_csz, bkv_csz = block_sizes
+    
+        np_rng = np.random.default_rng(5678)
+    
+        def gen(shape):
+            return jnp.array(np_rng.random(size=shape, dtype=np.float32)).astype(dtype)
+    
+        # must be a multiple of bkv_sz: mega_kernel DMAs exactly bkv_sz rows of x.
+        max_tokens = align_to(max(align_to(q_len, 128), 512), bkv_sz)
+        max_num_seq = 8
+        pages_per_seq = cdiv(q_len, page_size)
+        kv_packing = get_dtype_packing(dtype)
+        padded_head = align_to(head_dim, 128)
+        num_kv_x2 = align_to(num_kv_heads * 2, kv_packing)
+    
+        x = gen((max_tokens, hidden_size))
+        positions = jnp.arange(q_len, dtype=jnp.int32)
+    
+        q_valid, k_valid, v_valid, w_q, qn_scale, w_k, kn_scale, w_v = (
+            _build_qkv_baseline(
+                x[:q_len], hidden_size, num_q_heads, num_kv_heads,
+                head_dim, rope_theta, positions, dtype,
+            )
+        )
+        pad = ((0, max_tokens - q_len), (0, 0), (0, 0))
+        q_proj = jnp.pad(q_valid, pad)
+        k_proj = jnp.pad(k_valid, pad)
+        v_proj = jnp.pad(v_valid, pad)
+    
+        kv_cache = jnp.zeros(
+            (num_pages, page_size, num_kv_x2 // kv_packing, kv_packing, padded_head),
+            dtype=dtype,
+        )
+        page_indices = jnp.pad(
+            jnp.arange(pages_per_seq, dtype=jnp.int32),
+            (0, max_num_seq * pages_per_seq - pages_per_seq))
+    
+        cu_q = jnp.pad(jnp.array([0, q_len], dtype=jnp.int32),
+                       (0, max_num_seq + 1 - 2))
+        kv_lens = jnp.pad(jnp.array([q_len], dtype=jnp.int32),
+                          (0, max_num_seq - 1))
+        distribution = jnp.array([0, 0, 1], dtype=jnp.int32)
+    
+        common = dict(
+            sm_scale=head_dim ** -0.5,
+            m_block_sizes=(bq_sz, bkv_sz, bq_csz, bkv_csz),
+        )
+    
+        kv_cache_np = np.array(kv_cache)
+    
+        out_base = ref_ragged_paged_attention(
+            jnp.array(np.array(q_proj)), jnp.array(np.array(k_proj)),
+            jnp.array(np.array(v_proj)),
+            jnp.array(kv_cache_np), kv_lens, page_indices, cu_q, distribution,
+            sm_scale=common['sm_scale'],
+        )
+        attn_base = jax.device_get(out_base[0])
+    
+>       out_fused = ragged_paged_attention(
+            jnp.zeros_like(q_proj), jnp.zeros_like(k_proj), jnp.zeros_like(v_proj),
+            jnp.array(kv_cache_np), kv_lens, page_indices, cu_q, distribution,
+            **common,
+            rope_theta=rope_theta,
+            mega_kernel=True,
+            x=x,
+            w_q=w_q,
+            qn_scale=qn_scale,
+            w_k=w_k,
+            kn_scale=kn_scale,
+            w_v=w_v,
+        )
+
+tests/kernels/ragged_paged_attention_kernel_v3_test.py:839: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+../vllm_env/lib/python3.12/site-packages/jax/_src/pjit.py:250: in cache_miss
+    p, args_flat = _infer_params(fun, jit_info, args, kwargs)
+                   ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+../vllm_env/lib/python3.12/site-packages/jax/_src/pjit.py:620: in _infer_params
+    p = _trace_for_jit(fun, ji, ctx_mesh, dbg_fn(), avals, args, kwargs)
+        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+../vllm_env/lib/python3.12/site-packages/jax/_src/pjit.py:522: in _trace_for_jit
+    jaxpr, out_avals = pe.trace_to_jaxpr(fun, in_type, dbg, qdd_token)
+                       ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+../vllm_env/lib/python3.12/site-packages/jax/_src/interpreters/partial_eval.py:2338: in trace_to_jaxpr
+    ans_pytree = fun(*args, **kwargs)
+                 ^^^^^^^^^^^^^^^^^^^^
+tpu_inference/kernels/ragged_paged_attention/v3/kernel.py:2361: in ragged_paged_attention
+    q, kv_cache = run_rpa_kernel(
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+q = JitTracer(bfloat16[8,512,2,2,128])
+kv_cache = JitTracer(bfloat16[64,16,8,2,128])
+
+    def run_rpa_kernel(
+        q,
+        kv_cache,
+        *,
+        bq_sz,
+        bkv_sz,
+        bq_csz,
+        bkv_csz,
+        static_q_len=None,
+        case: RpaCase = RpaCase.MIXED,
+        mega_kernel: bool = False,
+        x=None,
+        w_q=None,
+        qn_scale=None,
+        w_k=None,
+        kn_scale=None,
+        w_v=None,
+    ):
+        if mega_kernel:
+            hidden_size = x.shape[1]
+            assert hidden_size % 128 == 0, (
+                f"mega_kernel requires hidden_size % 128 == 0, got {hidden_size}")
+            assert x.shape[0] == max_num_tokens, (
+                f"x.shape[0]={x.shape[0]} must equal max_num_tokens={max_num_tokens}")
+            x_input = x.reshape(max_num_tokens, hidden_size // 128, 128)
+        else:
+            hidden_size = 0
+            x_input = jnp.zeros((1, 1, 128), dtype=q.dtype)
+    
+        def vmem_or_dummy(arr, dummy_shape):
+            return arr if arr is not None else jnp.zeros(dummy_shape, dtype=q.dtype)
+    
+        qn_scale_input = vmem_or_dummy(qn_scale, (128,))
+        kn_scale_input = vmem_or_dummy(kn_scale, (128,))
+        # Fuse W_q, W_k, W_v into one W_qkv = [W_q | W_k | W_v] so Mosaic sees
+        # a single VMEM input and one matmul total.
+        if mega_kernel:
+            w_qkv_input = jnp.concatenate([w_q, w_k, w_v], axis=1)  # [D, (N+2K)*H]
+        else:
+            w_qkv_input = jnp.zeros((1, 128), dtype=q.dtype)
+    
+        in_specs = [
+            pl.BlockSpec(memory_space=pltpu.HBM),
+            pl.BlockSpec(memory_space=pltpu.HBM),
+            pl.BlockSpec(memory_space=pltpu.HBM),
+            pl.BlockSpec(memory_space=pltpu.HBM),   # x or dummy
+            pl.BlockSpec(memory_space=pltpu.VMEM),  # w_qkv or dummy
+            pl.BlockSpec(memory_space=pltpu.VMEM),  # qn_scale or dummy
+            pl.BlockSpec(memory_space=pltpu.VMEM),  # kn_scale or dummy
+        ]
+    
+        if mega_kernel:
+            assert bkv_sz % bq_sz == 0, (
+                f"mega_kernel=True requires bkv_sz divisible by bq_sz "
+                f"(got bkv_sz={bkv_sz}, bq_sz={bq_sz})")
+    
+        out_specs = [
+            pl.BlockSpec(memory_space=pltpu.HBM),
+            pl.BlockSpec(memory_space=pltpu.HBM),
+        ]
+    
+        bkv_stride = num_kv_heads_x2_per_kv_packing
+        if has_bank_conflicts(bkv_stride):
+            bkv_stride += 1
+    
+        # Doubled row count absorbs strided_store overflow from compute_kv_from_x_bkv:
+        # writes start at bkv_sz_frm_cache and span bkv_sz rows, so last write lands
+        # at bkv_sz_frm_cache + bkv_sz - 1 < 2 * bkv_sz — always in bounds.
+        bkv_double_buf = pltpu.VMEM(
+            (2, bkv_sz * 2, bkv_stride, *kv_cache.shape[3:]),
+            kv_cache.dtype,
+        )
+    
+        bq_double_buf = pltpu.VMEM(
+            (2, actual_num_kv_heads, bq_sz, *q.shape[2:]),
+            q.dtype,
+        )
+    
+        bo_double_buf = bq_double_buf
+    
+        l_scratch = pltpu.VMEM(
+            (actual_num_kv_heads, bq_sz * num_q_heads_per_kv_head, 128),
+            out_dtype,
+        )
+        m_scratch = l_scratch
+    
+        acc_scratch = pltpu.VMEM(
+            (actual_num_kv_heads, bq_sz * num_q_heads_per_kv_head, head_dim),
+            out_dtype,
+        )
+    
+        rope_timescale_scratch = pltpu.VMEM((1, padded_rope_dim), jnp.float32)
+    
+>       if any_proj:
+           ^^^^^^^^
+E       NameError: name 'any_proj' is not defined
+
+tpu_inference/kernels/ragged_paged_attention/v3/kernel.py:2211: NameError
+_ RaggedPagedAttentionKernelTest.test_ragged_paged_attention_mega_kernel_single_seq1 _
+
+self = <tests.kernels.ragged_paged_attention_kernel_v3_test.RaggedPagedAttentionKernelTest testMethod=test_ragged_paged_attention_mega_kernel_single_seq1>
+block_sizes = (256, 1024, 128, 512)
+
+    @parameterized.product(
+        block_sizes=[
+            (64, 256, 32, 128),     # bq_sz=64
+            (256, 1024, 128, 512),  # production config
+        ],
+    )
+    def test_ragged_paged_attention_mega_kernel_single_seq(self, block_sizes):
+        """mega_kernel=True must match the Qwen3Attention-style baseline.
+    
+        Single sequence, fresh prefill (kv_q_gap=0).
+        """
+        if not jtu.is_device_tpu_at_least(version=4):
+            self.skipTest("Expect TPUv4+")
+        dtype = jnp.bfloat16
+        q_len = 384
+        num_q_heads, num_kv_heads = 32, 8
+        head_dim = 128
+        hidden_size = 512  # must be divisible by 128
+        page_size = 16
+        num_pages = 64
+        rope_theta = 1000000.0  # Qwen3 default
+        bq_sz, bkv_sz, bq_csz, bkv_csz = block_sizes
+    
+        np_rng = np.random.default_rng(5678)
+    
+        def gen(shape):
+            return jnp.array(np_rng.random(size=shape, dtype=np.float32)).astype(dtype)
+    
+        # must be a multiple of bkv_sz: mega_kernel DMAs exactly bkv_sz rows of x.
+        max_tokens = align_to(max(align_to(q_len, 128), 512), bkv_sz)
+        max_num_seq = 8
+        pages_per_seq = cdiv(q_len, page_size)
+        kv_packing = get_dtype_packing(dtype)
+        padded_head = align_to(head_dim, 128)
+        num_kv_x2 = align_to(num_kv_heads * 2, kv_packing)
+    
+        x = gen((max_tokens, hidden_size))
+        positions = jnp.arange(q_len, dtype=jnp.int32)
+    
+        q_valid, k_valid, v_valid, w_q, qn_scale, w_k, kn_scale, w_v = (
+            _build_qkv_baseline(
+                x[:q_len], hidden_size, num_q_heads, num_kv_heads,
+                head_dim, rope_theta, positions, dtype,
+            )
+        )
+        pad = ((0, max_tokens - q_len), (0, 0), (0, 0))
+        q_proj = jnp.pad(q_valid, pad)
+        k_proj = jnp.pad(k_valid, pad)
+        v_proj = jnp.pad(v_valid, pad)
+    
+        kv_cache = jnp.zeros(
+            (num_pages, page_size, num_kv_x2 // kv_packing, kv_packing, padded_head),
+            dtype=dtype,
+        )
+        page_indices = jnp.pad(
+            jnp.arange(pages_per_seq, dtype=jnp.int32),
+            (0, max_num_seq * pages_per_seq - pages_per_seq))
+    
+        cu_q = jnp.pad(jnp.array([0, q_len], dtype=jnp.int32),
+                       (0, max_num_seq + 1 - 2))
+        kv_lens = jnp.pad(jnp.array([q_len], dtype=jnp.int32),
+                          (0, max_num_seq - 1))
+        distribution = jnp.array([0, 0, 1], dtype=jnp.int32)
+    
+        common = dict(
+            sm_scale=head_dim ** -0.5,
+            m_block_sizes=(bq_sz, bkv_sz, bq_csz, bkv_csz),
+        )
+    
+        kv_cache_np = np.array(kv_cache)
+    
+        out_base = ref_ragged_paged_attention(
+            jnp.array(np.array(q_proj)), jnp.array(np.array(k_proj)),
+            jnp.array(np.array(v_proj)),
+            jnp.array(kv_cache_np), kv_lens, page_indices, cu_q, distribution,
+            sm_scale=common['sm_scale'],
+        )
+        attn_base = jax.device_get(out_base[0])
+    
+>       out_fused = ragged_paged_attention(
+            jnp.zeros_like(q_proj), jnp.zeros_like(k_proj), jnp.zeros_like(v_proj),
+            jnp.array(kv_cache_np), kv_lens, page_indices, cu_q, distribution,
+            **common,
+            rope_theta=rope_theta,
+            mega_kernel=True,
+            x=x,
+            w_q=w_q,
+            qn_scale=qn_scale,
+            w_k=w_k,
+            kn_scale=kn_scale,
+            w_v=w_v,
+        )
+
+tests/kernels/ragged_paged_attention_kernel_v3_test.py:839: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+../vllm_env/lib/python3.12/site-packages/jax/_src/pjit.py:250: in cache_miss
+    p, args_flat = _infer_params(fun, jit_info, args, kwargs)
+                   ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+../vllm_env/lib/python3.12/site-packages/jax/_src/pjit.py:620: in _infer_params
+    p = _trace_for_jit(fun, ji, ctx_mesh, dbg_fn(), avals, args, kwargs)
+        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+../vllm_env/lib/python3.12/site-packages/jax/_src/pjit.py:522: in _trace_for_jit
+    jaxpr, out_avals = pe.trace_to_jaxpr(fun, in_type, dbg, qdd_token)
+                       ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+../vllm_env/lib/python3.12/site-packages/jax/_src/interpreters/partial_eval.py:2338: in trace_to_jaxpr
+    ans_pytree = fun(*args, **kwargs)
+                 ^^^^^^^^^^^^^^^^^^^^
+tpu_inference/kernels/ragged_paged_attention/v3/kernel.py:2361: in ragged_paged_attention
+    q, kv_cache = run_rpa_kernel(
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+q = JitTracer(bfloat16[8,1024,2,2,128])
+kv_cache = JitTracer(bfloat16[64,16,8,2,128])
+
+    def run_rpa_kernel(
+        q,
+        kv_cache,
+        *,
+        bq_sz,
+        bkv_sz,
+        bq_csz,
+        bkv_csz,
+        static_q_len=None,
+        case: RpaCase = RpaCase.MIXED,
+        mega_kernel: bool = False,
+        x=None,
+        w_q=None,
+        qn_scale=None,
+        w_k=None,
+        kn_scale=None,
+        w_v=None,
+    ):
+        if mega_kernel:
+            hidden_size = x.shape[1]
+            assert hidden_size % 128 == 0, (
+                f"mega_kernel requires hidden_size % 128 == 0, got {hidden_size}")
+            assert x.shape[0] == max_num_tokens, (
+                f"x.shape[0]={x.shape[0]} must equal max_num_tokens={max_num_tokens}")
+            x_input = x.reshape(max_num_tokens, hidden_size // 128, 128)
+        else:
+            hidden_size = 0
+            x_input = jnp.zeros((1, 1, 128), dtype=q.dtype)
+    
+        def vmem_or_dummy(arr, dummy_shape):
+            return arr if arr is not None else jnp.zeros(dummy_shape, dtype=q.dtype)
+    
+        qn_scale_input = vmem_or_dummy(qn_scale, (128,))
+        kn_scale_input = vmem_or_dummy(kn_scale, (128,))
+        # Fuse W_q, W_k, W_v into one W_qkv = [W_q | W_k | W_v] so Mosaic sees
+        # a single VMEM input and one matmul total.
+        if mega_kernel:
+            w_qkv_input = jnp.concatenate([w_q, w_k, w_v], axis=1)  # [D, (N+2K)*H]
+        else:
+            w_qkv_input = jnp.zeros((1, 128), dtype=q.dtype)
+    
+        in_specs = [
+            pl.BlockSpec(memory_space=pltpu.HBM),
+            pl.BlockSpec(memory_space=pltpu.HBM),
+            pl.BlockSpec(memory_space=pltpu.HBM),
+            pl.BlockSpec(memory_space=pltpu.HBM),   # x or dummy
+            pl.BlockSpec(memory_space=pltpu.VMEM),  # w_qkv or dummy
+            pl.BlockSpec(memory_space=pltpu.VMEM),  # qn_scale or dummy
+            pl.BlockSpec(memory_space=pltpu.VMEM),  # kn_scale or dummy
+        ]
+    
+        if mega_kernel:
+            assert bkv_sz % bq_sz == 0, (
+                f"mega_kernel=True requires bkv_sz divisible by bq_sz "
+                f"(got bkv_sz={bkv_sz}, bq_sz={bq_sz})")
+    
+        out_specs = [
+            pl.BlockSpec(memory_space=pltpu.HBM),
+            pl.BlockSpec(memory_space=pltpu.HBM),
+        ]
+    
+        bkv_stride = num_kv_heads_x2_per_kv_packing
+        if has_bank_conflicts(bkv_stride):
+            bkv_stride += 1
+    
+        # Doubled row count absorbs strided_store overflow from compute_kv_from_x_bkv:
+        # writes start at bkv_sz_frm_cache and span bkv_sz rows, so last write lands
+        # at bkv_sz_frm_cache + bkv_sz - 1 < 2 * bkv_sz — always in bounds.
+        bkv_double_buf = pltpu.VMEM(
+            (2, bkv_sz * 2, bkv_stride, *kv_cache.shape[3:]),
+            kv_cache.dtype,
+        )
+    
+        bq_double_buf = pltpu.VMEM(
+            (2, actual_num_kv_heads, bq_sz, *q.shape[2:]),
+            q.dtype,
+        )
+    
+        bo_double_buf = bq_double_buf
+    
+        l_scratch = pltpu.VMEM(
+            (actual_num_kv_heads, bq_sz * num_q_heads_per_kv_head, 128),
+            out_dtype,
+        )
+        m_scratch = l_scratch
+    
+        acc_scratch = pltpu.VMEM(
+            (actual_num_kv_heads, bq_sz * num_q_heads_per_kv_head, head_dim),
+            out_dtype,
+        )
+    
+        rope_timescale_scratch = pltpu.VMEM((1, padded_rope_dim), jnp.float32)
+    
+>       if any_proj:
+           ^^^^^^^^
+E       NameError: name 'any_proj' is not defined
+
+tpu_inference/kernels/ragged_paged_attention/v3/kernel.py:2211: NameError
+=============================== warnings summary ===============================
+../vllm_env/lib/python3.12/site-packages/flax/nnx/variablelib.py:324
+  /home/tarading/vllm_env/lib/python3.12/site-packages/flax/nnx/variablelib.py:324: DeprecationWarning: jax.core.Effect is deprecated. Use jax.extend.core.Effect.
+    class VariableEffect(jax.core.Effect): ...
+
+../vllm_env/lib/python3.12/site-packages/tpu_info/device.py:33
+  /home/tarading/vllm_env/lib/python3.12/site-packages/tpu_info/device.py:33: DeprecationWarning: In 3.13 classes created inside an enum will not become a member.  Use the `member` decorator to keep the current behavior.
+    class Info(typing.NamedTuple):
+
+<frozen importlib._bootstrap>:488
+  <frozen importlib._bootstrap>:488: DeprecationWarning: builtin type SwigPyPacked has no __module__ attribute
+
+<frozen importlib._bootstrap>:488
+  <frozen importlib._bootstrap>:488: DeprecationWarning: builtin type SwigPyObject has no __module__ attribute
+
+tests/kernels/ragged_paged_attention_kernel_v3_test.py::RaggedPagedAttentionKernelTest::test_ragged_paged_attention_mega_kernel_multiseq0
+  /home/tarading/vllm_env/lib/python3.12/site-packages/flax/nnx/tracers.py:29: DeprecationWarning: jax.core.get_opaque_trace_state is deprecated. Use jax.extend.core.get_opaque_trace_state.
+    return jax.core.get_opaque_trace_state(convention="nnx")
+
+tests/kernels/ragged_paged_attention_kernel_v3_test.py: 60 warnings
+  /home/tarading/tpu-inference/tpu_inference/layers/jax/linear.py:90: DeprecationWarning: '.value' access is now deprecated. For Variable[Array] instances use:
+  
+    variable[...]
+  
+  For other Variable types use:
+  
+    variable.get_value()
+  
+    output = jax.numpy.einsum(self.einsum_str, inputs, self.weight.value)
+
+-- Docs: https://docs.pytest.org/en/stable/how-to/capture-warnings.html
+=========================== short test summary info ============================
+FAILED tests/kernels/ragged_paged_attention_kernel_v3_test.py::RaggedPagedAttentionKernelTest::test_ragged_paged_attention_mega_kernel_multiseq0
+FAILED tests/kernels/ragged_paged_attention_kernel_v3_test.py::RaggedPagedAttentionKernelTest::test_ragged_paged_attention_mega_kernel_multiseq1
+FAILED tests/kernels/ragged_paged_attention_kernel_v3_test.py::RaggedPagedAttentionKernelTest::test_ragged_paged_attention_mega_kernel_multiseq_fresh0
+FAILED tests/kernels/ragged_paged_attention_kernel_v3_test.py::RaggedPagedAttentionKernelTest::test_ragged_paged_attention_mega_kernel_multiseq_fresh1
+FAILED tests/kernels/ragged_paged_attention_kernel_v3_test.py::RaggedPagedAttentionKernelTest::test_ragged_paged_attention_mega_kernel_multiseq_kv_gap0
+FAILED tests/kernels/ragged_paged_attention_kernel_v3_test.py::RaggedPagedAttentionKernelTest::test_ragged_paged_attention_mega_kernel_multiseq_kv_gap1
+FAILED tests/kernels/ragged_paged_attention_kernel_v3_test.py::RaggedPagedAttentionKernelTest::test_ragged_paged_attention_mega_kernel_multiseq_random_kvcache0
+FAILED tests/kernels/ragged_paged_attention_kernel_v3_test.py::RaggedPagedAttentionKernelTest::test_ragged_paged_attention_mega_kernel_multiseq_random_kvcache1
+FAILED tests/kernels/ragged_paged_attention_kernel_v3_test.py::RaggedPagedAttentionKernelTest::test_ragged_paged_attention_mega_kernel_single_seq0
+FAILED tests/kernels/ragged_paged_attention_kernel_v3_test.py::RaggedPagedAttentionKernelTest::test_ragged_paged_attention_mega_kernel_single_seq1
+========== 10 failed, 64 deselected, 65 warnings in 69.83s (0:01:09) ===========
+sys:1: DeprecationWarning: builtin type swigvarlink has no __module__ attribute
+EXIT:0

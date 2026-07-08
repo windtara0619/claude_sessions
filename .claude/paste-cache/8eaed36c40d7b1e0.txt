@@ -1,0 +1,194 @@
+I0701 05:54:45.626840   22030 llo_log_report_handler.cc:596] [t1.0x0x0_TC0@289]: [RPA debug] ======= In loop seq_idx=0
+I0701 05:54:45.627033   22030 llo_log_report_handler.cc:596] [t1.0x0x0_TC0@289]: [RPA debug] start_seq_idx=0
+I0701 05:54:45.627190   22030 llo_log_report_handler.cc:596] [t1.0x0x0_TC0@289]: [RPA debug] end_seq_idx=1
+I0701 05:54:45.627340   22030 llo_log_report_handler.cc:596] [t1.0x0x0_TC0@289]: [RPA debug] num_seqs=1
+I0701 05:54:45.627492   22030 llo_log_report_handler.cc:596] [t1.0x0x0_TC0@289]: [RPA debug] bkv_p=16
+I0701 05:54:45.627655   22030 llo_log_report_handler.cc:596] [t1.0x0x0_TC0@289]: [RPA debug] page_size=16
+I0701 05:54:45.627816   22030 llo_log_report_handler.cc:596] [t1.0x0x0_TC0@289]: [RPA debug] pages_per_seq=12
+I0701 05:54:45.627969   22030 llo_log_report_handler.cc:596] [t1.0x0x0_TC0@289]: [RPA debug] bkv_sz=256
+I0701 05:54:45.628120   22030 llo_log_report_handler.cc:596] [t1.0x0x0_TC0@289]: [RPA debug] bq_sz=64
+I0701 05:54:45.628285   22030 llo_log_report_handler.cc:596] [t1.0x0x0_TC0@289]: [RPA debug] static_q_len=None
+I0701 05:54:45.628436   22030 llo_log_report_handler.cc:596] [t1.0x0x0_TC0@289]: [RPA debug] q_start=0
+I0701 05:54:45.628605   22030 llo_log_report_handler.cc:596] [t1.0x0x0_TC0@289]: [RPA debug] q_end=128
+I0701 05:54:45.628756   22030 llo_log_report_handler.cc:596] [t1.0x0x0_TC0@289]: [RPA debug] q_len=128
+I0701 05:54:45.628917   22030 llo_log_report_handler.cc:596] [t1.0x0x0_TC0@289]: [RPA debug] kv_len=180
+I0701 05:54:45.629071   22030 llo_log_report_handler.cc:596] [t1.0x0x0_TC0@289]: [RPA debug] kv_q_gap=52
+I0701 05:54:45.629224   22030 llo_log_report_handler.cc:596] [t1.0x0x0_TC0@289]: [RPA debug] sliding_window=None
+I0701 05:54:45.629373   22030 llo_log_report_handler.cc:596] [t1.0x0x0_TC0@289]: [RPA debug] cur_seq_start_bkv_idx=0
+I0701 05:54:45.629523   22030 llo_log_report_handler.cc:596] [t1.0x0x0_TC0@289]: [RPA debug] next_seq_start_bkv_idx=0
+I0701 05:54:45.629672   22030 llo_log_report_handler.cc:596] [t1.0x0x0_TC0@289]: [RPA debug] -----------start_fetch_bkv-----------
+I0701 05:54:45.629832   22030 llo_log_report_handler.cc:596] [t1.0x0x0_TC0@289]: [RPA debug] seq_idx=0
+I0701 05:54:45.629988   22030 llo_log_report_handler.cc:596] [t1.0x0x0_TC0@289]: [RPA debug] bkv_idx=0
+I0701 05:54:45.630136   22030 llo_log_report_handler.cc:596] [t1.0x0x0_TC0@289]: [RPA debug] bkv_sem_idx=0
+I0701 05:54:45.630285   22030 llo_log_report_handler.cc:596] [t1.0x0x0_TC0@289]: [RPA debug] kv_len_start=0
+I0701 05:54:45.630445   22030 llo_log_report_handler.cc:596] [t1.0x0x0_TC0@289]: [RPA debug] kv_p_start=0
+I0701 05:54:45.630598   22030 llo_log_report_handler.cc:596] [t1.0x0x0_TC0@289]: [RPA debug] kv_left=180
+I0701 05:54:45.630746   22030 llo_log_report_handler.cc:596] [t1.0x0x0_TC0@289]: [RPA debug] kv_left_frm_cache=52
+I0701 05:54:45.630912   22030 llo_log_report_handler.cc:596] [t1.0x0x0_TC0@289]: [RPA debug] kv_left_frm_new=128
+I0701 05:54:45.631072   22030 llo_log_report_handler.cc:596] [t1.0x0x0_TC0@289]: [RPA debug] bkv_sz_frm_cache=52
+I0701 05:54:45.631231   22030 llo_log_report_handler.cc:596] [t1.0x0x0_TC0@289]: [RPA debug] bkv_sz_frm_new=128
+I0701 05:54:45.631385   22030 llo_log_report_handler.cc:596] [t1.0x0x0_TC0@289]: [RPA debug] page_indices_offset=0
+I0701 05:54:45.631538   22030 llo_log_report_handler.cc:596] [t1.0x0x0_TC0@289]: [RPA debug] loop_body i=0, sz=16
+I0701 05:54:45.631698   22030 llo_log_report_handler.cc:596] [t1.0x0x0_TC0@289]: [RPA debug] loop_body i=1, sz=16
+I0701 05:54:45.631857   22030 llo_log_report_handler.cc:596] [t1.0x0x0_TC0@289]: [RPA debug] loop_body i=2, sz=16
+I0701 05:54:45.632010   22030 llo_log_report_handler.cc:596] [t1.0x0x0_TC0@289]: [RPA debug] loop_body i=3, sz=4
+I0701 05:54:45.632160   22030 llo_log_report_handler.cc:596] [t1.0x0x0_TC0@289]: [RPA debug] loop_body i=4, sz=0
+I0701 05:54:45.632313   22030 llo_log_report_handler.cc:596] [t1.0x0x0_TC0@289]: [RPA debug] loop_body i=5, sz=0
+I0701 05:54:45.632461   22030 llo_log_report_handler.cc:596] [t1.0x0x0_TC0@289]: [RPA debug] loop_body i=6, sz=0
+I0701 05:54:45.632610   22030 llo_log_report_handler.cc:596] [t1.0x0x0_TC0@289]: [RPA debug] loop_body i=7, sz=0
+I0701 05:54:45.632761   22030 llo_log_report_handler.cc:596] [t1.0x0x0_TC0@289]: [RPA debug] loop_body i=8, sz=0
+I0701 05:54:45.632922   22030 llo_log_report_handler.cc:596] [t1.0x0x0_TC0@289]: [RPA debug] loop_body i=9, sz=0
+I0701 05:54:45.633084   22030 llo_log_report_handler.cc:596] [t1.0x0x0_TC0@289]: [RPA debug] loop_body i=10, sz=0
+I0701 05:54:45.633235   22030 llo_log_report_handler.cc:596] [t1.0x0x0_TC0@289]: [RPA debug] loop_body i=11, sz=0
+I0701 05:54:45.633384   22030 llo_log_report_handler.cc:596] [t1.0x0x0_TC0@289]: [RPA debug] loop_body i=12, sz=0
+I0701 05:54:45.633533   22030 llo_log_report_handler.cc:596] [t1.0x0x0_TC0@289]: [RPA debug] loop_body i=13, sz=0
+I0701 05:54:45.633684   22030 llo_log_report_handler.cc:596] [t1.0x0x0_TC0@289]: [RPA debug] loop_body i=14, sz=0
+I0701 05:54:45.633847   22030 llo_log_report_handler.cc:596] [t1.0x0x0_TC0@289]: [RPA debug] loop_body i=15, sz=0
+I0701 05:54:45.634002   22030 llo_log_report_handler.cc:596] [t1.0x0x0_TC0@289]: [RPA debug] new_kv_len_start=0
+I0701 05:54:45.634160   22030 llo_log_report_handler.cc:596] [t1.0x0x0_TC0@289]: [RPA debug] -----------wait_fetch_bkv-----------
+I0701 05:54:45.634321   22030 llo_log_report_handler.cc:596] [t1.0x0x0_TC0@289]: [RPA debug] seq_idx=0
+I0701 05:54:45.634473   22030 llo_log_report_handler.cc:596] [t1.0x0x0_TC0@289]: [RPA debug] bkv_idx=0
+I0701 05:54:45.634627   22030 llo_log_report_handler.cc:596] [t1.0x0x0_TC0@289]: [RPA debug] bkv_sem_idx=0
+I0701 05:54:45.634776   22030 llo_log_report_handler.cc:596] [t1.0x0x0_TC0@289]: [RPA debug] kv_len_start=0
+I0701 05:54:45.634928   22030 llo_log_report_handler.cc:596] [t1.0x0x0_TC0@289]: [RPA debug] kv_p_start=0
+I0701 05:54:45.635080   22030 llo_log_report_handler.cc:596] [t1.0x0x0_TC0@289]: [RPA debug] kv_left=180
+I0701 05:54:45.635232   22030 llo_log_report_handler.cc:596] [t1.0x0x0_TC0@289]: [RPA debug] kv_left_frm_cache=52
+I0701 05:54:45.635379   22030 llo_log_report_handler.cc:596] [t1.0x0x0_TC0@289]: [RPA debug] kv_left_frm_new=128
+I0701 05:54:45.635549   22030 llo_log_report_handler.cc:596] [t1.0x0x0_TC0@289]: [RPA debug] bkv_sz_frm_cache=52
+I0701 05:54:45.635697   22030 llo_log_report_handler.cc:596] [t1.0x0x0_TC0@289]: [RPA debug] bkv_sz_frm_new=128
+I0701 05:54:45.635865   22030 llo_log_report_handler.cc:596] [t1.0x0x0_TC0@289]: [RPA debug] page_indices_offset=0
+I0701 05:54:45.636021   22030 llo_log_report_handler.cc:596] [t1.0x0x0_TC0@289]: [RPA debug] -----------start_update_kv_cache-----------
+I0701 05:54:45.636174   22030 llo_log_report_handler.cc:596] [t1.0x0x0_TC0@289]: [RPA debug] seq_idx=0
+I0701 05:54:45.636322   22030 llo_log_report_handler.cc:596] [t1.0x0x0_TC0@289]: [RPA debug] bkv_sem_idx=0
+I0701 05:54:45.636469   22030 llo_log_report_handler.cc:596] [t1.0x0x0_TC0@289]: [RPA debug] offset=52
+I0701 05:54:45.636617   22030 llo_log_report_handler.cc:596] [t1.0x0x0_TC0@289]: [RPA debug] update_sz=128
+I0701 05:54:45.636767   22030 llo_log_report_handler.cc:596] [t1.0x0x0_TC0@289]: [RPA debug] bkv_id=0
+I0701 05:54:45.636922   22030 llo_log_report_handler.cc:596] [t1.0x0x0_TC0@289]: [RPA debug] kv_p_start=3
+I0701 05:54:45.637076   22030 llo_log_report_handler.cc:596] [t1.0x0x0_TC0@289]: [RPA debug] kv_p_end=12
+I0701 05:54:45.637231   22030 llo_log_report_handler.cc:596] [t1.0x0x0_TC0@289]: [RPA debug] ignore=4
+I0701 05:54:45.637383   22030 llo_log_report_handler.cc:596] [t1.0x0x0_TC0@289]: [RPA debug] p_ignore=3
+I0701 05:54:45.637532   22030 llo_log_report_handler.cc:596] [t1.0x0x0_TC0@289]: [RPA debug] page_indices_offset=3
+I0701 05:54:45.637682   22030 llo_log_report_handler.cc:596] [t1.0x0x0_TC0@289]: [RPA debug] loop_body i=0, sz=12
+I0701 05:54:45.637838   22030 llo_log_report_handler.cc:596] [t1.0x0x0_TC0@289]: [RPA debug] loop_body i=1, sz=16
+I0701 05:54:45.637985   22030 llo_log_report_handler.cc:596] [t1.0x0x0_TC0@289]: [RPA debug] loop_body i=2, sz=16
+I0701 05:54:45.638136   22030 llo_log_report_handler.cc:596] [t1.0x0x0_TC0@289]: [RPA debug] loop_body i=3, sz=16
+I0701 05:54:45.638284   22030 llo_log_report_handler.cc:596] [t1.0x0x0_TC0@289]: [RPA debug] loop_body i=4, sz=16
+I0701 05:54:45.638436   22030 llo_log_report_handler.cc:596] [t1.0x0x0_TC0@289]: [RPA debug] loop_body i=5, sz=16
+I0701 05:54:45.638587   22030 llo_log_report_handler.cc:596] [t1.0x0x0_TC0@289]: [RPA debug] loop_body i=6, sz=16
+I0701 05:54:45.638734   22030 llo_log_report_handler.cc:596] [t1.0x0x0_TC0@289]: [RPA debug] loop_body i=7, sz=16
+I0701 05:54:45.638884   22030 llo_log_report_handler.cc:596] [t1.0x0x0_TC0@289]: [RPA debug] loop_body i=8, sz=4
+I0701 05:54:45.639033   22030 llo_log_report_handler.cc:596] [t1.0x0x0_TC0@289]: [RPA debug] -----------start_fetch_bkv-----------
+I0701 05:54:45.639182   22030 llo_log_report_handler.cc:596] [t1.0x0x0_TC0@289]: [RPA debug] seq_idx=0
+I0701 05:54:45.639331   22030 llo_log_report_handler.cc:596] [t1.0x0x0_TC0@289]: [RPA debug] bkv_idx=0
+I0701 05:54:45.639481   22030 llo_log_report_handler.cc:596] [t1.0x0x0_TC0@289]: [RPA debug] bkv_sem_idx=1
+I0701 05:54:45.639631   22030 llo_log_report_handler.cc:596] [t1.0x0x0_TC0@289]: [RPA debug] kv_len_start=0
+I0701 05:54:45.639780   22030 llo_log_report_handler.cc:596] [t1.0x0x0_TC0@289]: [RPA debug] kv_p_start=0
+I0701 05:54:45.639934   22030 llo_log_report_handler.cc:596] [t1.0x0x0_TC0@289]: [RPA debug] kv_left=180
+I0701 05:54:45.640086   22030 llo_log_report_handler.cc:596] [t1.0x0x0_TC0@289]: [RPA debug] kv_left_frm_cache=116
+I0701 05:54:45.640235   22030 llo_log_report_handler.cc:596] [t1.0x0x0_TC0@289]: [RPA debug] kv_left_frm_new=64
+I0701 05:54:45.640383   22030 llo_log_report_handler.cc:596] [t1.0x0x0_TC0@289]: [RPA debug] bkv_sz_frm_cache=116
+I0701 05:54:45.640532   22030 llo_log_report_handler.cc:596] [t1.0x0x0_TC0@289]: [RPA debug] bkv_sz_frm_new=64
+I0701 05:54:45.640680   22030 llo_log_report_handler.cc:596] [t1.0x0x0_TC0@289]: [RPA debug] page_indices_offset=0
+I0701 05:54:45.640838   22030 llo_log_report_handler.cc:596] [t1.0x0x0_TC0@289]: [RPA debug] -----------wait_update_kv_cache-----------
+I0701 05:54:45.640989   22030 llo_log_report_handler.cc:596] [t1.0x0x0_TC0@289]: [RPA debug] seq_idx=0
+I0701 05:54:45.641138   22030 llo_log_report_handler.cc:596] [t1.0x0x0_TC0@289]: [RPA debug] bkv_sem_idx=0
+I0701 05:54:45.641288   22030 llo_log_report_handler.cc:596] [t1.0x0x0_TC0@289]: [RPA debug] offset=52
+I0701 05:54:45.641436   22030 llo_log_report_handler.cc:596] [t1.0x0x0_TC0@289]: [RPA debug] update_sz=128
+I0701 05:54:45.641585   22030 llo_log_report_handler.cc:596] [t1.0x0x0_TC0@289]: [RPA debug] bkv_id=0
+I0701 05:54:45.641734   22030 llo_log_report_handler.cc:596] [t1.0x0x0_TC0@289]: [RPA debug] kv_p_start=3
+I0701 05:54:45.641887   22030 llo_log_report_handler.cc:596] [t1.0x0x0_TC0@289]: [RPA debug] kv_p_end=12
+I0701 05:54:45.642037   22030 llo_log_report_handler.cc:596] [t1.0x0x0_TC0@289]: [RPA debug] ignore=4
+I0701 05:54:45.642187   22030 llo_log_report_handler.cc:596] [t1.0x0x0_TC0@289]: [RPA debug] p_ignore=3
+I0701 05:54:45.642338   22030 llo_log_report_handler.cc:596] [t1.0x0x0_TC0@289]: [RPA debug] page_indices_offset=3
+I0701 05:54:45.642503   22030 llo_log_report_handler.cc:596] [t1.0x0x0_TC0@289]: [RPA debug] loop_body i=0, sz=16
+I0701 05:54:45.642661   22030 llo_log_report_handler.cc:596] [t1.0x0x0_TC0@289]: [RPA debug] loop_body i=1, sz=16
+I0701 05:54:45.642823   22030 llo_log_report_handler.cc:596] [t1.0x0x0_TC0@289]: [RPA debug] loop_body i=2, sz=16
+I0701 05:54:45.642980   22030 llo_log_report_handler.cc:596] [t1.0x0x0_TC0@289]: [RPA debug] loop_body i=3, sz=16
+I0701 05:54:45.643129   22030 llo_log_report_handler.cc:596] [t1.0x0x0_TC0@289]: [RPA debug] loop_body i=4, sz=16
+I0701 05:54:45.643277   22030 llo_log_report_handler.cc:596] [t1.0x0x0_TC0@289]: [RPA debug] loop_body i=5, sz=16
+I0701 05:54:45.643429   22030 llo_log_report_handler.cc:596] [t1.0x0x0_TC0@289]: [RPA debug] loop_body i=6, sz=16
+I0701 05:54:45.643582   22030 llo_log_report_handler.cc:596] [t1.0x0x0_TC0@289]: [RPA debug] loop_body i=7, sz=4
+I0701 05:54:45.643730   22030 llo_log_report_handler.cc:596] [t1.0x0x0_TC0@289]: [RPA debug] loop_body i=8, sz=0
+I0701 05:54:45.643879   22030 llo_log_report_handler.cc:596] [t1.0x0x0_TC0@289]: [RPA debug] loop_body i=9, sz=0
+I0701 05:54:45.644039   22030 llo_log_report_handler.cc:596] [t1.0x0x0_TC0@289]: [RPA debug] loop_body i=10, sz=0
+I0701 05:54:45.644190   22030 llo_log_report_handler.cc:596] [t1.0x0x0_TC0@289]: [RPA debug] loop_body i=11, sz=0
+I0701 05:54:45.644337   22030 llo_log_report_handler.cc:596] [t1.0x0x0_TC0@289]: [RPA debug] loop_body i=12, sz=0
+I0701 05:54:45.644487   22030 llo_log_report_handler.cc:596] [t1.0x0x0_TC0@289]: [RPA debug] loop_body i=13, sz=0
+I0701 05:54:45.644637   22030 llo_log_report_handler.cc:596] [t1.0x0x0_TC0@289]: [RPA debug] loop_body i=14, sz=0
+I0701 05:54:45.644784   22030 llo_log_report_handler.cc:596] [t1.0x0x0_TC0@289]: [RPA debug] loop_body i=15, sz=0
+I0701 05:54:45.644932   22030 llo_log_report_handler.cc:596] [t1.0x0x0_TC0@289]: [RPA debug] new_kv_len_start=64
+I0701 05:54:45.645083   22030 llo_log_report_handler.cc:596] [t1.0x0x0_TC0@289]: [RPA debug] -----------flash attention-----------
+I0701 05:54:45.645233   22030 llo_log_report_handler.cc:596] [t1.0x0x0_TC0@289]: [RPA debug] seq_idx=0
+I0701 05:54:45.645382   22030 llo_log_report_handler.cc:596] [t1.0x0x0_TC0@289]: [RPA debug] bq_idx=0
+I0701 05:54:45.645541   22030 llo_log_report_handler.cc:596] [t1.0x0x0_TC0@289]: [RPA debug] bkv_idx=0
+I0701 05:54:45.645698   22030 llo_log_report_handler.cc:596] [t1.0x0x0_TC0@289]: [RPA debug] -----------start_send_bo-----------
+I0701 05:54:45.645915   22030 llo_log_report_handler.cc:596] [t1.0x0x0_TC0@289]: [RPA debug] seq_idx=0
+I0701 05:54:45.646075   22030 llo_log_report_handler.cc:596] [t1.0x0x0_TC0@289]: [RPA debug] bo_idx=0
+I0701 05:54:45.646233   22030 llo_log_report_handler.cc:596] [t1.0x0x0_TC0@289]: [RPA debug] bo_sem_idx=0
+I0701 05:54:45.646383   22030 llo_log_report_handler.cc:596] [t1.0x0x0_TC0@289]: [RPA debug] q_len_start=0
+I0701 05:54:45.646534   22030 llo_log_report_handler.cc:596] [t1.0x0x0_TC0@289]: [RPA debug] q_end=128
+I0701 05:54:45.646681   22030 llo_log_report_handler.cc:596] [t1.0x0x0_TC0@289]: [RPA debug] sz=64
+I0701 05:54:45.646845   22030 llo_log_report_handler.cc:596] [t1.0x0x0_TC0@289]: [RPA debug] -----------wait_fetch_bkv-----------
+I0701 05:54:45.647000   22030 llo_log_report_handler.cc:596] [t1.0x0x0_TC0@289]: [RPA debug] seq_idx=0
+I0701 05:54:45.647152   22030 llo_log_report_handler.cc:596] [t1.0x0x0_TC0@289]: [RPA debug] bkv_idx=0
+I0701 05:54:45.647302   22030 llo_log_report_handler.cc:596] [t1.0x0x0_TC0@289]: [RPA debug] bkv_sem_idx=1
+I0701 05:54:45.647451   22030 llo_log_report_handler.cc:596] [t1.0x0x0_TC0@289]: [RPA debug] kv_len_start=0
+I0701 05:54:45.647600   22030 llo_log_report_handler.cc:596] [t1.0x0x0_TC0@289]: [RPA debug] kv_p_start=0
+I0701 05:54:45.647750   22030 llo_log_report_handler.cc:596] [t1.0x0x0_TC0@289]: [RPA debug] kv_left=180
+I0701 05:54:45.647911   22030 llo_log_report_handler.cc:596] [t1.0x0x0_TC0@289]: [RPA debug] kv_left_frm_cache=116
+I0701 05:54:45.648076   22030 llo_log_report_handler.cc:596] [t1.0x0x0_TC0@289]: [RPA debug] kv_left_frm_new=64
+I0701 05:54:45.648225   22030 llo_log_report_handler.cc:596] [t1.0x0x0_TC0@289]: [RPA debug] bkv_sz_frm_cache=116
+I0701 05:54:45.648372   22030 llo_log_report_handler.cc:596] [t1.0x0x0_TC0@289]: [RPA debug] bkv_sz_frm_new=64
+I0701 05:54:45.648526   22030 llo_log_report_handler.cc:596] [t1.0x0x0_TC0@289]: [RPA debug] page_indices_offset=0
+I0701 05:54:45.648690   22030 llo_log_report_handler.cc:596] [t1.0x0x0_TC0@289]: [RPA debug] -----------start_update_kv_cache-----------
+I0701 05:54:45.648849   22030 llo_log_report_handler.cc:596] [t1.0x0x0_TC0@289]: [RPA debug] seq_idx=0
+I0701 05:54:45.649000   22030 llo_log_report_handler.cc:596] [t1.0x0x0_TC0@289]: [RPA debug] bkv_sem_idx=1
+I0701 05:54:45.649151   22030 llo_log_report_handler.cc:596] [t1.0x0x0_TC0@289]: [RPA debug] offset=116
+I0701 05:54:45.649298   22030 llo_log_report_handler.cc:596] [t1.0x0x0_TC0@289]: [RPA debug] update_sz=64
+I0701 05:54:45.649444   22030 llo_log_report_handler.cc:596] [t1.0x0x0_TC0@289]: [RPA debug] bkv_id=0
+I0701 05:54:45.649592   22030 llo_log_report_handler.cc:596] [t1.0x0x0_TC0@289]: [RPA debug] kv_p_start=7
+I0701 05:54:45.649740   22030 llo_log_report_handler.cc:596] [t1.0x0x0_TC0@289]: [RPA debug] kv_p_end=12
+I0701 05:54:45.649901   22030 llo_log_report_handler.cc:596] [t1.0x0x0_TC0@289]: [RPA debug] ignore=4
+I0701 05:54:45.650052   22030 llo_log_report_handler.cc:596] [t1.0x0x0_TC0@289]: [RPA debug] p_ignore=7
+I0701 05:54:45.650201   22030 llo_log_report_handler.cc:596] [t1.0x0x0_TC0@289]: [RPA debug] page_indices_offset=7
+I0701 05:54:45.650349   22030 llo_log_report_handler.cc:596] [t1.0x0x0_TC0@289]: [RPA debug] loop_body i=0, sz=12
+I0701 05:54:45.650506   22030 llo_log_report_handler.cc:596] [t1.0x0x0_TC0@289]: [RPA debug] loop_body i=1, sz=16
+I0701 05:54:45.650661   22030 llo_log_report_handler.cc:596] [t1.0x0x0_TC0@289]: [RPA debug] loop_body i=2, sz=16
+I0701 05:54:45.650818   22030 llo_log_report_handler.cc:596] [t1.0x0x0_TC0@289]: [RPA debug] loop_body i=3, sz=16
+I0701 05:54:45.650971   22030 llo_log_report_handler.cc:596] [t1.0x0x0_TC0@289]: [RPA debug] loop_body i=4, sz=4
+I0701 05:54:45.651119   22030 llo_log_report_handler.cc:596] [t1.0x0x0_TC0@289]: [RPA debug] -----------flash attention-----------
+I0701 05:54:45.651293   22030 llo_log_report_handler.cc:596] [t1.0x0x0_TC0@289]: [RPA debug] seq_idx=0
+I0701 05:54:45.651441   22030 llo_log_report_handler.cc:596] [t1.0x0x0_TC0@289]: [RPA debug] bq_idx=1
+I0701 05:54:45.651590   22030 llo_log_report_handler.cc:596] [t1.0x0x0_TC0@289]: [RPA debug] bkv_idx=0
+I0701 05:54:45.651746   22030 llo_log_report_handler.cc:596] [t1.0x0x0_TC0@289]: [RPA debug] -----------start_send_bo-----------
+I0701 05:54:45.651906   22030 llo_log_report_handler.cc:596] [t1.0x0x0_TC0@289]: [RPA debug] seq_idx=0
+I0701 05:54:45.652056   22030 llo_log_report_handler.cc:596] [t1.0x0x0_TC0@289]: [RPA debug] bo_idx=1
+I0701 05:54:45.652204   22030 llo_log_report_handler.cc:596] [t1.0x0x0_TC0@289]: [RPA debug] bo_sem_idx=1
+I0701 05:54:45.652354   22030 llo_log_report_handler.cc:596] [t1.0x0x0_TC0@289]: [RPA debug] q_len_start=64
+I0701 05:54:45.652503   22030 llo_log_report_handler.cc:596] [t1.0x0x0_TC0@289]: [RPA debug] q_end=128
+I0701 05:54:45.652655   22030 llo_log_report_handler.cc:596] [t1.0x0x0_TC0@289]: [RPA debug] sz=64
+I0701 05:54:45.652815   22030 llo_log_report_handler.cc:596] [t1.0x0x0_TC0@289]: [RPA debug] -----------wait_send_bo-----------
+I0701 05:54:45.652967   22030 llo_log_report_handler.cc:596] [t1.0x0x0_TC0@289]: [RPA debug] seq_idx=0
+I0701 05:54:45.653116   22030 llo_log_report_handler.cc:596] [t1.0x0x0_TC0@289]: [RPA debug] bo_idx=0
+I0701 05:54:45.653265   22030 llo_log_report_handler.cc:596] [t1.0x0x0_TC0@289]: [RPA debug] bo_sem_idx=0
+I0701 05:54:45.653414   22030 llo_log_report_handler.cc:596] [t1.0x0x0_TC0@289]: [RPA debug] q_len_start=0
+I0701 05:54:45.653563   22030 llo_log_report_handler.cc:596] [t1.0x0x0_TC0@289]: [RPA debug] q_end=128
+I0701 05:54:45.653712   22030 llo_log_report_handler.cc:596] [t1.0x0x0_TC0@289]: [RPA debug] sz=64
+I0701 05:54:45.653868   22030 llo_log_report_handler.cc:596] [t1.0x0x0_TC0@289]: [RPA debug] -----------wait_send_bo-----------
+I0701 05:54:45.654023   22030 llo_log_report_handler.cc:596] [t1.0x0x0_TC0@289]: [RPA debug] seq_idx=0
+I0701 05:54:45.654172   22030 llo_log_report_handler.cc:596] [t1.0x0x0_TC0@289]: [RPA debug] bo_idx=1
+I0701 05:54:45.654324   22030 llo_log_report_handler.cc:596] [t1.0x0x0_TC0@289]: [RPA debug] bo_sem_idx=1
+I0701 05:54:45.654474   22030 llo_log_report_handler.cc:596] [t1.0x0x0_TC0@289]: [RPA debug] q_len_start=64
+I0701 05:54:45.654622   22030 llo_log_report_handler.cc:596] [t1.0x0x0_TC0@289]: [RPA debug] q_end=128
+I0701 05:54:45.654772   22030 llo_log_report_handler.cc:596] [t1.0x0x0_TC0@289]: [RPA debug] sz=64
+I0701 05:54:45.654925   22030 llo_log_report_handler.cc:596] [t1.0x0x0_TC0@289]: [RPA debug] -----------wait_update_kv_cache-----------
+I0701 05:54:45.655077   22030 llo_log_report_handler.cc:596] [t1.0x0x0_TC0@289]: [RPA debug] seq_idx=0
+I0701 05:54:45.655237   22030 llo_log_report_handler.cc:596] [t1.0x0x0_TC0@289]: [RPA debug] bkv_sem_idx=1
+I0701 05:54:45.655393   22030 llo_log_report_handler.cc:596] [t1.0x0x0_TC0@289]: [RPA debug] offset=116
+I0701 05:54:45.655546   22030 llo_log_report_handler.cc:596] [t1.0x0x0_TC0@289]: [RPA debug] update_sz=64
+I0701 05:54:45.655698   22030 llo_log_report_handler.cc:596] [t1.0x0x0_TC0@289]: [RPA debug] bkv_id=0
+I0701 05:54:45.655858   22030 llo_log_report_handler.cc:596] [t1.0x0x0_TC0@289]: [RPA debug] kv_p_start=7
+I0701 05:54:45.656021   22030 llo_log_report_handler.cc:596] [t1.0x0x0_TC0@289]: [RPA debug] kv_p_end=12
+I0701 05:54:45.656170   22030 llo_log_report_handler.cc:596] [t1.0x0x0_TC0@289]: [RPA debug] ignore=4
+I0701 05:54:45.656319   22030 llo_log_report_handler.cc:596] [t1.0x0x0_TC0@289]: [RPA debug] p_ignore=7
+I0701 05:54:45.656468   22030 llo_log_report_handler.cc:596] [t1.0x0x0_TC0@289]: [RPA debug] page_indices_offset=7

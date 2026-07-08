@@ -1,0 +1,789 @@
+===================================================================================================================== FAILURES ======================================================================================================================
+_________________________________________________________________________________ RaggedPagedAttentionKernelTest.test_ragged_paged_attention_mega_kernel_multiseq0 __________________________________________________________________________________
+
+self = <tests.kernels.ragged_paged_attention_kernel_v3_test.RaggedPagedAttentionKernelTest testMethod=test_ragged_paged_attention_mega_kernel_multiseq0>, block_sizes = (64, 256, 32, 128)
+
+    @parameterized.product(
+        block_sizes=[
+            (64, 256, 32, 128),   # bq_sz=64 (multiple of 8)
+            (256, 1024, 128, 512),  # production config
+        ],
+    )
+    def test_ragged_paged_attention_mega_kernel_multiseq(self, block_sizes):
+        """mega_kernel=True must match the Qwen3-style baseline (proj→rms_norm→apply_rope).
+    
+        Three sequences with varying q_len / kv_len (including past-context cache).
+        Positions are sequence-local so RoPE angles agree with the kernel's
+        internal computation.
+        """
+        if not jtu.is_device_tpu_at_least(version=4):
+            self.skipTest("Expect TPUv4+")
+        dtype = jnp.bfloat16
+        # Seq lengths chosen so all cu_q boundaries are divisible by 8.
+        seq_lens = [(192, 328), (128, 180), (64, 255)]
+        num_q_heads, num_kv_heads = 32, 8
+        head_dim = 128
+        hidden_size = 512  # must be divisible by 128
+        page_size = 16
+        num_pages = 200
+        rope_theta = 1000000.0
+        bq_sz, bkv_sz, bq_csz, bkv_csz = block_sizes
+    
+        rng = np.random.default_rng(1234)
+    
+        def gen(shape):
+            return jnp.array(rng.random(size=shape, dtype=np.float32)).astype(dtype)
+    
+        cu_q_lens = [0]
+        kv_lens_list = []
+        for q_len, kv_len in seq_lens:
+            cu_q_lens.append(cu_q_lens[-1] + q_len)
+            kv_lens_list.append(kv_len)
+    
+        total_q = cu_q_lens[-1]
+        # max_tokens must be a multiple of bkv_sz for mega_kernel.
+        max_tokens = max(align_to(total_q, bkv_sz), bkv_sz)
+        max_num_seq = max(align_to(len(seq_lens), 8), 8)
+        max_kv_len = max(kv_lens_list)
+        pages_per_seq = cdiv(max_kv_len, page_size)
+        kv_packing = get_dtype_packing(dtype)
+        padded_head = align_to(head_dim, 128)
+        num_kv_x2 = align_to(num_kv_heads * 2, kv_packing)
+    
+        x = gen((max_tokens, hidden_size))
+    
+        # Build baseline q/k/v per-sequence via proj+norm+rope.
+        q_parts, k_parts, v_parts = [], [], []
+        w_q = qn_scale = w_k = kn_scale = w_v = None
+        for i, (q_len, _) in enumerate(seq_lens):
+            q_start = cu_q_lens[i]
+            positions = jnp.arange(q_len, dtype=jnp.int32)
+            q_i, k_i, v_i, w_q, qn_scale, w_k, kn_scale, w_v = _build_qkv_baseline(
+                x[q_start:q_start + q_len], hidden_size, num_q_heads, num_kv_heads,
+                head_dim, rope_theta, positions, dtype)
+            q_parts.append(q_i)
+            k_parts.append(k_i)
+            v_parts.append(v_i)
+        zeros_kv = jnp.zeros((max_tokens - total_q, num_kv_heads, head_dim), dtype=dtype)
+        q_proj = jnp.pad(
+            jnp.concatenate(q_parts, axis=0),
+            ((0, max_tokens - total_q), (0, 0), (0, 0)),
+        )
+        k_proj = jnp.concatenate(k_parts + [zeros_kv], axis=0)
+        v_proj = jnp.concatenate(v_parts + [zeros_kv], axis=0)
+    
+        page_cnt = 0
+        page_indices_list = []
+        kv_pages_list = []
+        for kv_len in kv_lens_list:
+            kv = gen((kv_len, num_kv_x2 // kv_packing, kv_packing, padded_head))
+            kv = jnp.pad(
+                kv,
+                ((0, cdiv(kv_len, page_size) * page_size - kv_len), (0, 0), (0, 0), (0, 0)),
+                constant_values=jnp.nan,
+            ).reshape(-1, page_size, num_kv_x2 // kv_packing, kv_packing, padded_head)
+            indices = page_cnt + jnp.arange(kv.shape[0], dtype=jnp.int32)
+            indices = jnp.pad(indices, (0, pages_per_seq - indices.shape[0]),
+                              constant_values=0)
+            page_indices_list.append(indices)
+            page_cnt += kv.shape[0]
+            kv_pages_list.append(kv)
+    
+        kv_cache = jnp.concatenate(kv_pages_list, axis=0)
+        kv_cache = jnp.pad(kv_cache,
+                           ((0, num_pages - kv_cache.shape[0]),
+                            (0, 0), (0, 0), (0, 0), (0, 0)),
+                           constant_values=jnp.nan)
+        page_indices = jnp.stack(page_indices_list, axis=0)
+        page_indices = jnp.pad(page_indices,
+                               ((0, max_num_seq - page_indices.shape[0]), (0, 0)),
+                               constant_values=0).reshape(-1)
+    
+        cu_q = jnp.array(cu_q_lens, dtype=jnp.int32)
+        cu_q = jnp.pad(cu_q, (0, max_num_seq + 1 - cu_q.shape[0]))
+        kv_lens = jnp.array(kv_lens_list, dtype=jnp.int32)
+        kv_lens = jnp.pad(kv_lens, (0, max_num_seq - kv_lens.shape[0]))
+        distribution = jnp.array([0, 0, len(seq_lens)], dtype=jnp.int32)
+    
+        common = dict(
+            sm_scale=head_dim ** -0.5,
+            m_block_sizes=(bq_sz, bkv_sz, bq_csz, bkv_csz),
+        )
+    
+        kv_cache_np = np.array(kv_cache)
+    
+        # Baseline: pre-projected+normed+roped q/k/v via ref.
+        out_base = ref_ragged_paged_attention(
+            jnp.array(np.array(q_proj)), jnp.array(np.array(k_proj)),
+            jnp.array(np.array(v_proj)),
+            jnp.array(kv_cache_np), kv_lens, page_indices, cu_q, distribution,
+            sm_scale=common['sm_scale'],
+        )
+        attn_base = jax.device_get(out_base[0])
+    
+        # Fused: kernel computes proj+norm+rope internally.
+        out_fused = ragged_paged_attention(
+            jnp.zeros_like(q_proj), jnp.zeros_like(k_proj), jnp.zeros_like(v_proj),
+            jnp.array(kv_cache_np),
+            kv_lens, page_indices, cu_q, distribution,
+            **common,
+            rope_theta=rope_theta,
+            mega_kernel=True,
+            x=x,
+            w_q=w_q,
+            qn_scale=qn_scale,
+            w_k=w_k,
+            kn_scale=kn_scale,
+            w_v=w_v,
+        )
+        attn_fused = jax.device_get(out_fused[0])
+    
+>       self.assertAllClose(attn_fused[:total_q], attn_base[:total_q], atol=0.05, rtol=0.05)
+
+tests/kernels/ragged_paged_attention_kernel_v3_test.py:738: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _
+../vllm_env/lib/python3.12/site-packages/jax/_src/test_util.py:1369: in assertAllClose
+    self.assertArraysAllClose(actual, desired, check_dtypes=False, atol=atol, rtol=rtol,
+../vllm_env/lib/python3.12/site-packages/jax/_src/test_util.py:1332: in assertArraysAllClose
+    _assert_numpy_allclose(actual, desired, atol=atol, rtol=rtol, err_msg=err_msg)
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _
+
+a = array([[[0.50390625, 0.46875   , 0.51171875, ..., 0.5078125 ,
+         0.45117188, 0.50390625],
+        [0.49609375, 0...4062, 0.51953125, 0.4765625 , ..., 0.484375  ,
+         0.49609375, 0.50390625]]], shape=(384, 32, 128), dtype=float32)
+b = array([[[ 0.49804688,  0.45507812,  0.49804688, ...,  0.5       ,
+          0.43164062,  0.49023438],
+        [ 0.4082...  0.13183594, -0.04833984, ...,  0.19921875,
+         -0.01428223,  0.04467773]]], shape=(384, 32, 128), dtype=float32)
+atol = 0.05, rtol = 0.05, err_msg = ''
+
+    def _assert_numpy_allclose(a, b, atol=None, rtol=None, err_msg=''):
+      if a.dtype == b.dtype == _dtypes.float0:
+        np.testing.assert_array_equal(a, b, err_msg=err_msg)
+        return
+    
+      custom_float_dtypes = [
+        _dtypes.float4_e2m1fn,
+        _dtypes.float8_e8m0fnu,
+        _dtypes.float8_e3m4,
+        _dtypes.float8_e4m3,
+        _dtypes.float8_e4m3b11fnuz,
+        _dtypes.float8_e4m3fn,
+        _dtypes.float8_e4m3fnuz,
+        _dtypes.float8_e5m2,
+        _dtypes.float8_e5m2fnuz,
+        _dtypes.bfloat16,
+      ]
+    
+      def maybe_upcast(x):
+        if x.dtype in custom_float_dtypes:
+          return x.astype(np.float32)
+        # TODO(reedwm): Upcasting int2/int4 to int8 will no longer be necessary once
+        # JAX depends on a version of ml_dtypes which contains
+        # https://github.com/jax-ml/ml_dtypes/commit/348fd3704306cae97f617c38045cee6bc416bf10.
+        if x.dtype in _dtypes._intn_dtypes:
+          return x.astype(np.int8 if _dtypes.iinfo(x.dtype).min < 0 else np.uint8)
+        return x
+    
+      a = maybe_upcast(a)
+      b = maybe_upcast(b)
+    
+      kw = {}
+      if atol: kw["atol"] = atol
+      if rtol: kw["rtol"] = rtol
+      with np.errstate(invalid='ignore'):
+        # TODO(phawkins): surprisingly, assert_allclose sometimes reports invalid
+        # value errors. It should not do that.
+>       np.testing.assert_allclose(a, b, **kw, err_msg=err_msg)
+E       AssertionError: 
+E       Not equal to tolerance rtol=0.05, atol=0.05
+E       
+E       Mismatched elements: 1527839 / 1572864 (97.1%)
+E       Max absolute difference among violations: 1.171875
+E       Max relative difference among violations: 2.556528e+07
+E        ACTUAL: array([[[0.503906, 0.46875 , 0.511719, ..., 0.507812, 0.451172,
+E                0.503906],
+E               [0.496094, 0.457031, 0.511719, ..., 0.515625, 0.429688,...
+E        DESIRED: array([[[ 0.498047,  0.455078,  0.498047, ...,  0.5     ,  0.431641,
+E                 0.490234],
+E               [ 0.408203,  0.419922,  0.394531, ...,  0.435547,  0.326172,...
+
+../vllm_env/lib/python3.12/site-packages/jax/_src/public_test_util.py:147: AssertionError
+_________________________________________________________________________________ RaggedPagedAttentionKernelTest.test_ragged_paged_attention_mega_kernel_multiseq1 __________________________________________________________________________________
+
+self = <tests.kernels.ragged_paged_attention_kernel_v3_test.RaggedPagedAttentionKernelTest testMethod=test_ragged_paged_attention_mega_kernel_multiseq1>, block_sizes = (256, 1024, 128, 512)
+
+    @parameterized.product(
+        block_sizes=[
+            (64, 256, 32, 128),   # bq_sz=64 (multiple of 8)
+            (256, 1024, 128, 512),  # production config
+        ],
+    )
+    def test_ragged_paged_attention_mega_kernel_multiseq(self, block_sizes):
+        """mega_kernel=True must match the Qwen3-style baseline (proj→rms_norm→apply_rope).
+    
+        Three sequences with varying q_len / kv_len (including past-context cache).
+        Positions are sequence-local so RoPE angles agree with the kernel's
+        internal computation.
+        """
+        if not jtu.is_device_tpu_at_least(version=4):
+            self.skipTest("Expect TPUv4+")
+        dtype = jnp.bfloat16
+        # Seq lengths chosen so all cu_q boundaries are divisible by 8.
+        seq_lens = [(192, 328), (128, 180), (64, 255)]
+        num_q_heads, num_kv_heads = 32, 8
+        head_dim = 128
+        hidden_size = 512  # must be divisible by 128
+        page_size = 16
+        num_pages = 200
+        rope_theta = 1000000.0
+        bq_sz, bkv_sz, bq_csz, bkv_csz = block_sizes
+    
+        rng = np.random.default_rng(1234)
+    
+        def gen(shape):
+            return jnp.array(rng.random(size=shape, dtype=np.float32)).astype(dtype)
+    
+        cu_q_lens = [0]
+        kv_lens_list = []
+        for q_len, kv_len in seq_lens:
+            cu_q_lens.append(cu_q_lens[-1] + q_len)
+            kv_lens_list.append(kv_len)
+    
+        total_q = cu_q_lens[-1]
+        # max_tokens must be a multiple of bkv_sz for mega_kernel.
+        max_tokens = max(align_to(total_q, bkv_sz), bkv_sz)
+        max_num_seq = max(align_to(len(seq_lens), 8), 8)
+        max_kv_len = max(kv_lens_list)
+        pages_per_seq = cdiv(max_kv_len, page_size)
+        kv_packing = get_dtype_packing(dtype)
+        padded_head = align_to(head_dim, 128)
+        num_kv_x2 = align_to(num_kv_heads * 2, kv_packing)
+    
+        x = gen((max_tokens, hidden_size))
+    
+        # Build baseline q/k/v per-sequence via proj+norm+rope.
+        q_parts, k_parts, v_parts = [], [], []
+        w_q = qn_scale = w_k = kn_scale = w_v = None
+        for i, (q_len, _) in enumerate(seq_lens):
+            q_start = cu_q_lens[i]
+            positions = jnp.arange(q_len, dtype=jnp.int32)
+            q_i, k_i, v_i, w_q, qn_scale, w_k, kn_scale, w_v = _build_qkv_baseline(
+                x[q_start:q_start + q_len], hidden_size, num_q_heads, num_kv_heads,
+                head_dim, rope_theta, positions, dtype)
+            q_parts.append(q_i)
+            k_parts.append(k_i)
+            v_parts.append(v_i)
+        zeros_kv = jnp.zeros((max_tokens - total_q, num_kv_heads, head_dim), dtype=dtype)
+        q_proj = jnp.pad(
+            jnp.concatenate(q_parts, axis=0),
+            ((0, max_tokens - total_q), (0, 0), (0, 0)),
+        )
+        k_proj = jnp.concatenate(k_parts + [zeros_kv], axis=0)
+        v_proj = jnp.concatenate(v_parts + [zeros_kv], axis=0)
+    
+        page_cnt = 0
+        page_indices_list = []
+        kv_pages_list = []
+        for kv_len in kv_lens_list:
+            kv = gen((kv_len, num_kv_x2 // kv_packing, kv_packing, padded_head))
+            kv = jnp.pad(
+                kv,
+                ((0, cdiv(kv_len, page_size) * page_size - kv_len), (0, 0), (0, 0), (0, 0)),
+                constant_values=jnp.nan,
+            ).reshape(-1, page_size, num_kv_x2 // kv_packing, kv_packing, padded_head)
+            indices = page_cnt + jnp.arange(kv.shape[0], dtype=jnp.int32)
+            indices = jnp.pad(indices, (0, pages_per_seq - indices.shape[0]),
+                              constant_values=0)
+            page_indices_list.append(indices)
+            page_cnt += kv.shape[0]
+            kv_pages_list.append(kv)
+    
+        kv_cache = jnp.concatenate(kv_pages_list, axis=0)
+        kv_cache = jnp.pad(kv_cache,
+                           ((0, num_pages - kv_cache.shape[0]),
+                            (0, 0), (0, 0), (0, 0), (0, 0)),
+                           constant_values=jnp.nan)
+        page_indices = jnp.stack(page_indices_list, axis=0)
+        page_indices = jnp.pad(page_indices,
+                               ((0, max_num_seq - page_indices.shape[0]), (0, 0)),
+                               constant_values=0).reshape(-1)
+    
+        cu_q = jnp.array(cu_q_lens, dtype=jnp.int32)
+        cu_q = jnp.pad(cu_q, (0, max_num_seq + 1 - cu_q.shape[0]))
+        kv_lens = jnp.array(kv_lens_list, dtype=jnp.int32)
+        kv_lens = jnp.pad(kv_lens, (0, max_num_seq - kv_lens.shape[0]))
+        distribution = jnp.array([0, 0, len(seq_lens)], dtype=jnp.int32)
+    
+        common = dict(
+            sm_scale=head_dim ** -0.5,
+            m_block_sizes=(bq_sz, bkv_sz, bq_csz, bkv_csz),
+        )
+    
+        kv_cache_np = np.array(kv_cache)
+    
+        # Baseline: pre-projected+normed+roped q/k/v via ref.
+        out_base = ref_ragged_paged_attention(
+            jnp.array(np.array(q_proj)), jnp.array(np.array(k_proj)),
+            jnp.array(np.array(v_proj)),
+            jnp.array(kv_cache_np), kv_lens, page_indices, cu_q, distribution,
+            sm_scale=common['sm_scale'],
+        )
+        attn_base = jax.device_get(out_base[0])
+    
+        # Fused: kernel computes proj+norm+rope internally.
+        out_fused = ragged_paged_attention(
+            jnp.zeros_like(q_proj), jnp.zeros_like(k_proj), jnp.zeros_like(v_proj),
+            jnp.array(kv_cache_np),
+            kv_lens, page_indices, cu_q, distribution,
+            **common,
+            rope_theta=rope_theta,
+            mega_kernel=True,
+            x=x,
+            w_q=w_q,
+            qn_scale=qn_scale,
+            w_k=w_k,
+            kn_scale=kn_scale,
+            w_v=w_v,
+        )
+        attn_fused = jax.device_get(out_fused[0])
+    
+>       self.assertAllClose(attn_fused[:total_q], attn_base[:total_q], atol=0.05, rtol=0.05)
+
+tests/kernels/ragged_paged_attention_kernel_v3_test.py:738: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _
+../vllm_env/lib/python3.12/site-packages/jax/_src/test_util.py:1369: in assertAllClose
+    self.assertArraysAllClose(actual, desired, check_dtypes=False, atol=atol, rtol=rtol,
+../vllm_env/lib/python3.12/site-packages/jax/_src/test_util.py:1332: in assertArraysAllClose
+    _assert_numpy_allclose(actual, desired, atol=atol, rtol=rtol, err_msg=err_msg)
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _
+
+a = array([[[0.49609375, 0.52734375, 0.53515625, ..., 0.49804688,
+         0.52734375, 0.45703125],
+        [0.4921875 , 0...9375, 0.49609375, 0.49609375, ..., 0.50390625,
+         0.50390625, 0.49609375]]], shape=(384, 32, 128), dtype=float32)
+b = array([[[ 0.48046875,  0.5078125 ,  0.5234375 , ...,  0.4921875 ,
+          0.50390625,  0.4453125 ],
+        [ 0.4023...  0.12695312, -0.05004883, ...,  0.19726562,
+         -0.01599121,  0.04321289]]], shape=(384, 32, 128), dtype=float32)
+atol = 0.05, rtol = 0.05, err_msg = ''
+
+    def _assert_numpy_allclose(a, b, atol=None, rtol=None, err_msg=''):
+      if a.dtype == b.dtype == _dtypes.float0:
+        np.testing.assert_array_equal(a, b, err_msg=err_msg)
+        return
+    
+      custom_float_dtypes = [
+        _dtypes.float4_e2m1fn,
+        _dtypes.float8_e8m0fnu,
+        _dtypes.float8_e3m4,
+        _dtypes.float8_e4m3,
+        _dtypes.float8_e4m3b11fnuz,
+        _dtypes.float8_e4m3fn,
+        _dtypes.float8_e4m3fnuz,
+        _dtypes.float8_e5m2,
+        _dtypes.float8_e5m2fnuz,
+        _dtypes.bfloat16,
+      ]
+    
+      def maybe_upcast(x):
+        if x.dtype in custom_float_dtypes:
+          return x.astype(np.float32)
+        # TODO(reedwm): Upcasting int2/int4 to int8 will no longer be necessary once
+        # JAX depends on a version of ml_dtypes which contains
+        # https://github.com/jax-ml/ml_dtypes/commit/348fd3704306cae97f617c38045cee6bc416bf10.
+        if x.dtype in _dtypes._intn_dtypes:
+          return x.astype(np.int8 if _dtypes.iinfo(x.dtype).min < 0 else np.uint8)
+        return x
+    
+      a = maybe_upcast(a)
+      b = maybe_upcast(b)
+    
+      kw = {}
+      if atol: kw["atol"] = atol
+      if rtol: kw["rtol"] = rtol
+      with np.errstate(invalid='ignore'):
+        # TODO(phawkins): surprisingly, assert_allclose sometimes reports invalid
+        # value errors. It should not do that.
+>       np.testing.assert_allclose(a, b, **kw, err_msg=err_msg)
+E       AssertionError: 
+E       Not equal to tolerance rtol=0.05, atol=0.05
+E       
+E       Mismatched elements: 1547328 / 1572864 (98.4%)
+E       Max absolute difference among violations: 1.1796875
+E       Max relative difference among violations: 1.4364808e+07
+E        ACTUAL: array([[[0.496094, 0.527344, 0.535156, ..., 0.498047, 0.527344,
+E                0.457031],
+E               [0.492188, 0.511719, 0.53125 , ..., 0.488281, 0.507812,...
+E        DESIRED: array([[[ 0.480469,  0.507812,  0.523438, ...,  0.492188,  0.503906,
+E                 0.445312],
+E               [ 0.402344,  0.474609,  0.421875, ...,  0.419922,  0.388672,...
+
+../vllm_env/lib/python3.12/site-packages/jax/_src/public_test_util.py:147: AssertionError
+____________________________________________________________________________________ RaggedPagedAttentionKernelTest.test_ragged_paged_attention_qkvproj_fusion0 _____________________________________________________________________________________
+
+self = <tests.kernels.ragged_paged_attention_kernel_v3_test.RaggedPagedAttentionKernelTest testMethod=test_ragged_paged_attention_qkvproj_fusion0>, block_sizes = (64, 256, 32, 128)
+
+    @parameterized.product(
+        block_sizes=[
+            (64, 256, 32, 128),     # bq_sz=64
+            (256, 1024, 128, 512),  # production config
+        ],
+    )
+    def test_ragged_paged_attention_qkvproj_fusion(self, block_sizes):
+        """mega_kernel=True must match the Qwen3Attention-style baseline.
+    
+        Baseline (non-fused): proj → rms_norm → apply_rope externally, then
+        kernel called with rope_theta=0 (no internal rope).
+        Fused: zeros q/k/v → kernel called with rope_theta, mega_kernel=True,
+        all weights passed in.
+    
+        Single-sequence fresh prefill so kernel Q/K positions (both 0-indexed
+        from sequence start) agree with the external apply_rope positions.
+        """
+        if not jtu.is_device_tpu_at_least(version=4):
+            self.skipTest("Expect TPUv4+")
+        dtype = jnp.bfloat16
+        q_len = 384
+        num_q_heads, num_kv_heads = 32, 8
+        head_dim = 128
+        hidden_size = 512  # must be divisible by 128
+        page_size = 16
+        num_pages = 64
+        rope_theta = 1000000.0  # Qwen3 default
+        bq_sz, bkv_sz, bq_csz, bkv_csz = block_sizes
+    
+        np_rng = np.random.default_rng(5678)
+    
+        def gen(shape):
+            return jnp.array(np_rng.random(size=shape, dtype=np.float32)).astype(dtype)
+    
+        # must be a multiple of bkv_sz: mega_kernel DMAs exactly bkv_sz rows of x.
+        max_tokens = align_to(max(align_to(q_len, 128), 512), bkv_sz)
+        max_num_seq = 8
+        pages_per_seq = cdiv(q_len, page_size)
+        kv_packing = get_dtype_packing(dtype)
+        padded_head = align_to(head_dim, 128)
+        num_kv_x2 = align_to(num_kv_heads * 2, kv_packing)
+    
+        x = gen((max_tokens, hidden_size))
+        positions = jnp.arange(q_len, dtype=jnp.int32)
+    
+        # ── Baseline: Qwen3Attention non-fused path via actual sub-layers ──
+        q_valid, k_valid, v_valid, w_q, qn_scale, w_k, kn_scale, w_v = (
+            _build_qkv_baseline(
+                x[:q_len], hidden_size, num_q_heads, num_kv_heads,
+                head_dim, rope_theta, positions, dtype,
+            )
+        )
+        pad = ((0, max_tokens - q_len), (0, 0), (0, 0))
+        q_proj = jnp.pad(q_valid, pad)
+        k_proj = jnp.pad(k_valid, pad)
+        v_proj = jnp.pad(v_valid, pad)
+    
+        # ── Build KV cache and index arrays ────────────────────────────────
+        kv_cache = jnp.zeros(
+            (num_pages, page_size, num_kv_x2 // kv_packing, kv_packing, padded_head),
+            dtype=dtype,
+        )
+        page_indices = jnp.pad(
+            jnp.arange(pages_per_seq, dtype=jnp.int32),
+            (0, max_num_seq * pages_per_seq - pages_per_seq))
+    
+        cu_q = jnp.pad(jnp.array([0, q_len], dtype=jnp.int32),
+                       (0, max_num_seq + 1 - 2))
+        kv_lens = jnp.pad(jnp.array([q_len], dtype=jnp.int32),
+                          (0, max_num_seq - 1))
+        distribution = jnp.array([0, 0, 1], dtype=jnp.int32)
+    
+        common = dict(
+            sm_scale=head_dim ** -0.5,
+            m_block_sizes=(bq_sz, bkv_sz, bq_csz, bkv_csz),
+        )
+    
+        kv_cache_np = np.array(kv_cache)
+        q_proj_np = np.array(q_proj)
+        k_proj_np = np.array(k_proj)
+        v_proj_np = np.array(v_proj)
+    
+        # Baseline: pre-projected + roped q/k/v via ref (not JIT-compiled,
+        # avoids re-trace conflict with the fused ragged_paged_attention call).
+        out_base = ref_ragged_paged_attention(
+            jnp.array(q_proj_np), jnp.array(k_proj_np), jnp.array(v_proj_np),
+            jnp.array(kv_cache_np), kv_lens, page_indices, cu_q, distribution,
+            sm_scale=common['sm_scale'],
+        )
+        attn_base = jax.device_get(out_base[0])
+    
+        # Fused: kernel computes proj + rms_norm + rope internally.
+        out_fused = ragged_paged_attention(
+            jnp.zeros_like(q_proj), jnp.zeros_like(k_proj), jnp.zeros_like(v_proj),
+            jnp.array(kv_cache_np), kv_lens, page_indices, cu_q, distribution,
+            **common,
+            rope_theta=rope_theta,
+            mega_kernel=True,
+            x=x,
+            w_q=w_q,
+            qn_scale=qn_scale,
+            w_k=w_k,
+            kn_scale=kn_scale,
+            w_v=w_v,
+        )
+        attn_fused = jax.device_get(out_fused[0])
+    
+>       self.assertAllClose(attn_fused[:q_len], attn_base[:q_len], atol=0.05, rtol=0.05)
+
+tests/kernels/ragged_paged_attention_kernel_v3_test.py:851: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _
+../vllm_env/lib/python3.12/site-packages/jax/_src/test_util.py:1369: in assertAllClose
+    self.assertArraysAllClose(actual, desired, check_dtypes=False, atol=atol, rtol=rtol,
+../vllm_env/lib/python3.12/site-packages/jax/_src/test_util.py:1332: in assertArraysAllClose
+    _assert_numpy_allclose(actual, desired, atol=atol, rtol=rtol, err_msg=err_msg)
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _
+
+a = array([[[ 0.01403809,  0.02185059, -0.27539062, ...,  0.13574219,
+         -0.06982422, -0.17089844],
+        [ 0.0140...  0.06884766, -0.09521484, ...,  0.21289062,
+         -0.07226562, -0.00213623]]], shape=(384, 32, 128), dtype=float32)
+b = array([[[ 0.01403809,  0.02185059, -0.27539062, ...,  0.13574219,
+         -0.06982422, -0.17089844],
+        [ 0.0140...  0.06884766, -0.09472656, ...,  0.21191406,
+         -0.07226562, -0.00213623]]], shape=(384, 32, 128), dtype=float32)
+atol = 0.05, rtol = 0.05, err_msg = ''
+
+    def _assert_numpy_allclose(a, b, atol=None, rtol=None, err_msg=''):
+      if a.dtype == b.dtype == _dtypes.float0:
+        np.testing.assert_array_equal(a, b, err_msg=err_msg)
+        return
+    
+      custom_float_dtypes = [
+        _dtypes.float4_e2m1fn,
+        _dtypes.float8_e8m0fnu,
+        _dtypes.float8_e3m4,
+        _dtypes.float8_e4m3,
+        _dtypes.float8_e4m3b11fnuz,
+        _dtypes.float8_e4m3fn,
+        _dtypes.float8_e4m3fnuz,
+        _dtypes.float8_e5m2,
+        _dtypes.float8_e5m2fnuz,
+        _dtypes.bfloat16,
+      ]
+    
+      def maybe_upcast(x):
+        if x.dtype in custom_float_dtypes:
+          return x.astype(np.float32)
+        # TODO(reedwm): Upcasting int2/int4 to int8 will no longer be necessary once
+        # JAX depends on a version of ml_dtypes which contains
+        # https://github.com/jax-ml/ml_dtypes/commit/348fd3704306cae97f617c38045cee6bc416bf10.
+        if x.dtype in _dtypes._intn_dtypes:
+          return x.astype(np.int8 if _dtypes.iinfo(x.dtype).min < 0 else np.uint8)
+        return x
+    
+      a = maybe_upcast(a)
+      b = maybe_upcast(b)
+    
+      kw = {}
+      if atol: kw["atol"] = atol
+      if rtol: kw["rtol"] = rtol
+      with np.errstate(invalid='ignore'):
+        # TODO(phawkins): surprisingly, assert_allclose sometimes reports invalid
+        # value errors. It should not do that.
+>       np.testing.assert_allclose(a, b, **kw, err_msg=err_msg)
+E       AssertionError: 
+E       Not equal to tolerance rtol=0.05, atol=0.05
+E       
+E       Mismatched elements: 582 / 1572864 (0.037%)
+E       Max absolute difference among violations: 0.13305664
+E       Max relative difference among violations: 282.971
+E        ACTUAL: array([[[ 0.014038,  0.021851, -0.275391, ...,  0.135742, -0.069824,
+E                -0.170898],
+E               [ 0.014038,  0.021851, -0.275391, ...,  0.135742, -0.069824,...
+E        DESIRED: array([[[ 0.014038,  0.021851, -0.275391, ...,  0.135742, -0.069824,
+E                -0.170898],
+E               [ 0.014038,  0.021851, -0.275391, ...,  0.135742, -0.069824,...
+
+../vllm_env/lib/python3.12/site-packages/jax/_src/public_test_util.py:147: AssertionError
+________________________________________________________________________________ RaggedPagedAttentionKernelTest.test_ragged_paged_attention_qkvproj_multiseq_fusion0 ________________________________________________________________________________
+
+self = <tests.kernels.ragged_paged_attention_kernel_v3_test.RaggedPagedAttentionKernelTest testMethod=test_ragged_paged_attention_qkvproj_multiseq_fusion0>, block_sizes = (64, 256, 32, 128)
+
+    @parameterized.product(
+        block_sizes=[
+            (64, 256, 32, 128),
+            (256, 1024, 128, 512),
+        ],
+    )
+    def test_ragged_paged_attention_qkvproj_multiseq_fusion(self, block_sizes):
+        """mega_kernel=True with 2 sequences: K RoPE positions must be
+        sequence-local, not batch-global x-array offsets."""
+        if not jtu.is_device_tpu_at_least(version=4):
+            self.skipTest("Expect TPUv4+")
+        dtype = jnp.bfloat16
+        q_len = 192          # tokens per sequence (fresh prefill)
+        num_seqs = 2
+        total_q = q_len * num_seqs
+        num_q_heads, num_kv_heads = 32, 8
+        head_dim = 128
+        hidden_size = 512
+        page_size = 16
+        rope_theta = 1000000.0
+        bq_sz, bkv_sz, bq_csz, bkv_csz = block_sizes
+    
+        np_rng = np.random.default_rng(9999)
+    
+        def gen(shape):
+            return jnp.array(np_rng.random(size=shape, dtype=np.float32)).astype(dtype)
+    
+        # max_tokens must be a multiple of bkv_sz for mega_kernel.
+        max_tokens = align_to(max(total_q, bkv_sz), bkv_sz)
+        max_num_seq = 8
+        pages_per_seq = cdiv(q_len, page_size)
+        num_pages = num_seqs * pages_per_seq + 4
+        kv_packing = get_dtype_packing(dtype)
+        padded_head = align_to(head_dim, 128)
+        num_kv_x2 = align_to(num_kv_heads * 2, kv_packing)
+    
+        # x is packed: x[0:q_len]=seq0 tokens, x[q_len:2*q_len]=seq1 tokens.
+        x = gen((max_tokens, hidden_size))
+        positions = jnp.arange(q_len, dtype=jnp.int32)  # sequence-local 0..q_len-1
+    
+        # ── Baseline: per-sequence Q/K/V via Qwen3-style layers ──────────
+        # Both calls use nnx.Rngs(42) with identical layer order → same weights.
+        q0, k0, v0, w_q, qn_scale, w_k, kn_scale, w_v = _build_qkv_baseline(
+            x[:q_len], hidden_size, num_q_heads, num_kv_heads,
+            head_dim, rope_theta, positions, dtype,
+        )
+        q1, k1, v1, *_ = _build_qkv_baseline(
+            x[q_len:2 * q_len], hidden_size, num_q_heads, num_kv_heads,
+            head_dim, rope_theta, positions, dtype,
+        )
+    
+        zeros_q = jnp.zeros((max_tokens - total_q, num_q_heads, head_dim), dtype)
+        zeros_k = jnp.zeros((max_tokens - total_q, num_kv_heads, head_dim), dtype)
+        q_proj = jnp.concatenate([q0, q1, zeros_q], axis=0)
+        k_proj = jnp.concatenate([k0, k1, zeros_k], axis=0)
+        v_proj = jnp.concatenate([v0, v1, zeros_k], axis=0)
+    
+        # ── KV cache: seq 0 → pages 0..pps-1, seq 1 → pages pps..2*pps-1 ─
+        kv_cache = jnp.zeros(
+            (num_pages, page_size, num_kv_x2 // kv_packing, kv_packing, padded_head),
+            dtype=dtype,
+        )
+        pages_flat = jnp.concatenate([
+            jnp.arange(pages_per_seq, dtype=jnp.int32),
+            jnp.arange(pages_per_seq, 2 * pages_per_seq, dtype=jnp.int32),
+        ])
+        page_indices = jnp.pad(
+            pages_flat, (0, max_num_seq * pages_per_seq - len(pages_flat)))
+    
+        cu_q = jnp.pad(
+            jnp.array([0, q_len, total_q], dtype=jnp.int32),
+            (0, max_num_seq + 1 - (num_seqs + 1)))
+        kv_lens = jnp.pad(
+            jnp.array([q_len, q_len], dtype=jnp.int32),
+            (0, max_num_seq - num_seqs))
+        distribution = jnp.array([0, 0, num_seqs], dtype=jnp.int32)
+    
+        common = dict(
+            sm_scale=head_dim ** -0.5,
+            m_block_sizes=(bq_sz, bkv_sz, bq_csz, bkv_csz),
+        )
+    
+        kv_cache_np = np.array(kv_cache)
+    
+        out_base = ref_ragged_paged_attention(
+            jnp.array(np.array(q_proj)), jnp.array(np.array(k_proj)),
+            jnp.array(np.array(v_proj)), jnp.array(kv_cache_np),
+            kv_lens, page_indices, cu_q, distribution,
+            sm_scale=common['sm_scale'],
+        )
+        attn_base = jax.device_get(out_base[0])
+    
+        out_fused = ragged_paged_attention(
+            jnp.zeros_like(q_proj), jnp.zeros_like(k_proj), jnp.zeros_like(v_proj),
+            jnp.array(kv_cache_np), kv_lens, page_indices, cu_q, distribution,
+            **common,
+            rope_theta=rope_theta,
+            mega_kernel=True,
+            x=x,
+            w_q=w_q,
+            qn_scale=qn_scale,
+            w_k=w_k,
+            kn_scale=kn_scale,
+            w_v=w_v,
+        )
+        attn_fused = jax.device_get(out_fused[0])
+    
+>       self.assertAllClose(attn_fused[:total_q], attn_base[:total_q], atol=0.05, rtol=0.05)
+
+tests/kernels/ragged_paged_attention_kernel_v3_test.py:966: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _
+../vllm_env/lib/python3.12/site-packages/jax/_src/test_util.py:1369: in assertAllClose
+    self.assertArraysAllClose(actual, desired, check_dtypes=False, atol=atol, rtol=rtol,
+../vllm_env/lib/python3.12/site-packages/jax/_src/test_util.py:1332: in assertArraysAllClose
+    _assert_numpy_allclose(actual, desired, atol=atol, rtol=rtol, err_msg=err_msg)
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _
+
+a = array([[[-0.23242188,  0.18652344, -0.34765625, ...,  0.09130859,
+         -0.08251953, -0.16796875],
+        [-0.2324...  0.09716797, -0.08935547, ...,  0.19921875,
+         -0.0625    , -0.01031494]]], shape=(384, 32, 128), dtype=float32)
+b = array([[[-0.23242188,  0.18652344, -0.34765625, ...,  0.09130859,
+         -0.08251953, -0.16796875],
+        [-0.2324...  0.09716797, -0.08886719, ...,  0.19824219,
+         -0.06225586, -0.01031494]]], shape=(384, 32, 128), dtype=float32)
+atol = 0.05, rtol = 0.05, err_msg = ''
+
+    def _assert_numpy_allclose(a, b, atol=None, rtol=None, err_msg=''):
+      if a.dtype == b.dtype == _dtypes.float0:
+        np.testing.assert_array_equal(a, b, err_msg=err_msg)
+        return
+    
+      custom_float_dtypes = [
+        _dtypes.float4_e2m1fn,
+        _dtypes.float8_e8m0fnu,
+        _dtypes.float8_e3m4,
+        _dtypes.float8_e4m3,
+        _dtypes.float8_e4m3b11fnuz,
+        _dtypes.float8_e4m3fn,
+        _dtypes.float8_e4m3fnuz,
+        _dtypes.float8_e5m2,
+        _dtypes.float8_e5m2fnuz,
+        _dtypes.bfloat16,
+      ]
+    
+      def maybe_upcast(x):
+        if x.dtype in custom_float_dtypes:
+          return x.astype(np.float32)
+        # TODO(reedwm): Upcasting int2/int4 to int8 will no longer be necessary once
+        # JAX depends on a version of ml_dtypes which contains
+        # https://github.com/jax-ml/ml_dtypes/commit/348fd3704306cae97f617c38045cee6bc416bf10.
+        if x.dtype in _dtypes._intn_dtypes:
+          return x.astype(np.int8 if _dtypes.iinfo(x.dtype).min < 0 else np.uint8)
+        return x
+    
+      a = maybe_upcast(a)
+      b = maybe_upcast(b)
+    
+      kw = {}
+      if atol: kw["atol"] = atol
+      if rtol: kw["rtol"] = rtol
+      with np.errstate(invalid='ignore'):
+        # TODO(phawkins): surprisingly, assert_allclose sometimes reports invalid
+        # value errors. It should not do that.
+>       np.testing.assert_allclose(a, b, **kw, err_msg=err_msg)
+E       AssertionError: 
+E       Not equal to tolerance rtol=0.05, atol=0.05
+E       
+E       Mismatched elements: 4514 / 1572864 (0.287%)
+E       Max absolute difference among violations: 0.32128906
+E       Max relative difference among violations: 7795.772
+E        ACTUAL: array([[[-0.232422,  0.186523, -0.347656, ...,  0.091309, -0.08252 ,
+E                -0.167969],
+E               [-0.232422,  0.186523, -0.347656, ...,  0.091309, -0.08252 ,...
+E        DESIRED: array([[[-0.232422,  0.186523, -0.347656, ...,  0.091309, -0.08252 ,
+E                -0.167969],
+E               [-0.232422,  0.186523, -0.347656, ...,  0.091309, -0.08252 ,...
+
+../vllm_env/lib/python3.12/site-packages/jax/_src/public_test_util.py:147: AssertionError

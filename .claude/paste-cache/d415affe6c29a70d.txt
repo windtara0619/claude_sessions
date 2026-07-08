@@ -1,0 +1,76 @@
+(EngineCore pid=26997) Process EngineCore:
+(EngineCore pid=26997) Traceback (most recent call last):
+(EngineCore pid=26997)   File "/home/tarading/.local/share/uv/python/cpython-3.12.13-linux-x86_64-gnu/lib/python3.12/multiprocessing/process.py", line 314, in _bootstrap
+(EngineCore pid=26997)     self.run()
+(EngineCore pid=26997)   File "/home/tarading/.local/share/uv/python/cpython-3.12.13-linux-x86_64-gnu/lib/python3.12/multiprocessing/process.py", line 108, in run
+(EngineCore pid=26997)     self._target(*self._args, **self._kwargs)
+(EngineCore pid=26997)   File "/home/tarading/vllm/vllm/v1/engine/core.py", line 1199, in run_engine_core
+(EngineCore pid=26997)     raise e
+(EngineCore pid=26997)   File "/home/tarading/vllm/vllm/v1/engine/core.py", line 1164, in run_engine_core
+(EngineCore pid=26997)     engine_core = EngineCoreProc(*args, engine_index=dp_rank, **kwargs)
+(EngineCore pid=26997)                   ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+(EngineCore pid=26997)   File "/home/tarading/vllm/vllm/tracing/otel.py", line 178, in sync_wrapper
+(EngineCore pid=26997)     return func(*args, **kwargs)
+(EngineCore pid=26997)            ^^^^^^^^^^^^^^^^^^^^^
+(EngineCore pid=26997)   File "/home/tarading/vllm/vllm/v1/engine/core.py", line 930, in __init__
+(EngineCore pid=26997)     super().__init__(
+(EngineCore pid=26997)   File "/home/tarading/vllm/vllm/v1/engine/core.py", line 132, in __init__
+(EngineCore pid=26997)     kv_cache_config = self._initialize_kv_caches(vllm_config)
+(EngineCore pid=26997)                       ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+(EngineCore pid=26997)   File "/home/tarading/vllm/vllm/tracing/otel.py", line 178, in sync_wrapper
+(EngineCore pid=26997)     return func(*args, **kwargs)
+(EngineCore pid=26997)            ^^^^^^^^^^^^^^^^^^^^^
+(EngineCore pid=26997)   File "/home/tarading/vllm/vllm/v1/engine/core.py", line 290, in _initialize_kv_caches
+(EngineCore pid=26997)     self.model_executor.initialize_from_config(kv_cache_configs)
+(EngineCore pid=26997)   File "/home/tarading/vllm/vllm/v1/executor/abstract.py", line 124, in initialize_from_config
+(EngineCore pid=26997)     compilation_times: list[CompilationTimes] = self.collective_rpc(
+(EngineCore pid=26997)                                                 ^^^^^^^^^^^^^^^^^^^^
+(EngineCore pid=26997)   File "/home/tarading/vllm/vllm/v1/executor/uniproc_executor.py", line 92, in collective_rpc
+(EngineCore pid=26997)     result = run_method(self.driver_worker, method, args, kwargs)
+(EngineCore pid=26997)              ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+(EngineCore pid=26997)   File "/home/tarading/vllm/vllm/v1/serial_utils.py", line 510, in run_method
+(EngineCore pid=26997)     return func(*args, **kwargs)
+(EngineCore pid=26997)            ^^^^^^^^^^^^^^^^^^^^^
+(EngineCore pid=26997)   File "/home/tarading/tpu-inference/tpu_inference/worker/tpu_worker.py", line 530, in compile_or_warm_up_model
+(EngineCore pid=26997)     self.model_runner.capture_model()
+(EngineCore pid=26997)   File "/home/tarading/tpu-inference/tpu_inference/runner/tpu_runner.py", line 928, in capture_model
+(EngineCore pid=26997)     self.compilation_manager.capture_model()
+(EngineCore pid=26997)   File "/home/tarading/tpu-inference/tpu_inference/utils.py", line 404, in wrapper
+(EngineCore pid=26997)     result = func(*args, **kwargs)
+(EngineCore pid=26997)              ^^^^^^^^^^^^^^^^^^^^^
+(EngineCore pid=26997)   File "/home/tarading/tpu-inference/tpu_inference/runner/compilation_manager.py", line 220, in capture_model
+(EngineCore pid=26997)     self._flush_compilations()
+(EngineCore pid=26997)   File "/home/tarading/tpu-inference/tpu_inference/runner/compilation_manager.py", line 199, in _flush_compilations
+(EngineCore pid=26997)     out = warmup_handler(fn, args, call_kwargs)
+(EngineCore pid=26997)           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+(EngineCore pid=26997)   File "/home/tarading/tpu-inference/tpu_inference/runner/compilation_manager.py", line 421, in model_fn_warmup
+(EngineCore pid=26997)     out = self.runner.model_fn(
+(EngineCore pid=26997)           ^^^^^^^^^^^^^^^^^^^^^
+(EngineCore pid=26997)   File "/home/tarading/tpu-inference/tpu_inference/models/common/model_loader.py", line 462, in wrapped_model_fn
+(EngineCore pid=26997)     return jitted_model_fn(*args, **kwargs)
+(EngineCore pid=26997)            ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+(EngineCore pid=26997)   File "/home/tarading/tpu-inference/tpu_inference/models/common/model_loader.py", line 383, in run_model
+(EngineCore pid=26997)     return model(*args)
+(EngineCore pid=26997)            ^^^^^^^^^^^^
+(EngineCore pid=26997)   File "/home/tarading/tpu-inference/tpu_inference/models/jax/qwen3.py", line 381, in __call__
+(EngineCore pid=26997)     kv_caches, x = self.model(
+(EngineCore pid=26997)                    ^^^^^^^^^^^
+(EngineCore pid=26997)   File "/home/tarading/tpu-inference/tpu_inference/models/jax/qwen2.py", line 369, in __call__
+(EngineCore pid=26997)     kv_cache, x = layer(
+(EngineCore pid=26997)                   ^^^^^^
+(EngineCore pid=26997)   File "/home/tarading/tpu-inference/tpu_inference/models/jax/qwen2.py", line 281, in __call__
+(EngineCore pid=26997)     kv_cache, attn_output = self.self_attn(
+(EngineCore pid=26997)                             ^^^^^^^^^^^^^^^
+(EngineCore pid=26997)   File "/home/tarading/tpu-inference/tpu_inference/models/jax/qwen3.py", line 197, in __call__
+(EngineCore pid=26997)     new_kv_cache, outputs = attention(
+(EngineCore pid=26997)                             ^^^^^^^^^^
+(EngineCore pid=26997)   File "/home/tarading/tpu-inference/tpu_inference/layers/common/attention_interface.py", line 467, in attention
+(EngineCore pid=26997)     output, kv_cache = sharded_ragged_paged_attention(
+(EngineCore pid=26997)                        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+(EngineCore pid=26997)   File "/home/tarading/tpu-inference/tpu_inference/layers/common/attention_interface.py", line 419, in sharded_ragged_paged_attention
+(EngineCore pid=26997)     return jax.shard_map(
+(EngineCore pid=26997)            ^^^^^^^^^^^^^^
+(EngineCore pid=26997)   File "/home/tarading/tpu-inference/tpu_inference/layers/common/attention_interface.py", line 417, in _ragged_paged_attention
+(EngineCore pid=26997)     return func(*args, **kwargs)
+(EngineCore pid=26997)            ^^^^^^^^^^^^^^^^^^^^^
+(EngineCore pid=26997) TypeError: ragged_paged_attention() got an unexpected keyword argument 'has_rope'

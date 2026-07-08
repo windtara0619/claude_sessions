@@ -1,0 +1,365 @@
+"""
+kernel_timeline.py — DMA/MXU/VPU timeline for the RPAm kernel.
+
+Calibrated to match measured benchmarks on v6e-1:
+  baseline (no proj) : 253µs
+  fused (qproj+kvproj): 545µs
+
+Constants (measured via scripts/kernel_eval/op_bench.py — lax.fori_loop device timing):
+  T_flash_attention_per_loop  = 11.73µs  wall-clock time for one bkv_csz-sized flash attention loop
+                                          = (253µs baseline - 8×T_output_norm) / 20 total causal-mask loops
+                                          (op_bench measures 12.25µs; kernel pipeline is slightly more efficient)
+  T_q_projection_wallclock    = 24.9µs   wall-clock time per bq Q-projection tile
+                                          (MXU Q-matmul=19µs overlapped with VPU Q-norm+rope; VPU is the bottleneck)
+  T_kv_projection_wallclock   = 22.9µs   wall-clock time per bkv KV-projection tile
+                                          (fused K+V matmul=14µs + K-norm+rope VPU; V needs no norm)
+                                          NOTE: fused model predicts 498µs; measured 545µs — 47µs gap is
+                                          DMA wait for x_bkv (5.83µs×2) + KVcache write + pipeline stalls
+  T_output_norm_per_bq_tile   =  2.3µs   wall-clock time for acc/l normalize + bo_store per bq tile
+                                          (op_bench: softmax_store=2.3µs; old value of 17µs was wrong)
+
+Causal mask: bq[i] attends ceil(min(n_tok, (i+1)*bq_sz) / bkv_sz) bkv tiles.
+
+Usage:
+  python3 scripts/kernel_eval/kernel_timeline.py                  # fused (default)
+  python3 scripts/kernel_eval/kernel_timeline.py --baseline       # no projection
+  python3 scripts/kernel_eval/kernel_timeline.py --xla-external   # XLA proj pipeline
+  python3 scripts/kernel_eval/kernel_timeline.py --n-tok 2048
+"""
+
+import argparse, math
+
+# ── Calibrated constants ──────────────────────────────────────────────────────
+# Derived from two benchmark measurements: baseline=253µs, fused=545µs.
+# See docstring above for the calibration algebra.
+
+T_flash_attention_per_loop = 11.73   # µs — (253 - 8×2.3) / 20; op_bench measures 12.25µs
+T_q_projection_wallclock   = 24.9    # µs — op_bench: max(q_matmul=19µs, q_norm_rope=24.9µs)
+T_kv_projection_wallclock  = 22.9    # µs — op_bench: max(kv_matmul=14µs, k_norm_rope=22.9µs)
+T_output_norm_per_bq_tile  =  2.3    # µs — op_bench: softmax_store (acc/l + bo_store)
+
+def dma_us(B, bw=900):
+    """Return DMA time in µs for B bytes at bw GB/s."""
+    return B / (bw * 1e3)   # B/bytes → MB / (GB/s) → µs
+
+
+def make_dims(D=2560, Nq=32, Nkv=8, H=128, bq_sz=256, bkv_sz=1024, bkv_csz=512):
+    return dict(D=D, Nq=Nq, Nkv=Nkv, H=H,
+                bq_sz=bq_sz, bkv_sz=bkv_sz, bkv_csz=bkv_csz)
+
+
+def bkv_info(bq_idx, n_tok, bq_sz, bkv_sz, bkv_csz):
+    """Return list of (bkv_idx, n_loops, eff_sz, needs_proj) for a given bq tile.
+
+    Causal mask: bq[i] only attends tokens 0..min(n_tok, (i+1)*bq_sz).
+    needs_proj=True when this bkv tile is computed fresh (not already in cache).
+    """
+    eff_kv = min(n_tok, (bq_idx + 1) * bq_sz)
+    result = []
+    for bkv in range(math.ceil(eff_kv / bkv_sz)):
+        esz    = min(bkv_sz, eff_kv - bkv * bkv_sz)
+        nloops = math.ceil(esz / bkv_csz)
+        kv_start = bkv * bkv_sz
+        needs_proj = kv_start >= bq_idx * bq_sz   # first bq that covers this bkv
+        result.append((bkv, nloops, esz, needs_proj))
+    return result
+
+
+# ── Op collectors ─────────────────────────────────────────────────────────────
+
+def collect_baseline(n_tok, dims):
+    """Ops for the no-projection kernel (has_qproj=False, has_kvproj=False)."""
+    D=dims['D']; Nq=dims['Nq']; Nkv=dims['Nkv']; H=dims['H']
+    bq_sz=dims['bq_sz']; bkv_sz=dims['bkv_sz']; bkv_csz=dims['bkv_csz']
+
+    D_q_hbm  = dma_us(Nkv * bq_sz  * (Nq // Nkv // 2) * 2 * H * 2)
+    D_kv_hbm = dma_us(bkv_sz * (Nkv * 2 // 2) * 2 * H * 2)
+    D_kvcw   = D_kv_hbm
+    n_bq     = math.ceil(n_tok / bq_sz)
+
+    ops = []
+    def add(t0, t1, track, sub, key, lbl=''):
+        if t1 - t0 > 0.01:
+            ops.append((round(t0, 3), round(t1, 3), track, sub, key, lbl))
+
+    # Prologue DMAs (double-buffered, hidden)
+    add(0, D_q_hbm,  'DMA', 'q_reads',  'DQ', 'q_hbm[bq=0]')
+    add(0, D_kv_hbm, 'DMA', 'kv_reads', 'DKV','kv_hbm[bkv=0]')
+    add(0, 2,        'VPU', 'vpu',       'r',  'rope_ts')
+
+    t = 0.0
+    for bq in range(n_bq):
+        tiles = bkv_info(bq, n_tok, bq_sz, bkv_sz, bkv_csz)
+        # Prefetch next q tile (double-buffered)
+        if bq < n_bq - 1:
+            add(t, t + D_q_hbm, 'DMA', 'q_reads', 'DQ', f'q_hbm[{bq+1}]')
+        for i, (bi, nloops, esz, _) in enumerate(tiles):
+            # Prefetch next kv tile (double-buffered)
+            if i < len(tiles) - 1:
+                add(t, t + D_kv_hbm, 'DMA', 'kv_reads', 'DKV',
+                    f'kv_hbm[bq{bq},bkv{bi+1}]')
+            elif bq < n_bq - 1:
+                add(t, t + D_kv_hbm, 'DMA', 'kv_reads', 'DKV',
+                    f'kv_hbm[bq{bq+1},bkv0]')
+            attn_time = nloops * T_flash_attention_per_loop
+            add(t, t + attn_time, 'MXU', 'mxu', 'A' if (bq == 0 and bi == 0) else 'a',
+                f'Attn[{bq},{bi}] {esz}tk')
+            t += attn_time
+        # KV cache write (only after last attention, on last bq tile that covers it)
+        if bq == n_bq - 1:
+            add(t, t + D_kvcw, 'DMA', 'kv_writes', 'DKW', 'KVcache_wr[0]')
+            add(t, t + D_kvcw, 'DMA', 'kv_writes', 'DKW', 'KVcache_wr[1]')
+        add(t, t + T_output_norm_per_bq_tile, 'VPU', 'vpu', 'O' if bq == 0 else 'o', f'out[{bq}]')
+        t += T_output_norm_per_bq_tile
+
+    return ops, round(t, 2)
+
+
+def collect_fused(n_tok, dims):
+    """Ops for the fused kernel (has_qproj=True, has_kvproj=True)."""
+    D=dims['D']; bq_sz=dims['bq_sz']; bkv_sz=dims['bkv_sz']; bkv_csz=dims['bkv_csz']
+    Nkv=dims['Nkv']; H=dims['H']
+
+    D_x_bq   = dma_us(bq_sz  * D * 2)
+    D_x_bkv  = dma_us(bkv_sz * D * 2)
+    D_kv_hbm = dma_us(bkv_sz * (Nkv * 2 // 2) * 2 * H * 2)
+    D_kvcw   = D_kv_hbm
+    n_bq     = math.ceil(n_tok / bq_sz)
+
+    ops = []
+    def add(t0, t1, track, sub, key, lbl=''):
+        if t1 - t0 > 0.01:
+            ops.append((round(t0, 3), round(t1, 3), track, sub, key, lbl))
+
+    add(0, D_x_bq,  'DMA', 'q_reads',  'DXQ', 'x_bq[0]')
+    add(0, D_x_bkv, 'DMA', 'kv_reads', 'DXK', 'x_bkv[0]')
+    add(0, 2,       'VPU', 'vpu',       'r',   'rope_ts')
+
+    t = 0.0
+    for bq in range(n_bq):
+        # Q matmul waits for x_bq DMA on bq[0]
+        t0q = t + D_x_bq if bq == 0 else t
+        add(t0q, t0q + T_q_projection_wallclock, 'MXU', 'mxu', 'Q' if bq == 0 else 'q', f'Q_mat[{bq}]')
+        add(t0q, t0q + T_q_projection_wallclock, 'VPU', 'vpu', 'N' if bq == 0 else 'n', f'Q_norm[{bq}]')
+        t = t0q + T_q_projection_wallclock
+        if bq < n_bq - 1:
+            add(t, t + D_x_bq, 'DMA', 'q_reads', 'DXQ', f'x_bq[{bq+1}]')
+
+        tiles = bkv_info(bq, n_tok, bq_sz, bkv_sz, bkv_csz)
+        for i, (bi, nloops, esz, needs_proj) in enumerate(tiles):
+            if needs_proj:
+                if i < len(tiles) - 1:
+                    add(t, t + D_x_bkv, 'DMA', 'kv_reads', 'DXK', f'x_bkv[{bi+1}]')
+                add(t, t + T_kv_projection_wallclock, 'MXU', 'mxu', 'K' if bi == 0 else 'k', f'KV[{bi}]')
+                add(t, t + T_kv_projection_wallclock, 'VPU', 'vpu', 'n', f'K_norm[{bi}]')
+                add(t + T_kv_projection_wallclock, t + T_kv_projection_wallclock + D_kvcw,
+                    'DMA', 'kv_writes', 'DKW', f'KVcache_wr[{bi}]')
+                t += T_kv_projection_wallclock
+            else:
+                add(t, t + D_kv_hbm, 'DMA', 'kv_reads', 'DKC',
+                    f'KVcache_rd[{bq},{bi}]')
+            attn_time = nloops * T_flash_attention_per_loop
+            add(t, t + attn_time, 'MXU', 'mxu',
+                'A' if (bq == 0 and bi == 0) else 'a', f'Attn[{bq},{bi}] {esz}tk')
+            t += attn_time
+
+        add(t, t + T_output_norm_per_bq_tile, 'VPU', 'vpu', 'O' if bq == 0 else 'o', f'out[{bq}]')
+        t += T_output_norm_per_bq_tile
+
+    return ops, round(t, 2)
+
+
+def collect_xla_external():
+    """XLA external Q/K/V projection ops (baseline path, outside Pallas kernel).
+
+    XLA loads x once to VMEM and reuses it for K and V projections, hiding the
+    HBM bandwidth cost. Calibrated from HLO estimated_cycles at 2.5 GHz.
+
+    Key insight: K and V projections reuse x already in VMEM after Q matmul,
+    so they are effectively compute-bound (not HBM-bound like Q).
+    Effective wall-time contribution: ~205µs/layer with cross-layer overlap.
+    Critical path: ~160µs isolated.
+    """
+    T_Qmat  = 30.0   # Q matmul: x[HBM] @ W_q[VMEM]
+    T_Qpost = 95.0   # Q reformat + Q norm + Q RoPE (VPU)
+    T_Kmat  =  7.0   # K matmul: x[VMEM] @ W_k[VMEM] — x reused from Q, fast
+    T_Kpost = 14.0   # K norm + K RoPE (VPU)
+    T_Vmat  = 14.0   # V matmul: x[VMEM] @ W_v[VMEM]
+    D_xWk   = 15.0   # async DMA: x(8MB)+W_k(5MB) → VMEM, hidden during Q post
+    D_Wv    =  6.0   # async DMA: W_v(5MB) → VMEM, hidden during K RoPE
+
+    ops = []
+    def add(t0, t1, track, sub, key, lbl=''):
+        if t1 - t0 > 0.01:
+            ops.append((round(t0, 3), round(t1, 3), track, sub, key, lbl))
+
+    # W_q already in VMEM via cross_program_prefetch from previous layer (free)
+    add(0, 5, 'DMA', 'free', 'XWQP', 'W_q from prev layer (free)')
+
+    # Q matmul: x from HBM (cold load), W_q from VMEM
+    add(0, T_Qmat, 'MXU', 'mxu', 'XQ', 'Q matmul x@W_q')
+
+    # Async DMA x+W_k starts right after Q matmul, hidden during Q post
+    add(T_Qmat, T_Qmat + D_xWk, 'DMA', 'dma_read', 'XDMA', 'x+W_k → VMEM')
+
+    # Q norm+rope: VPU, overlaps with DMA above (done at T_Qmat+D_xWk = 45µs)
+    add(T_Qmat, T_Qmat + T_Qpost, 'VPU', 'vpu', 'XQP', 'Q norm+rope')
+
+    t = T_Qmat + T_Qpost   # ~125µs — x and W_k in VMEM since ~45µs
+
+    # K matmul: x[VMEM] @ W_k[VMEM] — no HBM read, very fast
+    add(t, t + T_Kmat, 'MXU', 'mxu', 'XK', 'K matmul x@W_k')
+
+    # Async DMA W_v, hidden during K norm+rope
+    add(t + T_Kmat, t + T_Kmat + D_Wv, 'DMA', 'dma_read', 'XDMV', 'W_v → VMEM')
+
+    # K norm+rope: VPU
+    add(t + T_Kmat, t + T_Kmat + T_Kpost, 'VPU', 'vpu', 'XKP', 'K norm+rope')
+
+    t += T_Kmat + T_Kpost   # ~146µs
+
+    # V matmul: x[VMEM] @ W_v[VMEM]
+    add(t, t + T_Vmat, 'MXU', 'mxu', 'XV', 'V matmul x@W_v')
+    t += T_Vmat   # ~160µs
+
+    return ops, round(t, 2)
+
+
+# ── ASCII renderer ─────────────────────────────────────────────────────────────
+
+_LABELS = {
+    'DQ': 'q_hbm', 'DKV': 'kv_hbm', 'DKC': 'KVcache_rd', 'DKW': 'KVcache_wr',
+    'DXQ': 'x_bq',  'DXK': 'x_bkv',
+    'Q': 'Q_mat',   'q': 'Q_mat', 'K': 'KV_mat',  'k': 'KV_mat',
+    'A': 'Attn',    'a': 'Attn',  'N': 'Q_norm',  'n': 'Q/K_norm',
+    'O': 'out_norm','o': 'out_norm', 'r': 'rope_ts',
+    'XQ': 'Q_mat',  'XK': 'K_mat', 'XV': 'V_mat',
+    'XQP': 'Q_norm+rope', 'XKP': 'K_norm+rope',
+    'XDMA': 'x+W_k_DMA', 'XDMV': 'W_v_DMA', 'XWQP': 'W_q(free)',
+}
+
+_DMA_SUBS = {
+    'q_reads': 0, 'kv_reads': 1, 'kv_writes': 2,
+    'dma_read': 0, 'free': 2,
+}
+
+_CHARS = {
+    'DQ': 'Q', 'DKV': 'V', 'DKC': 'c', 'DKW': 'W',
+    'DXQ': 'B', 'DXK': 'V',
+    'Q': 'Q', 'q': 'q', 'K': 'K', 'k': 'k',
+    'A': 'A', 'a': 'a', 'N': 'N', 'n': 'n',
+    'O': 'O', 'o': 'o', 'r': 'r',
+    'XQ': 'Q', 'XK': 'K', 'XV': 'V',
+    'XQP': 'N', 'XKP': 'n',
+    'XDMA': 'D', 'XDMV': 'd', 'XWQP': 'w',
+}
+
+
+def _render_ascii(title, ops, total_us, zoom_us=None):
+    """Render an ASCII timeline of ops."""
+    end_us = zoom_us or total_us
+    WIDTH  = 100
+    PAD_L  = 7   # chars reserved for track label
+
+    def px(t):
+        return PAD_L + int(min(1.0, max(0.0, t / end_us)) * (WIDTH - PAD_L - 1))
+
+    # Track buffers: 3 DMA lanes + MXU + VPU
+    tracks = [[' '] * WIDTH for _ in range(5)]
+
+    def put(buf, col, text):
+        for i, ch in enumerate(text):
+            if 0 <= col + i < WIDTH:
+                buf[col + i] = ch
+
+    def box(buf, t0, t1, char):
+        c0, c1 = px(t0), px(t1)
+        w = max(3, c1 - c0)
+        put(buf, c0, '[' + char + '─' * (w - 3) + ']')
+
+    for t0, t1, track, sub, key, lbl in ops:
+        if t0 >= end_us:
+            continue
+        ch = _CHARS.get(key, '?')
+        if track == 'DMA':
+            lane = _DMA_SUBS.get(sub, 0)
+            box(tracks[lane], t0, min(t1, end_us), ch)
+        elif track == 'MXU':
+            box(tracks[3], t0, min(t1, end_us), ch)
+        else:
+            box(tracks[4], t0, min(t1, end_us), ch)
+
+    # Ruler
+    ruler = [' '] * WIDTH
+    ticks = list(range(0, int(end_us) + 1, max(10, int(end_us) // 8)))
+    if int(end_us) not in ticks:
+        ticks.append(int(end_us))
+    for t in ticks:
+        col = px(t)
+        s = str(t)
+        for i, ch in enumerate(s):
+            if col + i < WIDTH:
+                ruler[col + i] = ch
+
+    suffix = f'  [zoom 0–{zoom_us:.0f}µs]' if zoom_us else ''
+    print(f'\n  {title}{suffix}')
+    print(f'  total={total_us:.0f}µs')
+    print()
+    print(f"  µs:    {''.join(ruler)}")
+    print(f"  DMA_q: {''.join(tracks[0])}")
+    print(f"  DMA_k: {''.join(tracks[1])}")
+    print(f"  DMA_w: {''.join(tracks[2])}")
+    print(f"  MXU:   {''.join(tracks[3])}")
+    print(f"  VPU:   {''.join(tracks[4])}")
+    print()
+    print('  Legend')
+    print('  ──────')
+    print('  DMA_q: Q reads (q_hbm/x_bq/x+W_k)  DMA_k: KV reads  DMA_w: KV writes/W_v')
+    print('  MXU:   Q=Q_matmul  K=KV_matmul  A=Attn')
+    print('  VPU:   r=rope_ts  N/n=Q/K_norm+rope  O/o=out_norm')
+
+
+# ── Main ──────────────────────────────────────────────────────────────────────
+
+def main():
+    ap = argparse.ArgumentParser()
+    ap.add_argument('--n-tok',      type=int,   default=2048)
+    ap.add_argument('--bq-sz',      type=int,   default=256)
+    ap.add_argument('--bkv-sz',     type=int,   default=1024)
+    ap.add_argument('--bkv-csz',    type=int,   default=512)
+    ap.add_argument('--D',          type=int,   default=2560)
+    ap.add_argument('--Nq',         type=int,   default=32)
+    ap.add_argument('--Nkv',        type=int,   default=8)
+    ap.add_argument('--H',          type=int,   default=128)
+    ap.add_argument('--baseline',   action='store_true', help='no projection')
+    ap.add_argument('--xla-external', action='store_true',
+                    help='XLA external Q/K/V projection pipeline')
+    ap.add_argument('--zoom',       type=float, default=0,
+                    help='also show a zoomed view up to this µs value')
+    args = ap.parse_args()
+
+    dims = make_dims(D=args.D, Nq=args.Nq, Nkv=args.Nkv, H=args.H,
+                     bq_sz=args.bq_sz, bkv_sz=args.bkv_sz, bkv_csz=args.bkv_csz)
+
+    if args.xla_external:
+        ops, total = collect_xla_external()
+        title = 'XLA EXTERNAL (proj_q/proj_k/proj_v/rope — outside Pallas kernel)'
+        _render_ascii(title, ops, total)
+        if args.zoom:
+            _render_ascii(title, ops, total, zoom_us=args.zoom)
+    elif args.baseline:
+        ops, total = collect_baseline(args.n_tok, dims)
+        title = f'BASELINE (no projection) — {args.n_tok} tokens'
+        _render_ascii(title, ops, total)
+        if args.zoom:
+            _render_ascii(title, ops, total, zoom_us=args.zoom)
+    else:
+        ops, total = collect_fused(args.n_tok, dims)
+        title = f'FUSED (has_qproj + has_kvproj) — {args.n_tok} tokens'
+        _render_ascii(title, ops, total)
+        if args.zoom:
+            _render_ascii(title, ops, total, zoom_us=args.zoom)
+
+
+if __name__ == '__main__':
+    main()

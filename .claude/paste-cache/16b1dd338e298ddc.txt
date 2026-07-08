@@ -1,0 +1,9 @@
+[DBG] total_q=384, total_fail=675672 / 1572864
+  seq 0 (q_len=192, kv_len=328, kv_q_gap=136): fail=416910/786432, max_diff=1.0469, failing_tokens=[np.int64(0), np.int64(1), np.int64(2), np.int64(3), np.int64(4), np.int64(5), np.int64(6), np.int64(7), np.int64(8), np.int64(9), np.int64(10), np.int64(11), np.int64(12), np.int64(13), np.int64(14), np.int64(15), np.int64(16), np.int64(17), np.int64(18), np.int64(19)]
+  seq 1 (q_len=128, kv_len=180, kv_q_gap=52): fail=110241/524288, max_diff=0.9180, failing_tokens=[np.int64(192), np.int64(193), np.int64(194), np.int64(195), np.int64(196), np.int64(197), np.int64(198), np.int64(199), np.int64(200), np.int64(201), np.int64(202), np.int64(203), np.int64(204), np.int64(205), np.int64(206), np.int64(207), np.int64(208), np.int64(209), np.int64(210), np.int64(211)]
+  seq 2 (q_len=64, kv_len=255, kv_q_gap=191): fail=148521/262144, max_diff=1.0469, failing_tokens=[np.int64(320), np.int64(321), np.int64(322), np.int64(323), np.int64(324), np.int64(325), np.int64(326), np.int64(327), np.int64(328), np.int64(329), np.int64(330), np.int64(331), np.int64(332), np.int64(333), np.int64(334), np.int64(335), np.int64(336), np.int64(337), np.int64(338), np.int64(339)]
+
+[DBG_KVC] kv_cache shape: (200, 16, 8, 2, 128), max_diff: nan, n_diff>0.05: 0
+  seq 0: kvc old_max=0.0000, new_max=0.0312, new_fail=0/393216
+  seq 1: kvc old_max=0.0000, new_max=0.0312, new_fail=0/262144
+  seq 2: kvc old_max=0.0000, new_max=0.0312, new_fail=0/131072

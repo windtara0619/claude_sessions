@@ -1,0 +1,49 @@
+---
+name: bkv-update-ids-xla-buffer-bug
+description: "mega_kernel=True hang at input-len=992: XLA aliases shared init_bkv_update_ids HBM buffer causing scalar_prefetch DMA to read garbage; fix: move init arrays inside run_rpa_kernel"
+metadata: 
+  node_type: memory
+  type: project
+  originSessionId: 43e7d40c-f46f-436b-ae56-41baa7e1974c
+---
+
+## Bug: hang at input-len=992 (not 991) with MEGA_KERNEL=true
+
+`MEGA_KERNEL=true python3 examples/tpu_profiling.py --model Qwen/Qwen3-4B --input-len 992 --output-len 1 --batch-size 16 --num-iters-warmup 2` hangs; 991 does not.
+
+## Root cause
+
+`init_bkv_update_ids = jnp.full((6,), -1, jnp.int32)` was created ONCE at `ragged_paged_attention` scope (line ~2123) and shared as `scalar_prefetch` across all `run_rpa_kernel` calls (TC0@894 1-seq kernel AND TC0@900 15-seq kernel for iter2).
+
+With `PrefetchScalarGridSpec`, each pallas_call invocation fires the kernel body TWICE:
+1. First fire: uses stale SMEM values from the previous invocation
+2. DMA loads fresh values from the HBM `init_bkv_update_ids` buffer
+3. Second fire: uses the freshly loaded -1 values
+
+For TC0@894 (1-seq), the stale first-fire sees the previous TC0@894 invocation's residual state (e.g., `[0,0,896,960,0,0]`) — benign, no hang.
+
+For TC0@900 (15-seq, first MIXED invocation): the "stale" first-fire should read from `init_bkv_update_ids` HBM, but XLA had **already reused that buffer** for other computations (TC0@894's 36 layers ran first and exhausted XLA's liveness estimate for `init_bkv_update_ids`). The DMA reads garbage values like `[-1135428526, ..., 1012939872]`. The `wait_update_kv_cache` check `update_sz > 0` fires on the garbage `update_sz = 1012939872` → waits on a DMA that never completes → **deadlock**.
+
+**Why 991 works**: at input-len=991, TC0@894 and TC0@900 execute in a different schedule where TC0@900's scalar_prefetch DMA still reads the valid buffer.
+
+**Why `jax.debug.print(init_bkv_update_ids)` accidentally fixed it**: the print created a data dependency on `init_bkv_update_ids` at TC0@900's call site, preventing XLA from reusing the buffer.
+
+## Fix (kernel.py)
+
+Moved `init_sem_ids`, `init_bo_ids`, `init_bkv_update_ids` from `ragged_paged_attention` outer scope into `run_rpa_kernel` body (just before `scalar_prefetches` tuple). Each `run_rpa_kernel` call now creates its own JAX node. XLA must maintain each node's HBM buffer liveness independently through its own scalar_prefetch DMA.
+
+```python
+# Inside run_rpa_kernel, before scalar_prefetches tuple:
+init_sem_ids = jnp.zeros((4,), jnp.int32)
+init_bo_ids = jnp.full((4,), -1, jnp.int32)
+init_bkv_update_ids = jnp.full((6,), -1, jnp.int32)
+```
+
+## Debugging evidence
+
+- TC0@894: shows 2 KERNEL START prints per invocation — first with stale SMEM (`[0,0,896,960,0,0]`), second with fresh -1s
+- TC0@900 without fix: first fire sees `[-1135428526,-1139164135,-1130906473,-1128416067,-1152468146,1012939872]` → hang
+- TC0@900 with `jax.debug.print` workaround: both fires see `[-1,-1,-1,-1,-1,-1]` → no hang
+- TC0@900 with real fix: both fires see `[-1,-1,-1,-1,-1,-1]` → no hang
+
+**How to apply**: Any future mega_kernel hang where `wait_update_kv_cache` fires spuriously (first kernel invocation seeing garbage `bkv_update_ids_ref`) — check if init arrays are being shared as constants across multiple `run_rpa_kernel` calls and getting aliased by XLA.

@@ -1,0 +1,650 @@
+=================================== FAILURES ===================================
+___ RaggedPagedAttentionKernelTest.test_ragged_paged_attention_qproj_fusion0 ___
+
+self = <tests.kernels.ragged_paged_attention_kernel_v3_test.RaggedPagedAttentionKernelTest testMethod=test_ragged_paged_attention_qproj_fusion0>
+block_sizes = (64, 256, 32, 128)
+
+    @parameterized.product(
+        block_sizes=[
+            (64, 256, 32, 128),   # bq_sz=64 (multiple of 8)
+            (256, 1024, 128, 512),  # production config
+        ],
+    )
+    def test_ragged_paged_attention_qproj_fusion(self, block_sizes):
+        """merge_kernel=True result must match the pre-projected baseline exactly."""
+        if not jtu.is_device_tpu_at_least(version=4):
+            self.skipTest("Expect TPUv4+")
+        dtype = jnp.bfloat16
+        # Seq lengths chosen so all cu_q boundaries are divisible by 8.
+        seq_lens = [(192, 328), (128, 180), (64, 255)]
+        num_q_heads, num_kv_heads = 32, 8
+        head_dim = 128
+        hidden_size = 512  # must be divisible by 128
+        page_size = 16
+        num_pages = 200
+        bq_sz, bkv_sz, bq_csz, bkv_csz = block_sizes
+    
+        rng = np.random.default_rng(1234)
+    
+        def gen(shape):
+            return jnp.array(rng.random(size=shape, dtype=np.float32)).astype(dtype)
+    
+        cu_q_lens = [0]
+        kv_lens_list = []
+        for q_len, kv_len in seq_lens:
+            cu_q_lens.append(cu_q_lens[-1] + q_len)
+            kv_lens_list.append(kv_len)
+    
+        max_tokens = max(align_to(cu_q_lens[-1], 128), 512)
+        max_num_seq = max(align_to(len(seq_lens), 8), 8)
+        max_kv_len = max(kv_lens_list)
+        pages_per_seq = cdiv(max_kv_len, page_size)
+--
+        raise RuntimeError(f"re-tracing function {jit_info.fun_sourceinfo} for "
+                           "`jit`, but 'no_tracing' is set")
+>     p, args_flat = _infer_params(fun, jit_info, args, kwargs)
+                     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+../vllm_env/lib/python3.12/site-packages/jax/_src/pjit.py:250: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+fun = <function ragged_paged_attention at 0x70e349cb58a0>
+ji = PjitInfo(fun_sourceinfo='ragged_paged_attention at /home/tarading/tpu-inference/tpu_inference/kernels/ragged_paged_att...v_cache'), device=None, backend=None, keep_unused=False, inline=False, use_resource_env=False, compiler_options_kvs=())
+args = (Array([[[0, 0, 0, ..., 0, 0, 0],
+        [0, 0, 0, ..., 0, 0, 0],
+        [0, 0, 0, ..., 0, 0, 0],
+        ...,
+     ... 0,  0,  0,  0,  0,  0,  0,
+        0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0],      dtype=int32), ...)
+kwargs = {'kn_scale': Array([0.769531, 0.474609, 0.949219, 0.835938, 0.636719, 0.119141,
+       0.632812, 0.0446777, 0.192383, ... 0.996094, 0.408203,
+       0.695312, 0.00668335, 0.570312, 0.0246582, 0.0917969, 0.628906],      dtype=bfloat16), ...}
+
+    def _infer_params(
+        fun: Callable, ji: PjitInfo, args: tuple[Any, ...], kwargs: dict[str, Any]
+      ) -> tuple[PjitParams, list[core.Value]]:
+      ctx_mesh = get_ctx_mesh(ji.use_resource_env)
+      dbg_fn = lambda: debug_info(
+          'jit', fun, args, kwargs, static_argnums=ji.static_argnums,
+          static_argnames=ji.static_argnames, sourceinfo=ji.fun_sourceinfo,
+          signature=ji.fun_signature)
+      arg_signature, dynargs = jax_jit.parse_arguments(
+          args, tuple(kwargs.values()), tuple(kwargs.keys()), ji.static_argnums,
+          ji.static_argnames, tree_util.tracing_registry)
+      avals = _infer_input_type(fun, dbg_fn, dynargs)
+      entry = _infer_params_cached(fun, ji, arg_signature, avals, ctx_mesh)
+    
+      if entry.pjit_params is not None:
+        return entry.pjit_params, entry.pjit_params.consts + dynargs
+    
+>     p = _trace_for_jit(fun, ji, ctx_mesh, dbg_fn(), avals, args, kwargs)
+          ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+../vllm_env/lib/python3.12/site-packages/jax/_src/pjit.py:620: 
+--
+        raise ValueError(
+            "pjit does not support kwargs when in_shardings is specified.")
+    
+      if not ctx_mesh.empty and (ji.backend or ji.device):
+        raise ValueError(
+            "Mesh context manager should not be used with jit when backend or "
+            "device is also specified as an argument to jit.")
+    
+      if (ji.donate_argnums or ji.donate_argnames) and not config.debug_nans.value:
+        donated_invars = donation_vector(ji.donate_argnums, ji.donate_argnames,
+                                         avals_ft.tree)
+      else:
+        donated_invars = (False,) * len(avals_ft)
+    
+      # If backend or device is set as an arg on jit, then resolve them to
+      # in_shardings and out_shardings as if user passed in in_shardings
+      # and out_shardings.
+      device_or_backend_set = bool(ji.backend or ji.device)
+      if device_or_backend_set:
+        sharding = _create_sharding_with_device_backend(ji.device, ji.backend)
+        leaves, treedef = tree_flatten(sharding)
+        in_shardings_leaves = out_shardings_leaves = tuple(leaves)
+        in_shardings_treedef = out_shardings_treedef = treedef
+      else:
+        api_name = 'pjit' if ji.use_resource_env else 'jit'
+        in_shardings_leaves = tuple(
+            _create_sharding_for_array(ctx_mesh, x, 'in_shardings', api_name)
+            for x in ji.in_shardings_leaves)
+        out_shardings_leaves = tuple(
+            _create_sharding_for_array(ctx_mesh, x, 'out_shardings', api_name)
+            for x in ji.out_shardings_leaves)
+        in_shardings_treedef = ji.in_shardings_treedef
+        out_shardings_treedef = ji.out_shardings_treedef
+    
+      assert None not in in_shardings_leaves
+      assert None not in out_shardings_leaves
+    
+      in_type = avals_ft.map2(
+        lambda a, x: core.AvalQDD(a, cur_qdd(x)) if a.has_qdd else a,
+        args_ft)
+      assert avals_ft is not None
+    
+      in_shardings_flat, in_layouts_flat = _process_in_axis_resources(
+          in_shardings_treedef, in_shardings_leaves,
+          ji.in_layouts_treedef, ji.in_layouts_leaves,
+--
+        raise RuntimeError(f"re-tracing function {fun} for "
+                           "`jit`, but 'no_tracing' is set")
+      del context_for_cache_key  # read implicitly, e.g. qdd state
+      test_event("trace_to_jaxpr")
+      config.enable_checks.value and debug_info.assert_arg_names(len(in_avals))
+      parent_trace = core.trace_ctx.trace
+      trace = DynamicJaxprTrace(debug_info, parent_trace=parent_trace,
+                                lower=requires_low)
+      # Name stack and the traceback scope are reset because the metadata on jaxpr
+      # equations should be rooted at the enclosing jaxpr and not contain any
+      # context from the callsite. Otherwise metadata from one caller would bleed
+      # into metadata from a different caller if we, e.g., inline.
+      with (core.ensure_no_leaks(trace), source_info_util.reset_name_stack(),
+            TracebackScope()):
+        source_info = source_info_util.current()
+        if requires_low:
+          def new_arg(aval):
+            lo_tracers = [trace.new_arg(lo_aval, source_info=source_info) for lo_aval in aval.lo_ty()]  # noqa: F821
+            return aval.raise_val(*lo_tracers)
+          in_tracers = in_avals.map(new_arg)
+          debug_info = _lower_debug_info(debug_info, in_avals=in_avals)
+        else:
+          in_tracers = in_avals.map(partial(trace.new_arg, source_info=source_info))
+    
+        with core.set_current_trace(trace):
+          args, kwargs = in_tracers.unflatten()
+>         ans_pytree = fun(*args, **kwargs)
+                       ^^^^^^^^^^^^^^^^^^^^
+
+../vllm_env/lib/python3.12/site-packages/jax/_src/interpreters/partial_eval.py:2338: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+queries = JitTracer(bfloat16[512,32,128]), keys = JitTracer(bfloat16[512,8,128])
+values = JitTracer(bfloat16[512,8,128])
+kv_cache = JitTracer(bfloat16[200,16,8,2,128]), kv_lens = JitTracer(int32[8])
+page_indices = JitTracer(int32[168]), cu_q_lens = JitTracer(int32[9])
+distribution = JitTracer(int32[3])
+
+    @jax.jit(
+        static_argnames=(
+            "use_causal_mask",
+--
+        raise RuntimeError(f"re-tracing function {jit_info.fun_sourceinfo} for "
+                           "`jit`, but 'no_tracing' is set")
+>     p, args_flat = _infer_params(fun, jit_info, args, kwargs)
+                     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+../vllm_env/lib/python3.12/site-packages/jax/_src/pjit.py:250: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+fun = <function _pallas_call.<locals>.wrapped at 0x70e33eee8d60>
+ji = PjitInfo(fun_sourceinfo='wrapped at /home/tarading/vllm_env/lib/python3.12/site-packages/jax/_src/pallas/pallas_call.p...rgnames=(), device=None, backend=None, keep_unused=False, inline=True, use_resource_env=False, compiler_options_kvs=())
+args = (JitTracer(int32[8]), JitTracer(int32[168]), JitTracer(int32[9]), JitTracer(int32[3]), JitTracer(int32[4]), JitTracer(int32[4]), ...)
+kwargs = {}
+
+    def _infer_params(
+        fun: Callable, ji: PjitInfo, args: tuple[Any, ...], kwargs: dict[str, Any]
+      ) -> tuple[PjitParams, list[core.Value]]:
+      ctx_mesh = get_ctx_mesh(ji.use_resource_env)
+      dbg_fn = lambda: debug_info(
+          'jit', fun, args, kwargs, static_argnums=ji.static_argnums,
+          static_argnames=ji.static_argnames, sourceinfo=ji.fun_sourceinfo,
+          signature=ji.fun_signature)
+      arg_signature, dynargs = jax_jit.parse_arguments(
+          args, tuple(kwargs.values()), tuple(kwargs.keys()), ji.static_argnums,
+          ji.static_argnames, tree_util.tracing_registry)
+      avals = _infer_input_type(fun, dbg_fn, dynargs)
+      entry = _infer_params_cached(fun, ji, arg_signature, avals, ctx_mesh)
+    
+      if entry.pjit_params is not None:
+        return entry.pjit_params, entry.pjit_params.consts + dynargs
+    
+>     p = _trace_for_jit(fun, ji, ctx_mesh, dbg_fn(), avals, args, kwargs)
+          ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+../vllm_env/lib/python3.12/site-packages/jax/_src/pjit.py:620: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+fun = <function _pallas_call.<locals>.wrapped at 0x70e33eee8d60>
+ji = PjitInfo(fun_sourceinfo='wrapped at /home/tarading/vllm_env/lib/python3.12/site-packages/jax/_src/pallas/pallas_call.p...rgnames=(), device=None, backend=None, keep_unused=False, inline=True, use_resource_env=False, compiler_options_kvs=())
+ctx_mesh = Mesh(axis_sizes=(), axis_names=())
+dbg = DebugInfo(traced_for='jit', func_src_info='wrapped at /home/tarading/vllm_env/lib/python3.12/site-packages/jax/_src/pa..., 'args[11]', 'args[12]', 'args[13]'), result_paths=<jax._src.linear_util.InitialResultPaths object at 0x70e352d8a7e0>)
+avals = (ShapedArray(int32[8]), ShapedArray(int32[168]), ShapedArray(int32[9]), ShapedArray(int32[3]), ShapedArray(int32[4]), ShapedArray(int32[4]), ...)
+--
+        raise ValueError(
+            "pjit does not support kwargs when in_shardings is specified.")
+    
+      if not ctx_mesh.empty and (ji.backend or ji.device):
+        raise ValueError(
+            "Mesh context manager should not be used with jit when backend or "
+            "device is also specified as an argument to jit.")
+    
+      if (ji.donate_argnums or ji.donate_argnames) and not config.debug_nans.value:
+        donated_invars = donation_vector(ji.donate_argnums, ji.donate_argnames,
+                                         avals_ft.tree)
+      else:
+        donated_invars = (False,) * len(avals_ft)
+    
+      # If backend or device is set as an arg on jit, then resolve them to
+      # in_shardings and out_shardings as if user passed in in_shardings
+      # and out_shardings.
+      device_or_backend_set = bool(ji.backend or ji.device)
+      if device_or_backend_set:
+        sharding = _create_sharding_with_device_backend(ji.device, ji.backend)
+        leaves, treedef = tree_flatten(sharding)
+        in_shardings_leaves = out_shardings_leaves = tuple(leaves)
+        in_shardings_treedef = out_shardings_treedef = treedef
+      else:
+        api_name = 'pjit' if ji.use_resource_env else 'jit'
+        in_shardings_leaves = tuple(
+            _create_sharding_for_array(ctx_mesh, x, 'in_shardings', api_name)
+            for x in ji.in_shardings_leaves)
+        out_shardings_leaves = tuple(
+            _create_sharding_for_array(ctx_mesh, x, 'out_shardings', api_name)
+            for x in ji.out_shardings_leaves)
+        in_shardings_treedef = ji.in_shardings_treedef
+        out_shardings_treedef = ji.out_shardings_treedef
+    
+      assert None not in in_shardings_leaves
+      assert None not in out_shardings_leaves
+    
+      in_type = avals_ft.map2(
+        lambda a, x: core.AvalQDD(a, cur_qdd(x)) if a.has_qdd else a,
+        args_ft)
+      assert avals_ft is not None
+    
+      in_shardings_flat, in_layouts_flat = _process_in_axis_resources(
+          in_shardings_treedef, in_shardings_leaves,
+          ji.in_layouts_treedef, ji.in_layouts_leaves,
+--
+        raise RuntimeError(f"re-tracing function {fun} for "
+                           "`jit`, but 'no_tracing' is set")
+      del context_for_cache_key  # read implicitly, e.g. qdd state
+      test_event("trace_to_jaxpr")
+      config.enable_checks.value and debug_info.assert_arg_names(len(in_avals))
+      parent_trace = core.trace_ctx.trace
+      trace = DynamicJaxprTrace(debug_info, parent_trace=parent_trace,
+                                lower=requires_low)
+      # Name stack and the traceback scope are reset because the metadata on jaxpr
+      # equations should be rooted at the enclosing jaxpr and not contain any
+      # context from the callsite. Otherwise metadata from one caller would bleed
+      # into metadata from a different caller if we, e.g., inline.
+      with (core.ensure_no_leaks(trace), source_info_util.reset_name_stack(),
+            TracebackScope()):
+        source_info = source_info_util.current()
+        if requires_low:
+          def new_arg(aval):
+            lo_tracers = [trace.new_arg(lo_aval, source_info=source_info) for lo_aval in aval.lo_ty()]  # noqa: F821
+            return aval.raise_val(*lo_tracers)
+          in_tracers = in_avals.map(new_arg)
+          debug_info = _lower_debug_info(debug_info, in_avals=in_avals)
+        else:
+          in_tracers = in_avals.map(partial(trace.new_arg, source_info=source_info))
+    
+        with core.set_current_trace(trace):
+          args, kwargs = in_tracers.unflatten()
+>         ans_pytree = fun(*args, **kwargs)
+                       ^^^^^^^^^^^^^^^^^^^^
+
+../vllm_env/lib/python3.12/site-packages/jax/_src/interpreters/partial_eval.py:2338: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+args = (JitTracer(int32[8]), JitTracer(int32[168]), JitTracer(int32[9]), JitTracer(int32[3]), JitTracer(int32[4]), JitTracer(int32[4]), ...)
+flat_args_with_paths = [((SequenceKey(idx=0),), JitTracer(int32[8])), ((SequenceKey(idx=1),), JitTracer(int32[168])), ((SequenceKey(idx=2),),... JitTracer(int32[3])), ((SequenceKey(idx=4),), JitTracer(int32[4])), ((SequenceKey(idx=5),), JitTracer(int32[4])), ...]
+in_tree = PyTreeDef((*, *, *, *, *, *, *, *, *, *, *, *, *, *))
+in_paths = ((SequenceKey(idx=0),), (SequenceKey(idx=1),), (SequenceKey(idx=2),), (SequenceKey(idx=3),), (SequenceKey(idx=4),), (SequenceKey(idx=5),), ...)
+
+    @api.jit(inline=True)
+    def wrapped(*args):
+      flat_args_with_paths, in_tree = tree_util.tree_flatten_with_path(args)
+      in_paths, flat_args = unzip2(flat_args_with_paths)
+--
+        raise TypeError("lax.fori_loop: body_fun argument should be callable.")
+    
+      # TODO(phawkins): perhaps do more type checking here, better error messages.
+      lower_dtype = lax.dtype(lower)
+      upper_dtype = lax.dtype(upper)
+      if lower_dtype == upper_dtype:
+        dtype = lower_dtype
+      else:
+        # As a special case: allow promotion of weak integers (e.g., Python scalars)
+        # This improves the ergonomics if one but not both of the loop bounds is a
+        # scalar.
+        dtype = None
+        if (np.issubdtype(lower_dtype, np.signedinteger) and
+            np.issubdtype(upper_dtype, np.signedinteger)):
+          lower_weak = dtypes.is_weakly_typed(lower)
+          upper_weak = dtypes.is_weakly_typed(upper)
+          if lower_weak and not upper_weak:
+            dtype = upper_dtype
+          elif not lower_weak and upper_weak:
+            dtype = lower_dtype
+    
+        if dtype is None:
+          raise TypeError("lower and upper arguments to fori_loop must have equal "
+                          f"types, got {lower_dtype.name} and {upper_dtype.name}")
+    
+      # If we can specialize on the trip count, call scan instead of a while_loop
+      # to enable efficient reverse-mode differentiation.
+      lower_ = upper_ = 0
+      if core.is_concrete(lower) and core.is_concrete(upper):
+        try:
+          lower_ = int(lower)
+          upper_ = int(upper)
+        except (TypeError, core.InconclusiveDimensionOperation):
+          use_scan = False
+        else:
+          use_scan = True
+      else:
+        use_scan = False
+    
+      body_fun_dbg = api_util.debug_info("fori_loop", body_fun,
+                                         (0, init_val), {})
+    
+      if use_scan:
+        if unroll is None:
+          unroll = False
+        length = max(upper_ - lower_, 0)
+        if config.disable_jit.value and length == 0:
+          # non-jit implementation of scan does not support length=0
+          return init_val
+        scan_body = _fori_scan_body_fun(body_fun, body_fun_dbg)
+        (_, result), _ = scan(
+            scan_body,
+            (lower_, init_val),
+            None,
+            length=length,
+            unroll=unroll,
+        )
+        return result
+      if unroll is not None and unroll is not False and unroll != 1:
+        raise ValueError("Can only use `unroll` in `fori_loop` if the loop bounds "
+                         "are statically known.")
+    
+      if lower_dtype != dtype:
+        lower = lax.convert_element_type(lower, dtype)
+      if upper_dtype != dtype:
+        upper = lax.convert_element_type(upper, dtype)
+      while_body_fun = _fori_body_fun(body_fun, body_fun_dbg)
+>     _, _, result = while_loop(_fori_cond_fun, while_body_fun,
+                                (lower, upper, init_val))
+
+../vllm_env/lib/python3.12/site-packages/jax/_src/lax/control_flow/loops.py:2658: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+cond_fun = <function _fori_cond_fun at 0x70e34d362480>
+body_fun = <function _fori_body_fun.<locals>.while_body_fun at 0x70e33eeeb1a0>
+
+    @partial(api_boundary, repro_api_name="jax.lax.while_loop")
+    def while_loop(cond_fun: Callable[[T], BooleanNumeric],
+                   body_fun: Callable[[T], T],
+                   init_val: T) -> T:
+      """Call ``body_fun`` repeatedly in a loop while ``cond_fun`` is True.
+    
+      The `Haskell-like type signature`_ in brief is
+    
+      .. code-block:: haskell
+    
+        while_loop :: (a -> Bool) -> (a -> a) -> a -> a
+    
+      The semantics of ``while_loop`` are given by this Python implementation::
+    
+        def while_loop(cond_fun, body_fun, init_val):
+          val = init_val
+          while cond_fun(val):
+            val = body_fun(val)
+          return val
+    
+      Unlike that Python version, ``while_loop`` is a JAX primitive and is lowered
+      to a single WhileOp. That makes it useful for reducing compilation times
+      for jit-compiled functions, since native Python loop constructs in an ``@jit``
+      function are unrolled, leading to large XLA computations.
+--
+        raise TypeError("lax.while_loop: body_fun and cond_fun arguments should be callable.")
+      if config.disable_jit.value:
+        try:
+          val = tree_map(lax.asarray, init_val)
+          while cond_fun(val):
+            val = tree_map(lax.asarray, body_fun(val))
+          return val
+        except core.ConcretizationTypeError:
+          # Can't run this while_loop in Python (e.g. because there's a vmap
+          # transformation on it), so we fall back to the primitive version.
+          pass
+    
+      def _create_jaxpr(init_avals):
+        args_avals = FlatTree.pack(((init_avals,), {}))
+        cond_jaxpr, cond_out_avals = pe.trace_to_jaxpr(cond_fun, args_avals, cond_dbg)
+        body_jaxpr, body_out_avals = pe.trace_to_jaxpr(body_fun, args_avals, body_dbg)
+        if not treedef_is_leaf(cond_out_avals.tree) or len(cond_jaxpr.out_avals) != 1:
+          msg = "cond_fun must return a boolean scalar, but got pytree {}."
+          raise TypeError(msg.format(cond_out_avals.tree))
+    
+        pred_aval = cond_jaxpr.out_avals[0]
+        if (not isinstance(pred_aval, ShapedArray)
+            or ShapedArray(pred_aval.shape, pred_aval.dtype) != ShapedArray((), np.bool_)):
+          msg = "cond_fun must return a boolean scalar, but got output type(s) {}."
+          raise TypeError(msg.format(cond_jaxpr.out_avals))
+    
+        return cond_jaxpr, body_jaxpr, body_out_avals
+    
+      cond_dbg = api_util.debug_info("while_cond", cond_fun, (init_val,), {})
+      body_dbg = api_util.debug_info("while_body", body_fun, (init_val,), {})
+      init_val_flat = FlatTree.flatten(init_val)
+      check_no_transformed_refs_args(lambda: body_dbg, init_val_flat.vals)
+      del init_val
+      init_aval = init_val_flat.map(core.typeof)
+    
+      # The body input and output avals must match exactly. However, we want to account for
+      # the case when init contains weakly-typed values (e.g. Python scalars), with avals that
+      # may not match the output despite being compatible by virtue of their weak type.
+      # To do this, we compute the jaxpr in two passes: first with the raw inputs, and if
+      # necessary, a second time with modified init values.
+>     cond_jaxpr, body_jaxpr, body_out_avals = _create_jaxpr(init_aval)
+                                               ^^^^^^^^^^^^^^^^^^^^^^^^
+
+../vllm_env/lib/python3.12/site-packages/jax/_src/lax/control_flow/loops.py:1698: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+init_avals = <jax._src.tree_util.FlatTree object at 0x70e33dffc1d0>
+
+    def _create_jaxpr(init_avals):
+      args_avals = FlatTree.pack(((init_avals,), {}))
+      cond_jaxpr, cond_out_avals = pe.trace_to_jaxpr(cond_fun, args_avals, cond_dbg)
+>     body_jaxpr, body_out_avals = pe.trace_to_jaxpr(body_fun, args_avals, body_dbg)
+                                   ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+../vllm_env/lib/python3.12/site-packages/jax/_src/lax/control_flow/loops.py:1673: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+fun = <function _fori_body_fun.<locals>.while_body_fun at 0x70e33eeeb1a0>
+in_avals = <jax._src.tree_util.FlatTree object at 0x70e33dfffc80>
+debug_info = DebugInfo(traced_for='fori_loop', func_src_info='<lambda> at /home/tarading/vllm_env/lib/python3.12/site-packages/jax/...elpers.py:142', arg_names=('idx', ''), result_paths=<jax._src.linear_util.InitialResultPaths object at 0x70e352d8a7e0>)
+fun_returns_flat_tree = False, requires_low = False
+parent_trace = DynamicJaxprTrace
+
+    @weakref_lru_cache(maxsize=None, explain=explain)
+    def trace_to_jaxpr(
+--
+        raise RuntimeError(f"re-tracing function {fun} for "
+                           "`jit`, but 'no_tracing' is set")
+      del context_for_cache_key  # read implicitly, e.g. qdd state
+      test_event("trace_to_jaxpr")
+      config.enable_checks.value and debug_info.assert_arg_names(len(in_avals))
+      parent_trace = core.trace_ctx.trace
+      trace = DynamicJaxprTrace(debug_info, parent_trace=parent_trace,
+                                lower=requires_low)
+      # Name stack and the traceback scope are reset because the metadata on jaxpr
+      # equations should be rooted at the enclosing jaxpr and not contain any
+      # context from the callsite. Otherwise metadata from one caller would bleed
+      # into metadata from a different caller if we, e.g., inline.
+      with (core.ensure_no_leaks(trace), source_info_util.reset_name_stack(),
+            TracebackScope()):
+        source_info = source_info_util.current()
+        if requires_low:
+          def new_arg(aval):
+            lo_tracers = [trace.new_arg(lo_aval, source_info=source_info) for lo_aval in aval.lo_ty()]  # noqa: F821
+            return aval.raise_val(*lo_tracers)
+          in_tracers = in_avals.map(new_arg)
+          debug_info = _lower_debug_info(debug_info, in_avals=in_avals)
+        else:
+          in_tracers = in_avals.map(partial(trace.new_arg, source_info=source_info))
+    
+        with core.set_current_trace(trace):
+          args, kwargs = in_tracers.unflatten()
+>         ans_pytree = fun(*args, **kwargs)
+                       ^^^^^^^^^^^^^^^^^^^^
+
+../vllm_env/lib/python3.12/site-packages/jax/_src/interpreters/partial_eval.py:2338: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+loop_carry = (JitTracer(int32[]), JitTracer(int32[]), None)
+
+    def while_body_fun(loop_carry):
+      i, upper, x = loop_carry
+      body_fun = body_fun_ref()
+      assert body_fun is not None
+>     return lax.add(i, lax._const(i, 1)), upper, body_fun(i, x)
+                                                  ^^^^^^^^^^^^^^
+
+--
+          raise TypeError("lax.cond: true_fun and false_fun arguments should be callable.")
+      if operand is not _no_operand_sentinel:
+        if operands:
+          raise TypeError("if 'operand' keyword is passed then no positional "
+                          f"operands can be passed, got {operand=} "
+                          f"and positional operands {operands}")
+        operands = (operand,)
+      del operand
+    
+      if pred is None:
+        raise TypeError("cond predicate is None")
+      if isinstance(pred, Sequence) or np.ndim(pred) != 0:
+        raise TypeError(
+            f"Pred must be a scalar, got {pred} of " +
+            (f"type {type(pred)}" if isinstance(pred, Sequence)
+             else f"shape {np.shape(pred)}."))
+    
+      try:
+        pred_dtype = dtypes.result_type(pred)
+      except TypeError as err:
+        msg = ("Pred type must be either boolean or number, got {}.")
+        raise TypeError(msg.format(pred)) from err
+    
+      if pred_dtype.kind != 'b':
+        if pred_dtype.kind in 'iuf':
+          pred = pred != 0
+        else:
+          msg = ("Pred type must be either boolean or number, got {}.")
+          raise TypeError(msg.format(pred_dtype))
+    
+      if config.disable_jit.value and core.is_concrete(pred):
+        if pred:
+          return true_fun(*operands)
+        else:
+          return false_fun(*operands)
+    
+      args = FlatTree.flatten((operands, {}))
+      dbg_true = api_util.debug_info("cond", true_fun, operands, {})
+      api_util.check_no_transformed_refs_args(lambda: dbg_true, args.vals)
+      avals = args.map(core.typeof)
+      avals = avals.map2(
+          lambda a, x: core.AvalQDD(a, cur_qdd(x)) if a.has_qdd else a,
+          list(args))
+      if config.mutable_array_checks.value:
+        api_util.check_no_aliased_ref_args(lambda: dbg_true, list(avals), list(args))
+      dbg_false = api_util.debug_info("cond", false_fun, operands, {})
+    
+>     true_jaxpr_, out_avals = pe.trace_to_jaxpr(true_fun, avals, dbg_true)
+                               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+../vllm_env/lib/python3.12/site-packages/jax/_src/lax/control_flow/conditionals.py:279: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+fun = <function _ragged_paged_attention_kernel_loop.<locals>.prologue at 0x70e33eeacc20>
+in_avals = <jax._src.tree_util.FlatTree object at 0x70e33dbd13a0>
+debug_info = DebugInfo(traced_for='cond', func_src_info='prologue at /home/tarading/tpu-inference/tpu_inference/kernels/ragged_page...tion/v3/kernel.py:1366', arg_names=(), result_paths=<jax._src.linear_util.InitialResultPaths object at 0x70e352d8a7e0>)
+fun_returns_flat_tree = False, requires_low = False
+parent_trace = DynamicJaxprTrace
+
+    @weakref_lru_cache(maxsize=None, explain=explain)
+    def trace_to_jaxpr(
+        fun: Callable,
+        in_avals: FlatTree,  # (args, kwargs) pair
+        debug_info: core.DebugInfo,
+        *context_for_cache_key,
+        fun_returns_flat_tree=False,
+        requires_low=False,
+    ) -> tuple[ClosedJaxpr, FlatTree]:
+      if config.no_tracing.value:
+        raise RuntimeError(f"re-tracing function {fun} for "
+                           "`jit`, but 'no_tracing' is set")
+      del context_for_cache_key  # read implicitly, e.g. qdd state
+      test_event("trace_to_jaxpr")
+      config.enable_checks.value and debug_info.assert_arg_names(len(in_avals))
+      parent_trace = core.trace_ctx.trace
+      trace = DynamicJaxprTrace(debug_info, parent_trace=parent_trace,
+                                lower=requires_low)
+      # Name stack and the traceback scope are reset because the metadata on jaxpr
+      # equations should be rooted at the enclosing jaxpr and not contain any
+      # context from the callsite. Otherwise metadata from one caller would bleed
+      # into metadata from a different caller if we, e.g., inline.
+      with (core.ensure_no_leaks(trace), source_info_util.reset_name_stack(),
+            TracebackScope()):
+        source_info = source_info_util.current()
+        if requires_low:
+          def new_arg(aval):
+            lo_tracers = [trace.new_arg(lo_aval, source_info=source_info) for lo_aval in aval.lo_ty()]  # noqa: F821
+            return aval.raise_val(*lo_tracers)
+          in_tracers = in_avals.map(new_arg)
+          debug_info = _lower_debug_info(debug_info, in_avals=in_avals)
+        else:
+          in_tracers = in_avals.map(partial(trace.new_arg, source_info=source_info))
+    
+        with core.set_current_trace(trace):
+          args, kwargs = in_tracers.unflatten()
+>         ans_pytree = fun(*args, **kwargs)
+                       ^^^^^^^^^^^^^^^^^^^^
+
+../vllm_env/lib/python3.12/site-packages/jax/_src/interpreters/partial_eval.py:2338: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+    @pl.when(seq_idx == start_seq_idx)
+    def prologue():
+        if merge_kernel:
+            # Start x[0]; also start x[next] so iter 0's q_proj(t+1) doesn't stall.
+            start_fetch_x(seq_idx=start_seq_idx, bq_idx=0, bq_sem_idx=0)
+            # Compute next-tile ids for bq=0, sem=0 (same logic as get_next_bq_ids).
+            _num_bq_init = cdiv(q_len, bq_sz)
+            _next_bq_is_last = _num_bq_init == 1
+            _next_bq_idx = lax.select(_next_bq_is_last, 0, 1)
+--
+E       ValueError: math domain error
+
+tpu_inference/kernels/ragged_paged_attention/v3/kernel.py:289: ValueError
+=============================== warnings summary ===============================
+../vllm_env/lib/python3.12/site-packages/tpu_info/device.py:33
+  /home/tarading/vllm_env/lib/python3.12/site-packages/tpu_info/device.py:33: DeprecationWarning: In 3.13 classes created inside an enum will not become a member.  Use the `member` decorator to keep the current behavior.
+    class Info(typing.NamedTuple):
+
+<frozen importlib._bootstrap>:488
+  <frozen importlib._bootstrap>:488: DeprecationWarning: builtin type SwigPyPacked has no __module__ attribute
+
+<frozen importlib._bootstrap>:488
+  <frozen importlib._bootstrap>:488: DeprecationWarning: builtin type SwigPyObject has no __module__ attribute
+
+../vllm_env/lib/python3.12/site-packages/flax/nnx/variablelib.py:324
+  /home/tarading/vllm_env/lib/python3.12/site-packages/flax/nnx/variablelib.py:324: DeprecationWarning: jax.core.Effect is deprecated. Use jax.extend.core.Effect.
+    class VariableEffect(jax.core.Effect): ...
+
+tests/kernels/ragged_paged_attention_kernel_v3_test.py::RaggedPagedAttentionKernelTest::test_ragged_paged_attention_qproj_fusion0
+  /home/tarading/vllm_env/lib/python3.12/site-packages/jax/_src/interpreters/mlir.py:1313: UserWarning: Some donated buffers were not usable: bfloat16[512,8,128], bfloat16[512,8,128].
+  See an explanation at https://docs.jax.dev/en/latest/faq.html#buffer-donation.
+    warnings.warn("Some donated buffers were not usable:"
+
+-- Docs: https://docs.pytest.org/en/stable/how-to/capture-warnings.html
+=========================== short test summary info ============================
+FAILED tests/kernels/ragged_paged_attention_kernel_v3_test.py::RaggedPagedAttentionKernelTest::test_ragged_paged_attention_qproj_fusion0
+======================== 1 failed, 5 warnings in 22.43s ========================
+sys:1: DeprecationWarning: builtin type swigvarlink has no __module__ attribute

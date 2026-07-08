@@ -1,0 +1,203 @@
+=== FALSE (trace_false) ts in [1037100,1038140] ===
+  ts= 1037100.743 dur=   0.0025 copy-done.185             cat=copy-done              src=                                    tf_op=
+  ts= 1037100.753 dur=   0.0062 convert_element_type.360  cat=non-fusion elementwise src=es/flax/nnx/nn/normalization.py:175 tf_op=jit(run_model)/convert_element_type:
+  ts= 1037100.768 dur=   0.0124 add_rsqrt_fusion.36       cat=loop fusion            src=es/flax/nnx/nn/normalization.py:171 tf_op=jit(run_model)/rsqrt:
+  ts= 1037100.783 dur=   0.3501 fusion.1367               cat=loop fusion            src=es/flax/nnx/nn/normalization.py:183 tf_op=jit(run_model)/convert_element_type:
+  ts= 1037101.142 dur=   0.7799 fusion.1618               cat=loop fusion            src=                                    tf_op=
+  ts= 1037101.931 dur=   0.0627 pad_maximum_fusion.71     cat=loop fusion            src=d_paged_attention/v3/kernel.py:1312 tf_op=jit(run_model)/jit(ragged_paged_attention)/concatenate:
+  ts= 1037102.002 dur=   1.1338 copy.684                  cat=data formatting        src=d_paged_attention/v3/kernel.py:1321 tf_op=jit(run_model)/jit(ragged_paged_attention)/reshape:
+  ts= 1037103.137 dur=   6.2651 RPAd-p_128-bq_1_1-bkv_4096_4096.107 cat=custom-call            src=d_paged_attention/v3/kernel.py:2069 tf_op=attention)/RPAd-p_128-bq_1_1-bkv_4096_4096/pallas_call:
+  ts= 1037109.411 dur=  22.7575 RPAm-p_128-bq_64_128-bkv_1024_512.107 cat=custom-call            src=d_paged_attention/v3/kernel.py:2069 tf_op=tention)/RPAm-p_128-bq_64_128-bkv_1024_512/pallas_call:
+  ts= 1037132.169 dur=   0.0013 copy-start.111            cat=copy-start             src=                                    tf_op=
+  ts= 1037132.171 dur=   1.6848 copy.576                  cat=data formatting        src=d_paged_attention/v3/kernel.py:1387 tf_op=jit(run_model)/jit(ragged_paged_attention)/transpose:
+  ts= 1037133.862 dur=  16.1574 fusion.720                cat=convolution fusion     src=mmon/quantization/unquantized.py:53 tf_op=jit(run_model)/JaxEinsum/TNH,NHD->TD/dot_general:
+  ts= 1037150.027 dur=   0.0036 copy-done.111             cat=copy-done              src=                                    tf_op=
+  ts= 1037150.038 dur=   0.0063 convert_element_type.361  cat=non-fusion elementwise src=es/flax/nnx/nn/normalization.py:175 tf_op=jit(run_model)/convert_element_type:
+  ts= 1037150.052 dur=   0.0126 add_rsqrt_fusion.73       cat=loop fusion            src=es/flax/nnx/nn/normalization.py:171 tf_op=jit(run_model)/rsqrt:
+  ts= 1037150.067 dur=   0.0088 copy-start.37             cat=copy-start             src=                                    tf_op=
+  ts= 1037150.084 dur=  37.6823 fusion.903                cat=convolution fusion     src=mmon/quantization/unquantized.py:53 tf_op=jit(run_model)/JaxLinear/mn,np->mp/dot_general:
+  ts= 1037187.775 dur=  27.0751 copy-done.37              cat=copy-done              src=                                    tf_op=
+  ts= 1037214.851 dur=   0.0023 copy-start.112            cat=copy-start             src=                                    tf_op=
+  ts= 1037214.853 dur=  36.3626 multiply_reduce_fusion    cat=convolution fusion     src=mmon/quantization/unquantized.py:53 tf_op=jit(run_model)/JaxLinear/mn,np->mp/dot_general:
+  ts= 1037251.224 dur=   0.0025 copy-done.112             cat=copy-done              src=                                    tf_op=
+  ts= 1037251.234 dur=   0.0062 convert_element_type.362  cat=non-fusion elementwise src=es/flax/nnx/nn/normalization.py:175 tf_op=jit(run_model)/convert_element_type:
+  ts= 1037251.248 dur=   0.0125 add_rsqrt_fusion.72       cat=loop fusion            src=es/flax/nnx/nn/normalization.py:171 tf_op=jit(run_model)/rsqrt:
+  ts= 1037251.263 dur=   1.0188 multiply_convert_fusion   cat=loop fusion            src=es/flax/nnx/nn/normalization.py:183 tf_op=jit(run_model)/convert_element_type:
+  ts= 1037254.496 dur=   0.0112 copy-start                cat=copy-start             src=                                    tf_op=
+  ts= 1037254.515 dur=   0.0050 copy-start.1              cat=copy-start             src=                                    tf_op=
+  ts= 1037254.528 dur=   1.1262 copy-done.1               cat=copy-done              src=                                    tf_op=
+  ts= 1037255.655 dur=   0.0026 compare_select_fusion     cat=loop fusion            src=inference/runner/tpu_runner.py:1585 tf_op=jit(_select_from_array_fn)/select_n:
+  ts= 1037255.659 dur=   0.0077 pad_clamp_fusion          cat=loop fusion            src=inference/runner/tpu_runner.py:1585 tf_op=jit(_select_from_array_fn)/gather:
+  ts= 1037255.667 dur=   0.0036 copy-done                 cat=copy-done              src=                                    tf_op=
+  ts= 1037255.678 dur=   1.0263 gather_custom_fusion      cat=custom fusion          src=inference/runner/tpu_runner.py:1585 tf_op=jit(_select_from_array_fn)/gather:
+  ts= 1037259.899 dur=   0.0113 copy-start                cat=copy-start             src=                                    tf_op=
+  ts= 1037259.919 dur=   0.6775 copy-done                 cat=copy-done              src=                                    tf_op=
+  ts= 1037260.598 dur= 503.3713 fusion                    cat=convolution fusion     src=pu_inference/layers/jax/embed.py:65 tf_op=jit(run_compute_logits)/dot_general:
+  ts= 1037765.649 dur=   7.8213 convert_element_type.1    cat=non-fusion elementwise src=inference/runner/tpu_runner.py:1313 tf_op=jit(convert_element_type)/convert_element_type:
+  ts= 1037776.906 dur=   0.0062 copy-start                cat=copy-start             src=                                    tf_op=
+  ts= 1037776.919 dur=   7.1748 iota_reduce_fusion        cat=loop fusion            src=e/layers/jax/sample/sampling.py:125 tf_op=jit(sample)/reduce:
+  ts= 1037784.096 dur=   0.0026 copy-done                 cat=copy-done              src=                                    tf_op=
+  ts= 1037784.099 dur=   3.4937 copy.2                    cat=data formatting        src=                                    tf_op=
+  ts= 1037789.871 dur=   1.0323 split.8                   cat=slice                  src=nference/tpu_inference/utils.py:497 tf_op=jit(split)/split:
+  ts= 1037790.904 dur=   1.0325 split.7                   cat=slice                  src=nference/tpu_inference/utils.py:497 tf_op=jit(split)/split:
+  ts= 1037791.938 dur=   0.9613 split.6                   cat=slice                  src=nference/tpu_inference/utils.py:497 tf_op=jit(split)/split:
+  ts= 1037792.899 dur=   1.1026 split.5                   cat=slice                  src=nference/tpu_inference/utils.py:497 tf_op=jit(split)/split:
+  ts= 1037794.003 dur=   1.8138 split.9                   cat=slice                  src=nference/tpu_inference/utils.py:497 tf_op=jit(split)/split:
+  ts= 1037804.216 dur=   0.5376 convert_element_type.219  cat=non-fusion elementwise src=ce/layers/jax/rope_interface.py:174 tf_op=jit(run_model)/convert_element_type:
+  ts= 1037804.754 dur=   0.0300 fusion.1336               cat=loop fusion            src=ce/layers/jax/rope_interface.py:292 tf_op=jit(run_model)/add:
+  ts= 1037804.784 dur=   0.0049 slice-start.180           cat=async-start            src=                                    tf_op=
+  ts= 1037804.798 dur=   4.9038 multiply_cosine_fusion    cat=loop fusion            src=ce/layers/jax/rope_interface.py:180 tf_op=jit(run_model)/cos:
+  ts= 1037809.711 dur=   0.0062 copy-start                cat=copy-start             src=                                    tf_op=
+  ts= 1037809.725 dur=   0.0063 copy-start.1              cat=copy-start             src=                                    tf_op=
+  ts= 1037809.740 dur=   0.7288 fusion.1334               cat=loop fusion            src=packages/flax/nnx/nn/linear.py:1319 tf_op=jit(run_model)/jit(_take)/gather:
+  ts= 1037810.471 dur=   0.0013 copy-start.4              cat=copy-start             src=                                    tf_op=
+  ts= 1037810.472 dur=   0.0013 copy-start.7              cat=copy-start             src=                                    tf_op=
+  ts= 1037810.474 dur=   0.0051 slice-start.181           cat=async-start            src=                                    tf_op=
+  ts= 1037810.487 dur=  65.5886 gather_custom_fusion      cat=custom fusion          src=packages/flax/nnx/nn/linear.py:1319 tf_op=jit(run_model)/jit(_take)/gather:
+  ts= 1037876.084 dur=   0.0026 copy-done.4               cat=copy-done              src=                                    tf_op=
+  ts= 1037876.096 dur=   0.0088 copy-start.2              cat=copy-start             src=                                    tf_op=
+  ts= 1037876.113 dur=   0.0101 compare_and_fusion        cat=loop fusion            src=packages/flax/nnx/nn/linear.py:1319 tf_op=jit(run_model)/jit(_take)/and:
+  ts= 1037876.132 dur=   0.0063 copy-start.5              cat=copy-start             src=                                    tf_op=
+  ts= 1037876.147 dur=   5.0089 fusion.253                cat=loop fusion            src=es/flax/nnx/nn/normalization.py:102 tf_op=jit(run_model)/reduce_sum:
+  ts= 1037881.164 dur=   0.0149 add_rsqrt_fusion.144      cat=loop fusion            src=es/flax/nnx/nn/normalization.py:171 tf_op=jit(run_model)/rsqrt:
+  ts= 1037881.182 dur=   0.0036 copy-done.7               cat=copy-done              src=                                    tf_op=
+  ts= 1037881.193 dur=   0.0063 convert_element_type.217  cat=non-fusion elementwise src=es/flax/nnx/nn/normalization.py:175 tf_op=jit(run_model)/convert_element_type:
+  ts= 1037881.208 dur=   0.0025 slice-done.180            cat=async-done             src=                                    tf_op=
+  ts= 1037881.219 dur=   0.0026 slice-done.181            cat=async-done             src=                                    tf_op=
+  ts= 1037881.231 dur=   0.0001 custom-call.38            cat=custom-call            src=                                    tf_op=
+  ts= 1037881.239 dur=   0.0088 copy-start.80             cat=copy-start             src=                                    tf_op=
+  ts= 1037881.257 dur=  15.7862 fusion.687                cat=convolution fusion     src=mmon/quantization/unquantized.py:53 tf_op=jit(run_model)/JaxEinsum/TD,DKH->TKH/dot_general:
+  ts= 1037897.051 dur=   0.0098 slice-start.182           cat=async-start            src=                                    tf_op=
+  ts= 1037897.068 dur=   0.0224 add_rsqrt_fusion.71       cat=loop fusion            src=es/flax/nnx/nn/normalization.py:171 tf_op=jit(run_model)/rsqrt:
+  ts= 1037897.098 dur=   0.0037 copy-done.80              cat=copy-done              src=                                    tf_op=
+  ts= 1037897.108 dur=   0.0050 convert_element_type.220  cat=non-fusion elementwise src=es/flax/nnx/nn/normalization.py:175 tf_op=jit(run_model)/convert_element_type:
+  ts= 1037897.122 dur=   2.1099 fusion.686                cat=loop fusion            src=es/flax/nnx/nn/normalization.py:183 tf_op=jit(run_model)/convert_element_type:
+  ts= 1037899.239 dur=   0.0098 slice-start.183           cat=async-start            src=                                    tf_op=
+  ts= 1037899.257 dur=   1.7824 fusion.1191               cat=loop fusion            src=                                    tf_op=
+  ts= 1037901.047 dur=   0.0864 slice-done.182            cat=async-done             src=                                    tf_op=
+  ts= 1037901.134 dur=   0.3337 slice-done.183            cat=async-done             src=                                    tf_op=
+  ts= 1037901.468 dur=   0.0012 custom-call.39            cat=custom-call            src=                                    tf_op=
+  ts= 1037901.471 dur=   0.0002 slice-start               cat=async-start            src=                                    tf_op=
+  ts= 1037901.472 dur=   0.0014 slice-start.1             cat=async-start            src=                                    tf_op=
+  ts= 1037901.473 dur=   0.0023 slice-start.2             cat=async-start            src=                                    tf_op=
+  ts= 1037901.476 dur=  17.2012 fusion.938                cat=convolution fusion     src=mmon/quantization/unquantized.py:53 tf_op=jit(run_model)/JaxEinsum/TD,DKH->TKH/dot_general:
+  ts= 1037918.686 dur=   0.0088 slice-start.3             cat=async-start            src=                                    tf_op=
+  ts= 1037918.702 dur=   1.5225 pad_maximum_fusion.36     cat=loop fusion            src=d_paged_attention/v3/kernel.py:1312 tf_op=jit(run_model)/jit(ragged_paged_attention)/concatenate:
+  ts= 1037920.233 dur=   0.0088 slice-start.4             cat=async-start            src=                                    tf_op=
+  ts= 1037920.249 dur=  15.8663 copy.579                  cat=data formatting        src=d_paged_attention/v3/kernel.py:1321 tf_op=jit(run_model)/jit(ragged_paged_attention)/reshape:
+  ts= 1037936.116 dur=   0.0036 copy-done.2               cat=copy-done              src=                                    tf_op=
+  ts= 1037936.119 dur=   0.0026 copy-done.5               cat=copy-done              src=                                    tf_op=
+  ts= 1037936.123 dur=   0.0025 slice-done                cat=async-done             src=                                    tf_op=
+  ts= 1037936.127 dur=   0.0037 slice-done.1              cat=async-done             src=                                    tf_op=
+  ts= 1037936.138 dur=   0.0037 slice-done.2              cat=async-done             src=                                    tf_op=
+  ts= 1037936.148 dur=   0.0037 slice-done.3              cat=async-done             src=                                    tf_op=
+  ts= 1037936.159 dur=   0.0025 slice-done.4              cat=async-done             src=                                    tf_op=
+  ts= 1037936.171 dur=   0.0001 custom-call.2             cat=custom-call            src=                                    tf_op=
+  ts= 1037936.179 dur=   0.0077 copy-start.81             cat=copy-start             src=                                    tf_op=
+  ts= 1037936.196 dur= 147.4549 fusion.181                cat=convolution fusion     src=mmon/quantization/unquantized.py:53 tf_op=jit(run_model)/JaxEinsum/TD,DNH->TNH/dot_general:
+  ts= 1038083.658 dur=   0.2450 add_rsqrt_fusion.35       cat=loop fusion            src=es/flax/nnx/nn/normalization.py:171 tf_op=jit(run_model)/rsqrt:
+  ts= 1038083.911 dur=   0.0036 copy-done.81              cat=copy-done              src=                                    tf_op=
+  ts= 1038083.922 dur=   0.0051 convert_element_type.218  cat=non-fusion elementwise src=es/flax/nnx/nn/normalization.py:175 tf_op=jit(run_model)/convert_element_type:
+  ts= 1038083.936 dur=   8.2999 fusion.180                cat=loop fusion            src=es/flax/nnx/nn/normalization.py:183 tf_op=jit(run_model)/convert_element_type:
+  ts= 1038092.244 dur=   0.0025 copy-done                 cat=copy-done              src=                                    tf_op=
+  ts= 1038092.255 dur=   0.0025 copy-done.1               cat=copy-done              src=                                    tf_op=
+  ts= 1038092.265 dur=   7.8038 fusion.507                cat=loop fusion            src=                                    tf_op=
+  ts= 1038100.078 dur=   2.4176 pad_maximum_fusion        cat=loop fusion            src=ce/layers/jax/rope_interface.py:204 tf_op=jit(run_model)/concatenate:
+  ts= 1038102.504 dur=  27.5951 copy.327                  cat=data formatting        src=d_paged_attention/v3/kernel.py:1360 tf_op=jit(run_model)/jit(ragged_paged_attention)/reshape:
+  ts= 1038130.100 dur=   0.3975 broadcast.1864            cat=broadcast              src=s/common/attention_interface.py:417 tf_op=jit(run_model)/jit(ragged_paged_attention):
+  ts= 1038130.499 dur=   0.3938 broadcast.1865            cat=broadcast              src=s/common/attention_interface.py:417 tf_op=jit(run_model)/jit(ragged_paged_attention):
+  ts= 1038130.893 dur=   0.4499 broadcast.1866            cat=broadcast              src=s/common/attention_interface.py:417 tf_op=jit(run_model)/jit(ragged_paged_attention):
+  ts= 1038131.344 dur=   6.2838 RPAd-p_128-bq_1_1-bkv_4096_4096.72 cat=custom-call            src=d_paged_attention/v3/kernel.py:2069 tf_op=attention)/RPAd-p_128-bq_1_1-bkv_4096_4096/pallas_call:
+  ts= 1038137.637 dur= 320.6788 RPAm-p_128-bq_256_128-bkv_1024_512.72 cat=custom-call            src=d_paged_attention/v3/kernel.py:2069 tf_op=ention)/RPAm-p_128-bq_256_128-bkv_1024_512/pallas_call:
+  TOTAL(excl RPA) = 979.8209
+=== TRUE (trace_true) ts in [1033400,1034480] ===
+  ts= 1033420.630 dur=  47.8137 RPAm-p_128-bq_64_128-bkv_1024_512.107 cat=custom-call            src=d_paged_attention/v3/kernel.py:2069 tf_op=tention)/RPAm-p_128-bq_64_128-bkv_1024_512/pallas_call:
+  ts= 1033468.445 dur=   0.0013 copy-start.109            cat=copy-start             src=                                    tf_op=
+  ts= 1033468.447 dur=   1.9311 copy.576                  cat=data formatting        src=d_paged_attention/v3/kernel.py:1387 tf_op=jit(run_model)/jit(ragged_paged_attention)/transpose:
+  ts= 1033470.387 dur=  16.4350 fusion.720                cat=convolution fusion     src=mmon/quantization/unquantized.py:53 tf_op=jit(run_model)/JaxEinsum/TNH,NHD->TD/dot_general:
+  ts= 1033486.829 dur=   0.0035 copy-done.109             cat=copy-done              src=                                    tf_op=
+  ts= 1033486.841 dur=   0.0063 convert_element_type.143  cat=non-fusion elementwise src=es/flax/nnx/nn/normalization.py:175 tf_op=jit(run_model)/convert_element_type:
+  ts= 1033486.855 dur=   0.0125 add_rsqrt_fusion.73       cat=loop fusion            src=es/flax/nnx/nn/normalization.py:171 tf_op=jit(run_model)/rsqrt:
+  ts= 1033486.870 dur=   0.0099 copy-start.35             cat=copy-start             src=                                    tf_op=
+  ts= 1033486.888 dur=  36.5926 fusion.759                cat=convolution fusion     src=mmon/quantization/unquantized.py:53 tf_op=jit(run_model)/JaxLinear/mn,np->mp/dot_general:
+  ts= 1033523.489 dur=  27.6762 copy-done.35              cat=copy-done              src=                                    tf_op=
+  ts= 1033551.167 dur=   0.0013 copy-start.110            cat=copy-start             src=                                    tf_op=
+  ts= 1033551.169 dur=  35.7550 multiply_reduce_fusion    cat=convolution fusion     src=mmon/quantization/unquantized.py:53 tf_op=jit(run_model)/JaxLinear/mn,np->mp/dot_general:
+  ts= 1033586.932 dur=   0.0025 copy-done.110             cat=copy-done              src=                                    tf_op=
+  ts= 1033586.942 dur=   0.0063 convert_element_type.144  cat=non-fusion elementwise src=es/flax/nnx/nn/normalization.py:175 tf_op=jit(run_model)/convert_element_type:
+  ts= 1033586.956 dur=   0.0124 add_rsqrt_fusion.72       cat=loop fusion            src=es/flax/nnx/nn/normalization.py:171 tf_op=jit(run_model)/rsqrt:
+  ts= 1033586.971 dur=   1.0212 multiply_convert_fusion   cat=loop fusion            src=es/flax/nnx/nn/normalization.py:183 tf_op=jit(run_model)/convert_element_type:
+  ts= 1033590.389 dur=   0.0112 copy-start                cat=copy-start             src=                                    tf_op=
+  ts= 1033590.409 dur=   0.0050 copy-start.1              cat=copy-start             src=                                    tf_op=
+  ts= 1033590.422 dur=   1.0687 copy-done.1               cat=copy-done              src=                                    tf_op=
+  ts= 1033591.490 dur=   0.0037 compare_select_fusion     cat=loop fusion            src=inference/runner/tpu_runner.py:1585 tf_op=jit(_select_from_array_fn)/select_n:
+  ts= 1033591.495 dur=   0.0077 pad_clamp_fusion          cat=loop fusion            src=inference/runner/tpu_runner.py:1585 tf_op=jit(_select_from_array_fn)/gather:
+  ts= 1033591.503 dur=   0.0036 copy-done                 cat=copy-done              src=                                    tf_op=
+  ts= 1033591.514 dur=   1.0451 gather_custom_fusion      cat=custom fusion          src=inference/runner/tpu_runner.py:1585 tf_op=jit(_select_from_array_fn)/gather:
+  ts= 1033595.993 dur=   0.0114 copy-start                cat=copy-start             src=                                    tf_op=
+  ts= 1033596.013 dur=   0.6825 copy-done                 cat=copy-done              src=                                    tf_op=
+  ts= 1033596.696 dur= 503.5713 fusion                    cat=convolution fusion     src=pu_inference/layers/jax/embed.py:65 tf_op=jit(run_compute_logits)/dot_general:
+  ts= 1034101.936 dur=   7.6448 convert_element_type.1    cat=non-fusion elementwise src=inference/runner/tpu_runner.py:1313 tf_op=jit(convert_element_type)/convert_element_type:
+  ts= 1034112.927 dur=   0.0051 copy-start                cat=copy-start             src=                                    tf_op=
+  ts= 1034112.940 dur=   6.9864 iota_reduce_fusion        cat=loop fusion            src=e/layers/jax/sample/sampling.py:125 tf_op=jit(sample)/reduce:
+  ts= 1034119.928 dur=   0.0025 copy-done                 cat=copy-done              src=                                    tf_op=
+  ts= 1034119.932 dur=   3.4688 copy.2                    cat=data formatting        src=                                    tf_op=
+  ts= 1034125.529 dur=   1.0289 split.8                   cat=slice                  src=nference/tpu_inference/utils.py:497 tf_op=jit(split)/split:
+  ts= 1034126.559 dur=   1.1364 split.7                   cat=slice                  src=nference/tpu_inference/utils.py:497 tf_op=jit(split)/split:
+  ts= 1034127.697 dur=   0.9302 split.6                   cat=slice                  src=nference/tpu_inference/utils.py:497 tf_op=jit(split)/split:
+  ts= 1034128.628 dur=   0.9763 split.5                   cat=slice                  src=nference/tpu_inference/utils.py:497 tf_op=jit(split)/split:
+  ts= 1034129.605 dur=   1.7988 split.9                   cat=slice                  src=nference/tpu_inference/utils.py:497 tf_op=jit(split)/split:
+  ts= 1034139.864 dur=   0.5851 fusion.1046               cat=loop fusion            src=packages/flax/nnx/nn/linear.py:1319 tf_op=jit(run_model)/jit(_take)/gather:
+  ts= 1034140.449 dur=   0.0024 copy-start.1              cat=copy-start             src=                                    tf_op=
+  ts= 1034140.452 dur=   0.0023 copy-start.4              cat=copy-start             src=                                    tf_op=
+  ts= 1034140.455 dur=   0.0037 copy-start.150            cat=copy-start             src=                                    tf_op=
+  ts= 1034140.468 dur=  68.6713 gather_custom_fusion      cat=custom fusion          src=packages/flax/nnx/nn/linear.py:1319 tf_op=jit(run_model)/jit(_take)/gather:
+  ts= 1034209.148 dur=   0.0037 copy-done.1               cat=copy-done              src=                                    tf_op=
+  ts= 1034209.159 dur=   0.0088 copy-start                cat=copy-start             src=                                    tf_op=
+  ts= 1034209.177 dur=   0.0112 compare_and_fusion        cat=loop fusion            src=packages/flax/nnx/nn/linear.py:1319 tf_op=jit(run_model)/jit(_take)/and:
+  ts= 1034209.196 dur=   0.0073 copy-start.2              cat=copy-start             src=                                    tf_op=
+  ts= 1034209.211 dur=   0.0100 slice-start.195           cat=async-start            src=                                    tf_op=
+  ts= 1034209.229 dur=   5.0149 fusion.253                cat=loop fusion            src=es/flax/nnx/nn/normalization.py:102 tf_op=jit(run_model)/reduce_sum:
+  ts= 1034214.253 dur=   0.0126 add_rsqrt_fusion.144      cat=loop fusion            src=es/flax/nnx/nn/normalization.py:171 tf_op=jit(run_model)/rsqrt:
+  ts= 1034214.269 dur=   0.0037 copy-done.4               cat=copy-done              src=                                    tf_op=
+  ts= 1034214.280 dur=   0.0063 convert_element_type.0    cat=non-fusion elementwise src=es/flax/nnx/nn/normalization.py:175 tf_op=jit(run_model)/convert_element_type:
+  ts= 1034214.295 dur=   0.0026 copy-done.150             cat=copy-done              src=                                    tf_op=
+  ts= 1034214.307 dur=   0.0088 copy-start.77             cat=copy-start             src=                                    tf_op=
+  ts= 1034214.323 dur=   0.0099 slice-start.196           cat=async-start            src=                                    tf_op=
+  ts= 1034214.342 dur=  15.9362 fusion.543                cat=convolution fusion     src=mmon/quantization/unquantized.py:53 tf_op=jit(run_model)/JaxEinsum/TD,DKH->TKH/dot_general:
+  ts= 1034230.287 dur=   0.0225 add_rsqrt_fusion.71       cat=loop fusion            src=es/flax/nnx/nn/normalization.py:171 tf_op=jit(run_model)/rsqrt:
+  ts= 1034230.317 dur=   0.0025 copy-done.77              cat=copy-done              src=                                    tf_op=
+  ts= 1034230.327 dur=   0.0050 convert_element_type.2    cat=non-fusion elementwise src=es/flax/nnx/nn/normalization.py:175 tf_op=jit(run_model)/convert_element_type:
+  ts= 1034230.339 dur=   2.0024 fusion.542                cat=loop fusion            src=es/flax/nnx/nn/normalization.py:183 tf_op=jit(run_model)/convert_element_type:
+  ts= 1034232.349 dur=   0.0025 slice-done.195            cat=async-done             src=                                    tf_op=
+  ts= 1034232.360 dur=   0.0025 slice-done.196            cat=async-done             src=                                    tf_op=
+  ts= 1034232.369 dur=   0.0011 custom-call.40            cat=custom-call            src=                                    tf_op=
+  ts= 1034232.378 dur=   0.0088 slice-start.15            cat=async-start            src=                                    tf_op=
+  ts= 1034232.395 dur=   0.0062 slice-start.16            cat=async-start            src=                                    tf_op=
+  ts= 1034232.409 dur=   0.0063 slice-start.17            cat=async-start            src=                                    tf_op=
+  ts= 1034232.424 dur=  19.5199 fusion.794                cat=convolution fusion     src=mmon/quantization/unquantized.py:53 tf_op=jit(run_model)/JaxEinsum/TD,DKH->TKH/dot_general:
+  ts= 1034251.952 dur=   0.0088 slice-start.18            cat=async-start            src=                                    tf_op=
+  ts= 1034251.968 dur=   1.4987 pad_maximum_fusion        cat=loop fusion            src=d_paged_attention/v3/kernel.py:1312 tf_op=jit(run_model)/jit(ragged_paged_attention)/concatenate:
+  ts= 1034253.474 dur=   0.0088 slice-start.19            cat=async-start            src=                                    tf_op=
+  ts= 1034253.490 dur=  15.8324 copy.579                  cat=data formatting        src=d_paged_attention/v3/kernel.py:1321 tf_op=jit(run_model)/jit(ragged_paged_attention)/reshape:
+  ts= 1034269.323 dur=   0.0025 copy-done                 cat=copy-done              src=                                    tf_op=
+  ts= 1034269.327 dur=   0.0026 copy-done.2               cat=copy-done              src=                                    tf_op=
+  ts= 1034269.329 dur=   0.0025 slice-done.15             cat=async-done             src=                                    tf_op=
+  ts= 1034269.335 dur=   0.0025 slice-done.16             cat=async-done             src=                                    tf_op=
+  ts= 1034269.345 dur=   0.0025 slice-done.17             cat=async-done             src=                                    tf_op=
+  ts= 1034269.356 dur=   0.0025 slice-done.18             cat=async-done             src=                                    tf_op=
+  ts= 1034269.367 dur=   0.0026 slice-done.19             cat=async-done             src=                                    tf_op=
+  ts= 1034269.377 dur=   0.0013 custom-call.4             cat=custom-call            src=                                    tf_op=
+  ts= 1034269.385 dur=   0.0088 copy-start.78             cat=copy-start             src=                                    tf_op=
+  ts= 1034269.403 dur= 147.5362 fusion.181                cat=convolution fusion     src=mmon/quantization/unquantized.py:53 tf_op=jit(run_model)/JaxEinsum/TD,DNH->TNH/dot_general:
+  ts= 1034416.947 dur=   0.2799 add_rsqrt_fusion.35       cat=loop fusion            src=es/flax/nnx/nn/normalization.py:171 tf_op=jit(run_model)/rsqrt:
+  ts= 1034417.235 dur=   0.0026 copy-done.78              cat=copy-done              src=                                    tf_op=
+  ts= 1034417.245 dur=   0.0062 convert_element_type.1    cat=non-fusion elementwise src=es/flax/nnx/nn/normalization.py:175 tf_op=jit(run_model)/convert_element_type:
+  ts= 1034417.259 dur=   8.3063 fusion.180                cat=loop fusion            src=es/flax/nnx/nn/normalization.py:183 tf_op=jit(run_model)/convert_element_type:
+  ts= 1034425.574 dur=  27.4462 copy.327                  cat=data formatting        src=d_paged_attention/v3/kernel.py:1360 tf_op=jit(run_model)/jit(ragged_paged_attention)/reshape:
+  ts= 1034453.020 dur=   0.3900 broadcast.1749            cat=broadcast              src=s/common/attention_interface.py:417 tf_op=jit(run_model)/jit(ragged_paged_attention):
+  ts= 1034453.412 dur=   0.4412 broadcast.1750            cat=broadcast              src=s/common/attention_interface.py:417 tf_op=jit(run_model)/jit(ragged_paged_attention):
+  ts= 1034453.854 dur=   0.4101 broadcast.1751            cat=broadcast              src=s/common/attention_interface.py:417 tf_op=jit(run_model)/jit(ragged_paged_attention):
+  ts= 1034454.264 dur=  24.2962 RPAd-p_128-bq_1_1-bkv_4096_4096.72 cat=custom-call            src=d_paged_attention/v3/kernel.py:2069 tf_op=attention)/RPAd-p_128-bq_1_1-bkv_4096_4096/pallas_call:
+  ts= 1034478.569 dur= 594.6099 RPAm-p_128-bq_256_128-bkv_1024_512.72 cat=custom-call            src=d_paged_attention/v3/kernel.py:2069 tf_op=ention)/RPAm-p_128-bq_256_128-bkv_1024_512/pallas_call:
+  TOTAL(excl RPA) = 963.9310

@@ -1,0 +1,263 @@
+"""
+kernel_timeline.py — Annotated DMA/MXU/VPU timeline for the RPAm fused kernel.
+
+Produces a diagram in the style of:
+
+  µs:   0        45        108      141       204       237     326    415
+        ├────────┼─────────┼────────┼─────────┼─────────┼───────┼──────┤
+  DMA:  [B][VVV][C]        [b][vvv][c]         [W─────] [W─────]
+  MXU:  ··[Q─────][KV─────────][A──][KV─────────][A──]  [q──][a][a] ...
+  VPU:  [r][N──]             [n─]              [n─]      [n─] ...
+
+Usage:
+  python3 scripts/kernel_eval/kernel_timeline.py            # original (Q at start)
+  python3 scripts/kernel_eval/kernel_timeline.py --end-q    # Q at end, Q[0] in prologue
+  python3 scripts/kernel_eval/kernel_timeline.py --baseline # no projection
+  python3 scripts/kernel_eval/kernel_timeline.py --n-tok 2048
+"""
+
+import argparse, math
+
+# ── Timing model (Qwen3-4B, v6e-1, 169 TFLOPS effective) ───────────────────
+HBM_BW      = 900   # GB/s
+EFF_TFLOPS  = 169
+
+def mxu_us(m, k, n):   return 2*m*k*n / 1e9 / EFF_TFLOPS * 1000
+def dma_us(B):          return B / 1e9 / HBM_BW * 1000
+
+# ── Op-sequence builders ────────────────────────────────────────────────────
+
+def _timings(D, Nq, Nkv, H, bq_sz, bkv_sz):
+    return dict(
+        T_Qm  = mxu_us(bq_sz,  D, Nq*H),
+        T_Qv  = mxu_us(bq_sz,  D, Nq*H) * 0.88,
+        T_KVm = mxu_us(bkv_sz, D, Nkv*H*2),
+        T_KVv = mxu_us(bkv_sz, D, Nkv*H*2) * 0.29,
+        T_A   = 23.0,
+        T_ini = 10.0,
+        T_on  = 17.0,
+        D_bq  = dma_us(bq_sz  * D * 2),
+        D_bkv = dma_us(bkv_sz * D * 2),
+        D_kvc = 4.7,
+    )
+
+
+def ops_original(n_tok, D, Nq, Nkv, H, bq_sz, bkv_sz, has_proj):
+    """Q at START of each bq tile; init VPU overlaps Q MXU (Mosaic schedules both)."""
+    tm = _timings(D, Nq, Nkv, H, bq_sz, bkv_sz)
+    T_Qm, T_Qv, T_KVm, T_KVv = tm['T_Qm'], tm['T_Qv'], tm['T_KVm'], tm['T_KVv']
+    T_A, T_ini, T_on, D_bq, D_bkv, D_kvc = (
+        tm['T_A'], tm['T_ini'], tm['T_on'], tm['D_bq'], tm['D_bkv'], tm['D_kvc'])
+
+    n_bq  = math.ceil(n_tok / bq_sz)
+    n_bkv = math.ceil(n_tok / bkv_sz)
+    ops   = []
+
+    def add(t0, t1, track, ch, lbl=''):
+        if t1 > t0:
+            ops.append((t0, t1, track, ch, lbl))
+
+    # Prologue
+    add(0, D_bq,  'DMA', 'B', 'x_bq[0]')
+    add(0, D_bkv, 'DMA', 'V', 'x_bkv[0]')
+    add(0, D_kvc, 'DMA', 'C', 'KVcache[0]')
+    add(0, 2,     'VPU', 'r', 'rope_ts')
+
+    t = 0
+    for bq in range(n_bq):
+        # init VPU || Q MXU (Mosaic overlaps them freely — init is free)
+        if has_proj:
+            t_q = t + (D_bq if bq == 0 else 0)
+            add(t_q,         t_q+T_Qm,      'MXU', 'Q' if bq==0 else 'q', f'Q_mat[{bq}]')
+            add(t_q+T_Qm,    t_q+T_Qm+T_Qv, 'VPU', 'N' if bq==0 else 'n', f'Q_vpu[{bq}]')
+            t = t_q + T_Qm + T_Qv
+        else:
+            t += D_bq if bq == 0 else 0
+
+        if bq < n_bq-1:
+            add(t, t+D_bq, 'DMA', 'b', f'x_bq[{bq+1}]')
+
+        # bkv loop
+        for bkv in range(n_bkv if bq==0 else 1):
+            if bq == 0:   # fresh KV
+                if bkv < n_bkv-1:
+                    add(t, t+D_bkv, 'DMA', 'v', f'x_bkv[{bkv+1}]')
+                    add(t, t+D_kvc, 'DMA', 'c', f'KVcache[{bkv+1}]')
+                add(t,       t+T_KVm,        'MXU', 'K' if bkv==0 else 'k', f'KV_mat[{bkv}]')
+                add(t+T_KVm, t+T_KVm+T_KVv,  'VPU', 'n', f'K_vpu[{bkv}]')
+                add(t+T_KVm, t+T_KVm+12,     'DMA', 'W', f'KVwrite[{bkv}]')
+                t += T_KVm + T_KVv
+            add(t, t+T_A, 'MXU', 'A' if bq==0 else 'a', f'Attn[{bq},{bkv}]')
+            t += T_A
+
+        t += T_on   # output_norm + bo_store (30µs gap before next Q)
+
+    return ops, t
+
+
+def ops_end_q(n_tok, D, Nq, Nkv, H, bq_sz, bkv_sz):
+    """Q[0] in prologue; Q[i] at END of bq[i-1] via @pl.when (serialized).
+    init VPU at start is EXPOSED (no Q to overlap with)."""
+    tm = _timings(D, Nq, Nkv, H, bq_sz, bkv_sz)
+    T_Qm, T_Qv, T_KVm, T_KVv = tm['T_Qm'], tm['T_Qv'], tm['T_KVm'], tm['T_KVv']
+    T_A, T_ini, T_on, D_bq, D_bkv, D_kvc = (
+        tm['T_A'], tm['T_ini'], tm['T_on'], tm['D_bq'], tm['D_bkv'], tm['D_kvc'])
+
+    n_bq  = math.ceil(n_tok / bq_sz)
+    n_bkv = math.ceil(n_tok / bkv_sz)
+    ops   = []
+
+    def add(t0, t1, track, ch, lbl=''):
+        if t1 > t0:
+            ops.append((t0, t1, track, ch, lbl))
+
+    # Prologue: DMAs + rope + Q[0]
+    add(0, D_bq,  'DMA', 'B', 'x_bq[0]')
+    add(0, D_bkv, 'DMA', 'V', 'x_bkv[0]')
+    add(0, D_kvc, 'DMA', 'C', 'KVcache[0]')
+    add(0, 2,     'VPU', 'r', 'rope_ts')
+    t = D_bq
+    add(t, t+T_Qm,      'MXU', 'Q', 'Q_mat[0] (prologue)')
+    add(t+T_Qm, t+T_Qm+T_Qv, 'VPU', 'N', 'Q_vpu[0]')
+    t += T_Qm + T_Qv
+
+    for bq in range(n_bq):
+        # START: init VPU exposed — no Q here
+        t += T_ini
+
+        if bq < n_bq-1:
+            add(t, t+D_bq, 'DMA', 'b', f'x_bq[{bq+1}]')
+
+        for bkv in range(n_bkv if bq==0 else 1):
+            if bq == 0:
+                if bkv < n_bkv-1:
+                    add(t, t+D_bkv, 'DMA', 'v', f'x_bkv[{bkv+1}]')
+                    add(t, t+D_kvc, 'DMA', 'c', f'KVcache[{bkv+1}]')
+                add(t,       t+T_KVm,       'MXU', 'K' if bkv==0 else 'k', f'KV_mat[{bkv}]')
+                add(t+T_KVm, t+T_KVm+T_KVv, 'VPU', 'n', f'K_vpu[{bkv}]')
+                add(t+T_KVm, t+T_KVm+12,    'DMA', 'W', f'KVwrite[{bkv}]')
+                t += T_KVm + T_KVv
+            add(t, t+T_A, 'MXU', 'A' if bq==0 else 'a', f'Attn[{bq},{bkv}]')
+            t += T_A
+
+        # output_norm VPU (visible)
+        add(t, t+T_on, 'VPU', 'O' if bq==0 else 'o', f'output_norm[{bq}]')
+        t += T_on
+
+        # @pl.when → Q[bq+1] serialized after output_norm
+        if bq < n_bq-1:
+            add(t,      t+T_Qm,      'MXU', 'q', f'Q_mat[{bq+1}] (@pl.when)')
+            add(t+T_Qm, t+T_Qm+T_Qv, 'VPU', 'n', f'Q_vpu[{bq+1}]')
+            t += T_Qm + T_Qv
+
+    return ops, t
+
+
+# ── Renderer ────────────────────────────────────────────────────────────────
+
+def render(ops, total_us, n_tok, bq_sz, bkv_sz, title, scale=4.0):
+    """
+    scale: µs per character column.
+    Tick marks placed at the rounded end of each major operation group.
+    """
+    width = max(80, int(total_us / scale) + 2)
+
+    def col(t):
+        return min(width - 1, int(round(t / scale)))
+
+    def fill(track):
+        row = ['.'] * width
+        for t0, t1, tr, ch, _ in ops:
+            if tr != track:
+                continue
+            c0, c1 = col(t0), col(t1)
+            for c in range(c0, min(c1, width)):
+                row[c] = ch
+        return ''.join(row)
+
+    # Collect milestone ticks: end of each top-level op group
+    # (just the distinct "interesting" times, not every sub-op)
+    raw_ticks = sorted({0.0} | {round(t1, 0)
+                                 for _, t1, tr, ch, lbl in ops
+                                 if tr == 'MXU' and ch in ('Q','N','K','A','a')})
+    # Deduplicate ticks that are too close (< scale apart)
+    ticks = [raw_ticks[0]]
+    for t in raw_ticks[1:]:
+        if t - ticks[-1] >= scale:
+            ticks.append(t)
+
+    # Build ruler string
+    ruler_chars = [' '] * width
+    sep_chars   = ['─'] * width
+    for t in ticks:
+        c = col(t)
+        s = str(int(t))
+        for i, ch in enumerate(s):
+            if c + i < width:
+                ruler_chars[c + i] = ch
+        if 0 < c < width:
+            sep_chars[c] = '┼'
+    sep_chars[0]       = '├'
+    sep_chars[width-1] = '┤'
+
+    n_bq  = math.ceil(n_tok / bq_sz)
+    n_bkv = math.ceil(n_tok / bkv_sz)
+
+    print()
+    print(f'  {title}')
+    print(f'  {n_tok} tokens  bq_sz={bq_sz} ({n_bq} tiles)  '
+          f'bkv_sz={bkv_sz} ({n_bkv} fresh KV tiles)  ≈{total_us:.0f}µs total')
+    print()
+    print(f'  µs:   {"".join(ruler_chars)}')
+    print(f'        {"".join(sep_chars)}')
+    print()
+    print(f'  DMA:  {"".join(fill("DMA"))}')
+    print()
+    print(f'  MXU:  {"".join(fill("MXU"))}')
+    print()
+    print(f'  VPU:  {"".join(fill("VPU"))}')
+    print()
+    print('  Legend')
+    print('  ------')
+    print('  DMA : B/b x_bq · V/v x_bkv · C/c KVcache-read · W KVcache-write')
+    print('  MXU : Q/q Q-matmul · K/k KV-matmul · A/a flash-attention')
+    print('  VPU : r rope-timescale · N/n Q-norm+rope · O/o output-norm+bo-store')
+    print('  (uppercase = bq[0] first tile,  lowercase = bq[1..N-1])')
+    print()
+
+
+# ── Main ────────────────────────────────────────────────────────────────────
+
+def main():
+    ap = argparse.ArgumentParser(description='RPAm kernel DMA/MXU/VPU timeline')
+    ap.add_argument('--n-tok',    type=int,   default=1560)
+    ap.add_argument('--bq-sz',    type=int,   default=256)
+    ap.add_argument('--bkv-sz',   type=int,   default=1024)
+    ap.add_argument('--D',        type=int,   default=2560)
+    ap.add_argument('--Nq',       type=int,   default=32)
+    ap.add_argument('--Nkv',      type=int,   default=8)
+    ap.add_argument('--H',        type=int,   default=128)
+    ap.add_argument('--scale',    type=float, default=4.0,
+                    help='µs per character (smaller = wider)')
+    ap.add_argument('--baseline', action='store_true')
+    ap.add_argument('--end-q',    action='store_true')
+    args = ap.parse_args()
+
+    kw = dict(n_tok=args.n_tok, D=args.D, Nq=args.Nq, Nkv=args.Nkv,
+              H=args.H, bq_sz=args.bq_sz, bkv_sz=args.bkv_sz)
+
+    if args.end_q:
+        ops, t = ops_end_q(**kw)
+        title = 'FUSED — end-Q  (Q[0] prologue · Q[i] at END of bq[i-1] · init exposed)'
+    else:
+        has_proj = not args.baseline
+        ops, t = ops_original(**kw, has_proj=has_proj)
+        title = ('BASELINE (no projection)'
+                 if args.baseline
+                 else 'FUSED — original  (Q at START · init||Q_MXU overlap)')
+
+    render(ops, t, args.n_tok, args.bq_sz, args.bkv_sz, title, scale=args.scale)
+
+
+if __name__ == '__main__':
+    main()

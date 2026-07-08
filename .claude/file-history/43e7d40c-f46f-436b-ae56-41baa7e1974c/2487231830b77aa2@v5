@@ -1,0 +1,450 @@
+<title>TPU Profile: mega_kernel vs baseline</title>
+<style>
+  :root {
+    --bg:#f5f7fa;--surface:#fff;--surface2:#f0f2f5;
+    --border:#dde1e7;--border-faint:#eaecf0;
+    --text:#1a1d23;--text-2:#5c6370;--text-3:#8b919e;
+    --mega:#e8570a;--base:#1a7f37;
+    --c-rpa:#3b82f6;--c-ffn:#8b5cf6;--c-proj:#ef4444;
+    --c-norm:#f59e0b;--c-misc:#94a3b8;--c-rpad:#22c55e;--c-stage:#f97316;
+    --mono:'SF Mono','Fira Code','Cascadia Code','Consolas',monospace;
+    --sans:'Inter','SF Pro Text',system-ui,-apple-system,sans-serif;
+    --r:6px;
+  }
+  @media(prefers-color-scheme:dark){:root{
+    --bg:#0d1117;--surface:#161b22;--surface2:#1c2128;
+    --border:#30363d;--border-faint:#21262d;
+    --text:#e6edf3;--text-2:#8b949e;--text-3:#58636e;
+    --mega:#f0883e;--base:#3fb950;
+    --c-rpa:#4493f8;--c-ffn:#a371f7;--c-proj:#f85149;
+    --c-norm:#e3b341;--c-misc:#58636e;--c-rpad:#3fb950;--c-stage:#fb923c;
+  }}
+  :root[data-theme="light"]{
+    --bg:#f5f7fa;--surface:#fff;--surface2:#f0f2f5;--border:#dde1e7;--border-faint:#eaecf0;
+    --text:#1a1d23;--text-2:#5c6370;--text-3:#8b919e;--mega:#e8570a;--base:#1a7f37;
+    --c-rpa:#3b82f6;--c-ffn:#8b5cf6;--c-proj:#ef4444;--c-norm:#f59e0b;--c-misc:#94a3b8;--c-rpad:#22c55e;--c-stage:#f97316;
+  }
+  :root[data-theme="dark"]{
+    --bg:#0d1117;--surface:#161b22;--surface2:#1c2128;--border:#30363d;--border-faint:#21262d;
+    --text:#e6edf3;--text-2:#8b949e;--text-3:#58636e;--mega:#f0883e;--base:#3fb950;
+    --c-rpa:#4493f8;--c-ffn:#a371f7;--c-proj:#f85149;--c-norm:#e3b341;--c-misc:#58636e;--c-rpad:#3fb950;--c-stage:#fb923c;
+  }
+  *,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+  body{background:var(--bg);color:var(--text);font-family:var(--sans);font-size:13px;
+    line-height:1.6;padding:24px 20px 56px;max-width:980px;margin:0 auto}
+
+  .ph{display:flex;align-items:flex-start;justify-content:space-between;gap:14px;
+    padding-bottom:15px;border-bottom:1px solid var(--border);margin-bottom:20px}
+  .ph h1{font-size:17px;font-weight:600;letter-spacing:-.3px}
+  .ph .meta{font-size:11px;color:var(--text-2);margin-top:3px;font-family:var(--mono)}
+  .badge{display:inline-block;font-size:11px;font-family:var(--mono);font-weight:500;
+    padding:3px 8px;border-radius:20px;white-space:nowrap}
+  .bm{background:color-mix(in srgb,var(--mega) 14%,transparent);color:var(--mega)}
+  .bb{background:color-mix(in srgb,var(--base) 14%,transparent);color:var(--base)}
+  .sl{font-size:10px;font-weight:600;text-transform:uppercase;letter-spacing:.08em;
+    color:var(--text-3);margin-bottom:8px}
+
+  /* table */
+  .tw{overflow-x:auto;border-radius:var(--r);border:1px solid var(--border);margin-bottom:20px}
+  table{width:100%;border-collapse:collapse;background:var(--surface);font-size:12px}
+  th{text-align:left;padding:8px 12px;font-size:10px;font-weight:700;text-transform:uppercase;
+    letter-spacing:.06em;color:var(--text-3);background:var(--surface2);
+    border-bottom:1px solid var(--border);white-space:nowrap}
+  th.r{text-align:right}
+  td{padding:7px 12px;border-bottom:1px solid var(--border-faint);
+    font-family:var(--mono);font-variant-numeric:tabular-nums;white-space:nowrap;vertical-align:middle}
+  td.name{font-family:var(--sans);font-size:11.5px}
+  td.r{text-align:right}
+  tr:last-child td{border-bottom:none}
+  tr:hover td{background:color-mix(in srgb,var(--text) 3%,transparent)}
+  tr.sep td{border-top:2px solid var(--border);font-weight:700;
+    background:color-mix(in srgb,var(--text) 4%,transparent)}
+  tr.group-head td{background:color-mix(in srgb,var(--text) 2.5%,transparent);
+    font-size:10px;text-transform:uppercase;letter-spacing:.06em;
+    color:var(--text-3);border-top:1px solid var(--border);font-family:var(--sans)}
+  tr.group-head td:first-child{font-weight:700}
+  .chip{display:inline-block;font-family:var(--mono);font-size:10.5px;font-weight:600;
+    padding:1px 6px;border-radius:20px}
+  .cbad{background:color-mix(in srgb,var(--mega) 15%,transparent);color:var(--mega)}
+  .cgood{background:color-mix(in srgb,var(--base) 15%,transparent);color:var(--base)}
+  .cneu{background:var(--surface2);color:var(--text-2)}
+  .sw{display:inline-block;width:7px;height:7px;border-radius:2px;
+    margin-right:6px;vertical-align:middle;position:relative;top:-1px}
+  .dim{color:var(--text-3)}
+  .italic{font-style:italic;color:var(--text-3)}
+  .bad{color:var(--mega)} .good{color:var(--base)}
+
+  /* inline bar */
+  .bar-inline{display:flex;align-items:center;gap:5px}
+  .bar-fill{height:4px;border-radius:2px;flex-shrink:0}
+
+  /* timeline visual */
+  .timeline{display:flex;flex-direction:column;gap:6px;margin-bottom:20px}
+  .tl-row{display:flex;align-items:center;gap:8px}
+  .tl-label{font-family:var(--mono);font-size:10.5px;color:var(--text-2);
+    width:90px;flex-shrink:0;text-align:right;white-space:nowrap}
+  .tl-track{flex:1;height:24px;display:flex;background:var(--surface2);border-radius:3px;overflow:hidden}
+  .tl-seg{height:100%;flex-shrink:0;cursor:default;position:relative}
+  .tl-seg:hover{filter:brightness(1.1)}
+  .tl-total{font-family:var(--mono);font-size:11px;font-weight:600;
+    width:58px;flex-shrink:0;font-variant-numeric:tabular-nums}
+  .tl-legend{display:flex;flex-wrap:wrap;gap:4px 12px;padding:10px 0 2px}
+  .lg-item{display:flex;align-items:center;gap:4px;font-size:10.5px;color:var(--text-2)}
+  .lg-dot{width:8px;height:8px;border-radius:2px;flex-shrink:0}
+
+  /* cards */
+  .card-row{display:grid;grid-template-columns:repeat(4,1fr);gap:8px;margin-bottom:20px}
+  @media(max-width:600px){.card-row{grid-template-columns:1fr 1fr}}
+  .card{background:var(--surface);border:1px solid var(--border);border-radius:var(--r);padding:11px 13px}
+  .cl{font-size:11px;color:var(--text-2);margin-bottom:4px}
+  .cv{font-family:var(--mono);font-size:19px;font-weight:700;font-variant-numeric:tabular-nums;line-height:1.1}
+  .cs{font-size:10.5px;color:var(--text-2);margin-top:2px;font-family:var(--mono)}
+</style>
+
+<div class="ph">
+  <div>
+    <h1>TPU Kernel Profiler — mega_kernel vs baseline</h1>
+    <div class="meta">Qwen/Qwen3-4B · input=4096 · batch=16 · 2026-07-07 · averaged over 35 inter-layer windows</div>
+  </div>
+  <div style="display:flex;gap:5px;margin-top:2px">
+    <span class="badge bm">mega_kernel</span>
+    <span class="badge bb">baseline</span>
+  </div>
+</div>
+
+<!-- KPIs -->
+<div class="sl">Per-layer totals (averaged, input=4096)</div>
+<div class="card-row">
+  <div class="card"><div class="cl">baseline per layer</div>
+    <div class="cv good">1.914<span style="font-size:12px;font-weight:400;color:var(--text-2)">ms</span></div>
+    <div class="cs">0.785ms gap + 1.129ms RPA</div>
+  </div>
+  <div class="card"><div class="cl">mega per layer</div>
+    <div class="cv bad">2.979<span style="font-size:12px;font-weight:400;color:var(--text-2)">ms</span></div>
+    <div class="cs">0.655ms gap + 2.323ms RPA</div>
+  </div>
+  <div class="card"><div class="cl">gap saving (mega)</div>
+    <div class="cv good">−0.130<span style="font-size:12px;font-weight:400;color:var(--text-2)">ms</span></div>
+    <div class="cs">fewer XLA ops before RPA</div>
+  </div>
+  <div class="card"><div class="cl">RPA overhead (mega)</div>
+    <div class="cv bad">+1.194<span style="font-size:12px;font-weight:400;color:var(--text-2)">ms</span></div>
+    <div class="cs">tiled QKV proj inside kernel</div>
+  </div>
+</div>
+
+<!-- Timeline visual -->
+<div class="sl">Per-layer XLA pipeline (avg, one layer = gap + RPAm; scale = 2.979ms)</div>
+<div style="background:var(--surface);border:1px solid var(--border);border-radius:var(--r);padding:14px 16px 10px;margin-bottom:20px">
+  <div class="timeline">
+    <!-- baseline: total = 1.914ms on scale 2.979ms = 64.2%
+         copy:0.013  norm:0.053  gate:0.135  up:0.134  down:0.177  misc:0.052  Q:0.133  KV:0.016  setup:0.049  rpad:0.007  RPAm:1.129 -->
+    <div class="tl-row">
+      <div class="tl-label"><span style="display:inline-block;width:7px;height:7px;border-radius:50%;background:var(--base);margin-right:4px;vertical-align:middle"></span>baseline</div>
+      <div class="tl-track">
+        <div class="tl-seg" style="width:.44%;background:var(--c-misc)"   title="copy: 0.013ms"></div>
+        <div class="tl-seg" style="width:1.78%;background:var(--c-norm)"  title="RMSNorm pre-FFN: 0.053ms"></div>
+        <div class="tl-seg" style="width:4.53%;background:var(--c-ffn)"   title="FFN gate: 0.135ms"></div>
+        <div class="tl-seg" style="width:4.50%;background:var(--c-ffn)"   title="FFN up: 0.134ms"></div>
+        <div class="tl-seg" style="width:5.94%;background:var(--c-ffn)"   title="FFN down+residual: 0.177ms"></div>
+        <div class="tl-seg" style="width:1.74%;background:var(--c-norm)"  title="norms+misc: 0.052ms"></div>
+        <div class="tl-seg" style="width:.50%;background:var(--c-misc)"   title="copy: 0.015ms"></div>
+        <div class="tl-seg" style="width:4.46%;background:var(--c-proj)"  title="Q projection: 0.133ms"></div>
+        <div class="tl-seg" style="width:.54%;background:var(--c-proj)"   title="K projection: 0.008ms + QKNorm"></div>
+        <div class="tl-seg" style="width:.54%;background:var(--c-proj)"   title="V projection: 0.008ms"></div>
+        <div class="tl-seg" style="width:1.14%;background:var(--c-misc)"  title="pad+copy+setup: 0.034ms"></div>
+        <div class="tl-seg" style="width:.24%;background:var(--c-rpad)"   title="RPAd: 0.007ms"></div>
+        <!-- RPAm -->
+        <div class="tl-seg" style="width:37.90%;background:var(--c-rpa)"  title="RPAm attention: 1.129ms"></div>
+      </div>
+      <div class="tl-total good">1.914ms</div>
+    </div>
+    <!-- mega: total = 2.979ms on scale 2.979ms = 100%
+         copy:0.017  norm:0.053  gate:0.135  up:0.135  down:0.177  misc_small:0.008  copy2:0.020  broadcast:0.022  rpad:0.007  staging:0.036+0.026  RPAm:2.323 -->
+    <div class="tl-row">
+      <div class="tl-label"><span style="display:inline-block;width:7px;height:7px;border-radius:50%;background:var(--mega);margin-right:4px;vertical-align:middle"></span>mega</div>
+      <div class="tl-track">
+        <div class="tl-seg" style="width:.57%;background:var(--c-misc)"   title="copy: 0.017ms"></div>
+        <div class="tl-seg" style="width:1.78%;background:var(--c-norm)"  title="RMSNorm pre-FFN: 0.053ms"></div>
+        <div class="tl-seg" style="width:4.53%;background:var(--c-ffn)"   title="FFN gate: 0.135ms"></div>
+        <div class="tl-seg" style="width:4.53%;background:var(--c-ffn)"   title="FFN up: 0.135ms"></div>
+        <div class="tl-seg" style="width:5.94%;background:var(--c-ffn)"   title="FFN down+residual: 0.177ms"></div>
+        <div class="tl-seg" style="width:.27%;background:var(--c-norm)"   title="small norm: 0.008ms"></div>
+        <div class="tl-seg" style="width:.67%;background:var(--c-misc)"   title="copy × 2: 0.020ms"></div>
+        <div class="tl-seg" style="width:.74%;background:var(--c-stage)"  title="broadcast.1172.clone (W_qkv staging): 0.022ms"></div>
+        <div class="tl-seg" style="width:.24%;background:var(--c-rpad)"   title="RPAd: 0.007ms"></div>
+        <div class="tl-seg" style="width:1.21%;background:var(--c-stage)" title="copy_bitcast × 2 (x staging): 0.036ms"></div>
+        <div class="tl-seg" style="width:.87%;background:var(--c-stage)"  title="pad_maximum (x padding): 0.026ms"></div>
+        <!-- RPAm fused -->
+        <div class="tl-seg" style="width:77.95%;background:var(--c-rpa)"  title="RPAm attention (incl. fused QKV proj): 2.323ms"></div>
+      </div>
+      <div class="tl-total bad">2.979ms</div>
+    </div>
+  </div>
+  <div class="tl-legend">
+    <div class="lg-item"><span class="lg-dot" style="background:var(--c-rpa)"></span>RPAm attention kernel</div>
+    <div class="lg-item"><span class="lg-dot" style="background:var(--c-ffn)"></span>FFN (gate / up / down)</div>
+    <div class="lg-item"><span class="lg-dot" style="background:var(--c-proj)"></span>Q / K / V projection (baseline only)</div>
+    <div class="lg-item"><span class="lg-dot" style="background:var(--c-norm)"></span>RMSNorm</div>
+    <div class="lg-item"><span class="lg-dot" style="background:var(--c-stage)"></span>W_qkv broadcast + x staging (mega only)</div>
+    <div class="lg-item"><span class="lg-dot" style="background:var(--c-rpad)"></span>RPAd (decode)</div>
+    <div class="lg-item"><span class="lg-dot" style="background:var(--c-misc)"></span>copy / routing</div>
+  </div>
+</div>
+
+<!-- Per-op table -->
+<div class="sl">Per-op breakdown — inter-RPA gap (avg per layer, input=4096, 35 layers)</div>
+<div class="tw">
+  <table>
+    <thead><tr>
+      <th style="min-width:220px">Op</th>
+      <th class="r">baseline</th>
+      <th class="r">mega</th>
+      <th class="r">Δ</th>
+      <th>notes</th>
+    </tr></thead>
+    <tbody>
+      <!-- output routing -->
+      <tr class="group-head">
+        <td colspan="5" class="name">— post-attention output routing —</td>
+      </tr>
+      <tr>
+        <td class="name"><span class="sw" style="background:var(--c-misc)"></span>copy (attn output routing)</td>
+        <td class="r">0.013ms</td><td class="r">0.017ms</td>
+        <td class="r bad">+0.004</td><td class="name dim">O_proj result → next layer</td>
+      </tr>
+      <!-- norms -->
+      <tr class="group-head">
+        <td colspan="5" class="name">— normalisation —</td>
+      </tr>
+      <tr>
+        <td class="name"><span class="sw" style="background:var(--c-norm)"></span>RMSNorm pre-FFN (fusion)</td>
+        <td class="r">0.053ms</td><td class="r">0.053ms</td>
+        <td class="r dim">0</td><td class="name dim">input_layernorm for FFN</td>
+      </tr>
+      <!-- FFN -->
+      <tr class="group-head">
+        <td colspan="5" class="name">— feed-forward network —</td>
+      </tr>
+      <tr>
+        <td class="name"><span class="sw" style="background:var(--c-ffn)"></span>FFN gate matmul (fusion)</td>
+        <td class="r">0.135ms</td><td class="r">0.135ms</td>
+        <td class="r dim">0</td><td class="name dim">[T, 2560] × [2560, 9728]</td>
+      </tr>
+      <tr>
+        <td class="name"><span class="sw" style="background:var(--c-ffn)"></span>FFN up matmul (fusion)</td>
+        <td class="r">0.134ms</td><td class="r">0.135ms</td>
+        <td class="r dim">0</td><td class="name dim">[T, 2560] × [2560, 9728]</td>
+      </tr>
+      <tr>
+        <td class="name"><span class="sw" style="background:var(--c-ffn)"></span>FFN down + SwiGLU + residual (fusion)</td>
+        <td class="r">0.177ms</td><td class="r">0.177ms</td>
+        <td class="r dim">0</td><td class="name dim">[T, 9728] × [9728, 2560] + add</td>
+      </tr>
+      <!-- pre-attn norms -->
+      <tr class="group-head">
+        <td colspan="5" class="name">— pre-attention norms & routing —</td>
+      </tr>
+      <tr>
+        <td class="name"><span class="sw" style="background:var(--c-norm)"></span>RMSNorm + misc small fusions</td>
+        <td class="r">0.052ms</td><td class="r">0.008ms</td>
+        <td class="r good">−0.044</td><td class="name dim">pre-attn layernorm; fewer ops in mega</td>
+      </tr>
+      <tr>
+        <td class="name"><span class="sw" style="background:var(--c-misc)"></span>copy (routing for projection)</td>
+        <td class="r">0.015ms</td><td class="r">0.020ms</td>
+        <td class="r bad">+0.005</td><td class="name dim"></td>
+      </tr>
+      <!-- QKV section — baseline only -->
+      <tr class="group-head">
+        <td colspan="5" class="name">— QKV projection (baseline) / kernel staging (mega) —</td>
+      </tr>
+      <tr>
+        <td class="name"><span class="sw" style="background:var(--c-proj)"></span>Q projection matmul</td>
+        <td class="r" style="color:var(--c-proj)">0.133ms</td>
+        <td class="r"><span class="italic">— (fused in RPAm)</span></td>
+        <td class="r good">−0.133</td>
+        <td class="name dim">[T, 2560] × [2560, 4096] — main saving</td>
+      </tr>
+      <tr>
+        <td class="name"><span class="sw" style="background:var(--c-proj)"></span>K projection + QKNorm</td>
+        <td class="r" style="color:var(--c-proj)">0.008ms</td>
+        <td class="r"><span class="italic">— (fused)</span></td>
+        <td class="r good">−0.008</td>
+        <td class="name dim">[T, 2560] × [2560, 1024]</td>
+      </tr>
+      <tr>
+        <td class="name"><span class="sw" style="background:var(--c-proj)"></span>V projection + KNorm</td>
+        <td class="r" style="color:var(--c-proj)">0.008ms</td>
+        <td class="r"><span class="italic">— (fused)</span></td>
+        <td class="r good">−0.008</td>
+        <td class="name dim">[T, 2560] × [2560, 1024]</td>
+      </tr>
+      <!-- mega staging -->
+      <tr>
+        <td class="name"><span class="sw" style="background:var(--c-stage)"></span>broadcast.1172.clone (W_qkv prefetch)</td>
+        <td class="r"><span class="italic">—</span></td>
+        <td class="r" style="color:var(--c-stage)">0.022ms</td>
+        <td class="r bad">+0.022</td>
+        <td class="name dim">stage W_qkv for next RPA call</td>
+      </tr>
+      <tr>
+        <td class="name"><span class="sw" style="background:var(--c-stage)"></span>copy_bitcast × 2 (x input staging)</td>
+        <td class="r"><span class="italic">—</span></td>
+        <td class="r" style="color:var(--c-stage)">0.036ms</td>
+        <td class="r bad">+0.036</td>
+        <td class="name dim">format/route x hidden states for RPA</td>
+      </tr>
+      <tr>
+        <td class="name"><span class="sw" style="background:var(--c-stage)"></span>pad_maximum_fusion (x padding)</td>
+        <td class="r">0.001ms</td>
+        <td class="r" style="color:var(--c-stage)">0.026ms</td>
+        <td class="r bad">+0.025</td>
+        <td class="name dim">pad x to bq_sz alignment</td>
+      </tr>
+      <!-- setup / decode -->
+      <tr class="group-head">
+        <td colspan="5" class="name">— decode step + final setup —</td>
+      </tr>
+      <tr>
+        <td class="name"><span class="sw" style="background:var(--c-rpad)"></span>RPAd decode (bq_1_1)</td>
+        <td class="r">0.007ms</td><td class="r">0.007ms</td>
+        <td class="r dim">0</td><td class="name dim">1 decode token per sequence</td>
+      </tr>
+      <tr>
+        <td class="name"><span class="sw" style="background:var(--c-misc)"></span>copy + pad_max (final routing)</td>
+        <td class="r">0.033ms</td><td class="r dim">—</td>
+        <td class="r good">−0.033</td><td class="name dim">baseline routes Q/K/V to RPA; not needed in mega</td>
+      </tr>
+      <!-- totals -->
+      <tr class="sep">
+        <td class="name">Total XLA gap</td>
+        <td class="r good">0.785ms</td><td class="r bad">0.655ms</td>
+        <td class="r good">−0.130ms</td><td></td>
+      </tr>
+      <tr class="sep">
+        <td class="name"><span class="sw" style="background:var(--c-rpa)"></span>RPAm attention kernel</td>
+        <td class="r good">1.129ms</td><td class="r bad">2.323ms</td>
+        <td class="r bad">+1.194ms</td><td class="name dim">tiled QKV proj + attention inside</td>
+      </tr>
+      <tr class="sep">
+        <td class="name">Total per layer</td>
+        <td class="r good">1.914ms</td><td class="r bad">2.979ms</td>
+        <td class="r bad">+1.065ms <span class="chip cbad">1.56×</span></td><td></td>
+      </tr>
+      <tr class="sep">
+        <td class="name">Total × 36 layers</td>
+        <td class="r good">68.90ms</td><td class="r bad">107.24ms</td>
+        <td class="r bad">+38.34ms</td><td></td>
+      </tr>
+    </tbody>
+  </table>
+</div>
+
+<!-- summary of what moved -->
+<div style="background:var(--surface);border:1px solid var(--border);border-radius:var(--r);padding:14px 16px;margin-bottom:20px">
+  <div class="sl" style="margin-bottom:10px">Net accounting — XLA gap vs kernel</div>
+  <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px">
+    <div>
+      <div style="font-size:11px;font-weight:600;color:var(--text-2);margin-bottom:4px">What mega saves in the XLA gap (per layer)</div>
+      <table style="border:none;background:none;font-size:12px">
+        <tr><td class="name">Q projection removed</td><td class="r good" style="padding-right:0">−0.133ms</td></tr>
+        <tr><td class="name">K/V projection + norms removed</td><td class="r good" style="padding-right:0">−0.016ms</td></tr>
+        <tr><td class="name">copy + pad routing removed</td><td class="r good" style="padding-right:0">−0.033ms</td></tr>
+        <tr><td class="name">misc norms reduced</td><td class="r good" style="padding-right:0">−0.044ms</td></tr>
+        <tr style="border-top:1px solid var(--border)">
+          <td class="name" style="font-weight:600">Subtotal saved</td>
+          <td class="r good" style="padding-right:0;font-weight:700">−0.226ms</td>
+        </tr>
+      </table>
+    </div>
+    <div>
+      <div style="font-size:11px;font-weight:600;color:var(--text-2);margin-bottom:4px">What mega adds in the XLA gap (per layer)</div>
+      <table style="border:none;background:none;font-size:12px">
+        <tr><td class="name">broadcast.clone (W_qkv staging)</td><td class="r bad" style="padding-right:0">+0.022ms</td></tr>
+        <tr><td class="name">copy_bitcast × 2 (x staging)</td><td class="r bad" style="padding-right:0">+0.036ms</td></tr>
+        <tr><td class="name">pad_maximum (x padding)</td><td class="r bad" style="padding-right:0">+0.025ms</td></tr>
+        <tr><td class="name">copy overhead</td><td class="r bad" style="padding-right:0">+0.013ms</td></tr>
+        <tr style="border-top:1px solid var(--border)">
+          <td class="name" style="font-weight:600">Subtotal added</td>
+          <td class="r bad" style="padding-right:0;font-weight:700">+0.096ms</td>
+        </tr>
+      </table>
+    </div>
+  </div>
+  <div style="margin-top:12px;padding-top:10px;border-top:1px solid var(--border-faint);
+    display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px;font-family:var(--mono);font-size:12px">
+    <div><span style="color:var(--text-2)">net gap saving: </span><span class="good">−0.130ms/layer</span></div>
+    <div><span style="color:var(--text-2)">RPA overhead: </span><span class="bad">+1.194ms/layer</span></div>
+    <div><span style="color:var(--text-2)">net regression: </span><span class="bad">+1.064ms/layer (+38ms total)</span></div>
+  </div>
+</div>
+
+<!-- 4-config table -->
+<div class="sl">All-config comparison — main forward pass (input=1000 and input=4096)</div>
+<div class="tw">
+  <table>
+    <thead><tr>
+      <th style="min-width:220px">Op</th>
+      <th class="r">base 1k</th><th class="r">mega 1k</th><th class="r">ratio</th>
+      <th class="r">base 4k</th><th class="r">mega 4k</th><th class="r">ratio</th>
+    </tr></thead>
+    <tbody>
+      <tr>
+        <td class="name"><span class="sw" style="background:var(--c-rpa)"></span>RPAm prefill kernel</td>
+        <td class="r good">11.54ms</td><td class="r bad">43.59ms</td><td class="r"><span class="chip cbad">3.78×</span></td>
+        <td class="r good">40.65ms</td><td class="r bad">83.63ms</td><td class="r"><span class="chip cbad">2.06×</span></td>
+      </tr>
+      <tr>
+        <td class="name dim" style="padding-left:24px">— per call (36 calls)</td>
+        <td class="r good">0.321ms</td><td class="r bad">1.211ms</td><td class="r"><span class="chip cbad">3.77×</span></td>
+        <td class="r good">1.129ms</td><td class="r bad">2.323ms</td><td class="r"><span class="chip cbad">2.06×</span></td>
+      </tr>
+      <tr>
+        <td class="name"><span class="sw" style="background:var(--c-proj)"></span>XLA external QKV proj + QKNorm + RoPE</td>
+        <td class="r" style="color:var(--c-proj)">6.39ms</td><td class="r"><span class="italic">— fused</span></td><td class="r"><span class="chip cgood">saved</span></td>
+        <td class="r" style="color:var(--c-proj)">6.39ms</td><td class="r"><span class="italic">— fused</span></td><td class="r"><span class="chip cgood">saved</span></td>
+      </tr>
+      <tr>
+        <td class="name"><span class="sw" style="background:var(--c-ffn)"></span>XLA fusions: FFN + O_proj + other</td>
+        <td class="r">19.36ms</td><td class="r">19.36ms</td><td class="r"><span class="chip cneu">1.00×</span></td>
+        <td class="r">19.36ms</td><td class="r">18.83ms</td><td class="r"><span class="chip cneu">0.97×</span></td>
+      </tr>
+      <tr>
+        <td class="name"><span class="sw" style="background:var(--c-stage)"></span>copy_bitcast + pad_max + broadcast (mega only)</td>
+        <td class="r dim">—</td><td class="r bad">3.14ms</td><td class="r dim">—</td>
+        <td class="r dim">—</td><td class="r bad">3.14ms</td><td class="r dim">—</td>
+      </tr>
+      <tr>
+        <td class="name"><span class="sw" style="background:var(--c-misc)"></span>copy</td>
+        <td class="r">2.06ms</td><td class="r">1.40ms</td><td class="r"><span class="chip cgood">0.68×</span></td>
+        <td class="r">2.06ms</td><td class="r">1.40ms</td><td class="r"><span class="chip cgood">0.68×</span></td>
+      </tr>
+      <tr>
+        <td class="name"><span class="sw" style="background:var(--c-rpad)"></span>RPAd decode</td>
+        <td class="r">0.25ms</td><td class="r">0.25ms</td><td class="r"><span class="chip cneu">1.0×</span></td>
+        <td class="r">0.25ms</td><td class="r">0.25ms</td><td class="r"><span class="chip cneu">1.0×</span></td>
+      </tr>
+      <tr class="sep">
+        <td class="name">Total</td>
+        <td class="r good">39.87ms</td><td class="r bad">67.83ms</td><td class="r"><span class="chip cbad">1.70×</span></td>
+        <td class="r good">68.96ms</td><td class="r bad">107.32ms</td><td class="r"><span class="chip cbad">1.56×</span></td>
+      </tr>
+    </tbody>
+  </table>
+</div>
+
+<!-- config strip -->
+<div style="background:var(--surface);border:1px solid var(--border);border-radius:var(--r);padding:10px 14px">
+  <div class="sl" style="margin-bottom:6px">Configuration</div>
+  <div style="display:flex;flex-wrap:wrap;gap:5px;font-family:var(--mono);font-size:10.5px;color:var(--text-2)">
+    <span style="background:var(--surface2);border:1px solid var(--border);border-radius:3px;padding:2px 6px">page=128</span>
+    <span style="background:var(--surface2);border:1px solid var(--border);border-radius:3px;padding:2px 6px">bq_sz=128</span>
+    <span style="background:var(--surface2);border:1px solid var(--border);border-radius:3px;padding:2px 6px">bkv_sz=512</span>
+    <span style="background:var(--surface2);border:1px solid var(--border);border-radius:3px;padding:2px 6px">36 layers</span>
+    <span style="background:var(--surface2);border:1px solid var(--border);border-radius:3px;padding:2px 6px">H=2560 · 32h/8kvh · d=128</span>
+    <span style="background:var(--surface2);border:1px solid var(--border);border-radius:3px;padding:2px 6px">batch=16</span>
+    <span style="background:var(--surface2);border:1px solid var(--border);border-radius:3px;padding:2px 6px">kv_tiles≈8/seq at input=4096</span>
+    <span style="background:var(--surface2);border:1px solid var(--border);border-radius:3px;padding:2px 6px">kernel_bench: 246.9µs / 425.7µs</span>
+  </div>
+</div>

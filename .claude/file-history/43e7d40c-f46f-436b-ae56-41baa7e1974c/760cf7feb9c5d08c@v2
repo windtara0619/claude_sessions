@@ -1,0 +1,126 @@
+#!/usr/bin/env python3
+"""Debug script to understand which q positions fail in the fusion test."""
+import jax
+import jax.numpy as jnp
+import numpy as np
+from flax import nnx
+
+import sys
+sys.path.insert(0, '/home/tarading/tpu-inference')
+
+from tpu_inference.kernels.ragged_paged_attention.v3.kernel import (
+    ragged_paged_attention, ref_ragged_paged_attention)
+from tpu_inference.kernels.ragged_paged_attention.v3.util import (
+    align_to, cdiv, get_dtype_packing)
+from tpu_inference.layers.jax.linear import JaxEinsum
+from tpu_inference.layers.jax.norm import JaxRmsNorm
+from tpu_inference.layers.jax.rope_interface import apply_rope
+
+def _build_qkv_baseline(x_valid, hidden_size, num_q_heads, num_kv_heads,
+                        head_dim, rope_theta, positions, dtype):
+    rng = nnx.Rngs(42)
+    q_proj_layer = JaxEinsum("TD,DNH->TNH", (hidden_size, num_q_heads, head_dim),
+                             rngs=rng, param_dtype=dtype)
+    q_norm_layer = JaxRmsNorm(head_dim, epsilon=1e-6, rngs=rng, param_dtype=dtype)
+    k_proj_layer = JaxEinsum("TD,DKH->TKH", (hidden_size, num_kv_heads, head_dim),
+                             rngs=rng, param_dtype=dtype)
+    k_norm_layer = JaxRmsNorm(head_dim, epsilon=1e-6, rngs=rng, param_dtype=dtype)
+    v_proj_layer = JaxEinsum("TD,DKH->TKH", (hidden_size, num_kv_heads, head_dim),
+                             rngs=rng, param_dtype=dtype)
+    q = apply_rope(q_norm_layer(q_proj_layer(x_valid)), positions, head_dim, rope_theta)
+    k = apply_rope(k_norm_layer(k_proj_layer(x_valid)), positions, head_dim, rope_theta)
+    v = v_proj_layer(x_valid)
+    w_q = jnp.asarray(q_proj_layer.weight[...]).reshape(hidden_size, num_q_heads * head_dim)
+    qn_scale = jnp.asarray(q_norm_layer.weight[...])
+    w_k = jnp.asarray(k_proj_layer.weight[...]).reshape(hidden_size, num_kv_heads * head_dim)
+    kn_scale = jnp.asarray(k_norm_layer.weight[...])
+    w_v = jnp.asarray(v_proj_layer.weight[...]).reshape(hidden_size, num_kv_heads * head_dim)
+    return q, k, v, w_q, qn_scale, w_k, kn_scale, w_v
+
+
+def run_fusion0():
+    """Reproduce fusion0 test case."""
+    dtype = jnp.bfloat16
+    q_len = 384
+    num_q_heads, num_kv_heads = 32, 8
+    head_dim = 128
+    hidden_size = 512
+    page_size = 16
+    num_pages = 64
+    rope_theta = 1000000.0
+    bq_sz, bkv_sz, bq_csz, bkv_csz = 64, 256, 32, 128
+
+    np_rng = np.random.default_rng(5678)
+    def gen(shape):
+        return jnp.array(np_rng.random(size=shape, dtype=np.float32)).astype(dtype)
+
+    max_tokens = align_to(max(align_to(q_len, 128), 512), bkv_sz)
+    print(f"max_tokens={max_tokens}")
+    max_num_seq = 8
+    pages_per_seq = cdiv(q_len, page_size)
+    kv_packing = get_dtype_packing(dtype)
+    padded_head = align_to(head_dim, 128)
+    num_kv_x2 = align_to(num_kv_heads * 2, kv_packing)
+
+    x = gen((max_tokens, hidden_size))
+    positions = jnp.arange(q_len, dtype=jnp.int32)
+
+    q_valid, k_valid, v_valid, w_q, qn_scale, w_k, kn_scale, w_v = _build_qkv_baseline(
+        x[:q_len], hidden_size, num_q_heads, num_kv_heads,
+        head_dim, rope_theta, positions, dtype)
+
+    pad = ((0, max_tokens - q_len), (0, 0), (0, 0))
+    q_proj = jnp.pad(q_valid, pad)
+    k_proj = jnp.pad(k_valid, pad)
+    v_proj = jnp.pad(v_valid, pad)
+
+    kv_cache = jnp.zeros(
+        (num_pages, page_size, num_kv_x2 // kv_packing, kv_packing, padded_head), dtype=dtype)
+    page_indices = jnp.pad(
+        jnp.arange(pages_per_seq, dtype=jnp.int32),
+        (0, max_num_seq * pages_per_seq - pages_per_seq))
+    cu_q = jnp.pad(jnp.array([0, q_len], dtype=jnp.int32), (0, max_num_seq + 1 - 2))
+    kv_lens = jnp.pad(jnp.array([q_len], dtype=jnp.int32), (0, max_num_seq - 1))
+    distribution = jnp.array([0, 0, 1], dtype=jnp.int32)
+
+    sm_scale = head_dim ** -0.5
+
+    # Baseline
+    out_base = ref_ragged_paged_attention(
+        jnp.array(np.array(q_proj)), jnp.array(np.array(k_proj)), jnp.array(np.array(v_proj)),
+        jnp.array(np.array(kv_cache)), kv_lens, page_indices, cu_q, distribution,
+        sm_scale=sm_scale)
+    attn_base = jax.device_get(out_base[0])[:q_len]
+
+    # Fused
+    out_fused = ragged_paged_attention(
+        jnp.zeros_like(q_proj), jnp.zeros_like(k_proj), jnp.zeros_like(v_proj),
+        jnp.array(np.array(kv_cache)), kv_lens, page_indices, cu_q, distribution,
+        sm_scale=sm_scale,
+        m_block_sizes=(bq_sz, bkv_sz, bq_csz, bkv_csz),
+        rope_theta=rope_theta,
+        has_qproj=True,
+        has_kvproj=True,
+        x=x, w_q=w_q, qn_scale=qn_scale, w_k=w_k, kn_scale=kn_scale, w_v=w_v)
+    attn_fused = jax.device_get(out_fused[0])[:q_len]
+
+    # Compare
+    diff = np.abs(attn_fused - attn_base)
+    # Per-token max diff
+    diff_per_token = diff.reshape(q_len, -1).max(axis=1)
+    wrong_tokens = np.where(diff_per_token > 0.05)[0]
+    print(f"Wrong tokens ({len(wrong_tokens)}/{q_len}): {wrong_tokens[:20]}...")
+    print(f"Max diff per first 30 tokens: {diff_per_token[:30]}")
+    print(f"Overall max diff: {diff.max():.4f}")
+    print(f"Overall mean diff: {diff.mean():.6f}")
+
+    # Show bq tile boundaries
+    for bq_idx in range(cdiv(q_len, bq_sz)):
+        start = bq_idx * bq_sz
+        end = min(start + bq_sz, q_len)
+        tile_diff = diff[start:end].max()
+        print(f"  bq_idx={bq_idx} (q {start}-{end-1}): max_diff={tile_diff:.4f}")
+
+
+if __name__ == "__main__":
+    run_fusion0()

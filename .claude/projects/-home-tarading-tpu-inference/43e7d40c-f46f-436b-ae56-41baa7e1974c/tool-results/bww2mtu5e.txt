@@ -1,0 +1,450 @@
+=== up_proj (qwen2.py:97) ===
+base n=36, fused n=36
+base distinct normalized patterns: 36
+fused distinct normalized patterns: 36
+base patterns == fused patterns: False
+  BASE count 1
+   %fusion = bf16[2048,9728]{1,0:T(8,128)(2,1)} fusion(bf16[2560,9728]{1,0:T(8,128)(2,1)} %state_leaves_4_, bf16[2048,2560]{1,0:T(8,128)(2,1)S(1)} %get-tuple-element, f32[2560]{0:T(1024)S(1)} %convert_element_type, f32[2048]{0:T(1024)S(1)} %add_rsqrt_fusion), kind=kOutput, calls=%fused_computation
+  BASE count 1
+   %fusion = bf16[2048,9728]{1,0:T(8,128)(2,1)} fusion(bf16[2560,9728]{1,0:T(8,128)(2,1)} %state_leaves_15_, bf16[2048,2560]{1,0:T(8,128)(2,1)S(1)} %get-tuple-element, f32[2560]{0:T(1024)S(1)} %convert_element_type, f32[2048]{0:T(1024)S(1)} %add_rsqrt_fusion), kind=kOutput, calls=%fused_computation
+  BASE count 1
+   %fusion = bf16[2048,9728]{1,0:T(8,128)(2,1)} fusion(bf16[2560,9728]{1,0:T(8,128)(2,1)} %state_leaves_26_, bf16[2048,2560]{1,0:T(8,128)(2,1)S(1)} %get-tuple-element, f32[2560]{0:T(1024)S(1)} %convert_element_type, f32[2048]{0:T(1024)S(1)} %add_rsqrt_fusion), kind=kOutput, calls=%fused_computation
+  BASE count 1
+   %fusion = bf16[2048,9728]{1,0:T(8,128)(2,1)} fusion(bf16[2560,9728]{1,0:T(8,128)(2,1)} %state_leaves_37_, bf16[2048,2560]{1,0:T(8,128)(2,1)S(1)} %get-tuple-element, f32[2560]{0:T(1024)S(1)} %convert_element_type, f32[2048]{0:T(1024)S(1)} %add_rsqrt_fusion), kind=kOutput, calls=%fused_computation
+  BASE count 1
+   %fusion = bf16[2048,9728]{1,0:T(8,128)(2,1)} fusion(bf16[2560,9728]{1,0:T(8,128)(2,1)} %state_leaves_48_, bf16[2048,2560]{1,0:T(8,128)(2,1)S(1)} %get-tuple-element, f32[2560]{0:T(1024)S(1)} %convert_element_type, f32[2048]{0:T(1024)S(1)} %add_rsqrt_fusion), kind=kOutput, calls=%fused_computation
+  BASE count 1
+   %fusion = bf16[2048,9728]{1,0:T(8,128)(2,1)} fusion(bf16[2560,9728]{1,0:T(8,128)(2,1)} %state_leaves_59_, bf16[2048,2560]{1,0:T(8,128)(2,1)S(1)} %get-tuple-element, f32[2560]{0:T(1024)S(1)} %convert_element_type, f32[2048]{0:T(1024)S(1)} %add_rsqrt_fusion), kind=kOutput, calls=%fused_computation
+  BASE count 1
+   %fusion = bf16[2048,9728]{1,0:T(8,128)(2,1)} fusion(bf16[2560,9728]{1,0:T(8,128)(2,1)} %state_leaves_70_, bf16[2048,2560]{1,0:T(8,128)(2,1)S(1)} %get-tuple-element, f32[2560]{0:T(1024)S(1)} %convert_element_type, f32[2048]{0:T(1024)S(1)} %add_rsqrt_fusion), kind=kOutput, calls=%fused_computation
+  BASE count 1
+   %fusion = bf16[2048,9728]{1,0:T(8,128)(2,1)} fusion(bf16[2560,9728]{1,0:T(8,128)(2,1)} %state_leaves_81_, bf16[2048,2560]{1,0:T(8,128)(2,1)S(1)} %get-tuple-element, f32[2560]{0:T(1024)S(1)} %convert_element_type, f32[2048]{0:T(1024)S(1)} %add_rsqrt_fusion), kind=kOutput, calls=%fused_computation
+  BASE count 1
+   %fusion = bf16[2048,9728]{1,0:T(8,128)(2,1)} fusion(bf16[2560,9728]{1,0:T(8,128)(2,1)} %state_leaves_92_, bf16[2048,2560]{1,0:T(8,128)(2,1)S(1)} %get-tuple-element, f32[2560]{0:T(1024)S(1)} %convert_element_type, f32[2048]{0:T(1024)S(1)} %add_rsqrt_fusion), kind=kOutput, calls=%fused_computation
+  BASE count 1
+   %fusion = bf16[2048,9728]{1,0:T(8,128)(2,1)} fusion(bf16[2560,9728]{1,0:T(8,128)(2,1)} %state_leaves_103_, bf16[2048,2560]{1,0:T(8,128)(2,1)S(1)} %get-tuple-element, f32[2560]{0:T(1024)S(1)} %convert_element_type, f32[2048]{0:T(1024)S(1)} %add_rsqrt_fusion), kind=kOutput, calls=%fused_computation
+  BASE count 1
+   %fusion = bf16[2048,9728]{1,0:T(8,128)(2,1)} fusion(bf16[2560,9728]{1,0:T(8,128)(2,1)} %state_leaves_114_, bf16[2048,2560]{1,0:T(8,128)(2,1)S(1)} %get-tuple-element, f32[2560]{0:T(1024)S(1)} %convert_element_type, f32[2048]{0:T(1024)S(1)} %add_rsqrt_fusion), kind=kOutput, calls=%fused_computation
+  BASE count 1
+   %fusion = bf16[2048,9728]{1,0:T(8,128)(2,1)} fusion(bf16[2560,9728]{1,0:T(8,128)(2,1)} %state_leaves_125_, bf16[2048,2560]{1,0:T(8,128)(2,1)S(1)} %get-tuple-element, f32[2560]{0:T(1024)S(1)} %convert_element_type, f32[2048]{0:T(1024)S(1)} %add_rsqrt_fusion), kind=kOutput, calls=%fused_computation
+  BASE count 1
+   %fusion = bf16[2048,9728]{1,0:T(8,128)(2,1)} fusion(bf16[2560,9728]{1,0:T(8,128)(2,1)} %state_leaves_136_, bf16[2048,2560]{1,0:T(8,128)(2,1)S(1)} %get-tuple-element, f32[2560]{0:T(1024)S(1)} %convert_element_type, f32[2048]{0:T(1024)S(1)} %add_rsqrt_fusion), kind=kOutput, calls=%fused_computation
+  BASE count 1
+   %fusion = bf16[2048,9728]{1,0:T(8,128)(2,1)} fusion(bf16[2560,9728]{1,0:T(8,128)(2,1)} %state_leaves_147_, bf16[2048,2560]{1,0:T(8,128)(2,1)S(1)} %get-tuple-element, f32[2560]{0:T(1024)S(1)} %convert_element_type, f32[2048]{0:T(1024)S(1)} %add_rsqrt_fusion), kind=kOutput, calls=%fused_computation
+  BASE count 1
+   %fusion = bf16[2048,9728]{1,0:T(8,128)(2,1)} fusion(bf16[2560,9728]{1,0:T(8,128)(2,1)} %state_leaves_158_, bf16[2048,2560]{1,0:T(8,128)(2,1)S(1)} %get-tuple-element, f32[2560]{0:T(1024)S(1)} %convert_element_type, f32[2048]{0:T(1024)S(1)} %add_rsqrt_fusion), kind=kOutput, calls=%fused_computation
+  BASE count 1
+   %fusion = bf16[2048,9728]{1,0:T(8,128)(2,1)} fusion(bf16[2560,9728]{1,0:T(8,128)(2,1)} %state_leaves_169_, bf16[2048,2560]{1,0:T(8,128)(2,1)S(1)} %get-tuple-element, f32[2560]{0:T(1024)S(1)} %convert_element_type, f32[2048]{0:T(1024)S(1)} %add_rsqrt_fusion), kind=kOutput, calls=%fused_computation
+  BASE count 1
+   %fusion = bf16[2048,9728]{1,0:T(8,128)(2,1)} fusion(bf16[2560,9728]{1,0:T(8,128)(2,1)} %state_leaves_180_, bf16[2048,2560]{1,0:T(8,128)(2,1)S(1)} %get-tuple-element, f32[2560]{0:T(1024)S(1)} %convert_element_type, f32[2048]{0:T(1024)S(1)} %add_rsqrt_fusion), kind=kOutput, calls=%fused_computation
+  BASE count 1
+   %fusion = bf16[2048,9728]{1,0:T(8,128)(2,1)} fusion(bf16[2560,9728]{1,0:T(8,128)(2,1)} %state_leaves_191_, bf16[2048,2560]{1,0:T(8,128)(2,1)S(1)} %get-tuple-element, f32[2560]{0:T(1024)S(1)} %convert_element_type, f32[2048]{0:T(1024)S(1)} %add_rsqrt_fusion), kind=kOutput, calls=%fused_computation
+  BASE count 1
+   %fusion = bf16[2048,9728]{1,0:T(8,128)(2,1)} fusion(bf16[2560,9728]{1,0:T(8,128)(2,1)} %state_leaves_202_, bf16[2048,2560]{1,0:T(8,128)(2,1)S(1)} %get-tuple-element, f32[2560]{0:T(1024)S(1)} %convert_element_type, f32[2048]{0:T(1024)S(1)} %add_rsqrt_fusion), kind=kOutput, calls=%fused_computation
+  BASE count 1
+   %fusion = bf16[2048,9728]{1,0:T(8,128)(2,1)} fusion(bf16[2560,9728]{1,0:T(8,128)(2,1)} %state_leaves_213_, bf16[2048,2560]{1,0:T(8,128)(2,1)S(1)} %get-tuple-element, f32[2560]{0:T(1024)S(1)} %convert_element_type, f32[2048]{0:T(1024)S(1)} %add_rsqrt_fusion), kind=kOutput, calls=%fused_computation
+  BASE count 1
+   %fusion = bf16[2048,9728]{1,0:T(8,128)(2,1)} fusion(bf16[2560,9728]{1,0:T(8,128)(2,1)} %state_leaves_224_, bf16[2048,2560]{1,0:T(8,128)(2,1)S(1)} %get-tuple-element, f32[2560]{0:T(1024)S(1)} %convert_element_type, f32[2048]{0:T(1024)S(1)} %add_rsqrt_fusion), kind=kOutput, calls=%fused_computation
+  BASE count 1
+   %fusion = bf16[2048,9728]{1,0:T(8,128)(2,1)} fusion(bf16[2560,9728]{1,0:T(8,128)(2,1)} %state_leaves_235_, bf16[2048,2560]{1,0:T(8,128)(2,1)S(1)} %get-tuple-element, f32[2560]{0:T(1024)S(1)} %convert_element_type, f32[2048]{0:T(1024)S(1)} %add_rsqrt_fusion), kind=kOutput, calls=%fused_computation
+  BASE count 1
+   %fusion = bf16[2048,9728]{1,0:T(8,128)(2,1)} fusion(bf16[2560,9728]{1,0:T(8,128)(2,1)} %state_leaves_246_, bf16[2048,2560]{1,0:T(8,128)(2,1)S(1)} %get-tuple-element, f32[2560]{0:T(1024)S(1)} %convert_element_type, f32[2048]{0:T(1024)S(1)} %add_rsqrt_fusion), kind=kOutput, calls=%fused_computation
+  BASE count 1
+   %fusion = bf16[2048,9728]{1,0:T(8,128)(2,1)} fusion(bf16[2560,9728]{1,0:T(8,128)(2,1)} %state_leaves_257_, bf16[2048,2560]{1,0:T(8,128)(2,1)S(1)} %get-tuple-element, f32[2560]{0:T(1024)S(1)} %convert_element_type, f32[2048]{0:T(1024)S(1)} %add_rsqrt_fusion), kind=kOutput, calls=%fused_computation
+  BASE count 1
+   %fusion = bf16[2048,9728]{1,0:T(8,128)(2,1)} fusion(bf16[2560,9728]{1,0:T(8,128)(2,1)} %state_leaves_268_, bf16[2048,2560]{1,0:T(8,128)(2,1)S(1)} %get-tuple-element, f32[2560]{0:T(1024)S(1)} %convert_element_type, f32[2048]{0:T(1024)S(1)} %add_rsqrt_fusion), kind=kOutput, calls=%fused_computation
+  BASE count 1
+   %fusion = bf16[2048,9728]{1,0:T(8,128)(2,1)} fusion(bf16[2560,9728]{1,0:T(8,128)(2,1)} %state_leaves_279_, bf16[2048,2560]{1,0:T(8,128)(2,1)S(1)} %get-tuple-element, f32[2560]{0:T(1024)S(1)} %convert_element_type, f32[2048]{0:T(1024)S(1)} %add_rsqrt_fusion), kind=kOutput, calls=%fused_computation
+  BASE count 1
+   %fusion = bf16[2048,9728]{1,0:T(8,128)(2,1)} fusion(bf16[2560,9728]{1,0:T(8,128)(2,1)} %state_leaves_290_, bf16[2048,2560]{1,0:T(8,128)(2,1)S(1)} %get-tuple-element, f32[2560]{0:T(1024)S(1)} %convert_element_type, f32[2048]{0:T(1024)S(1)} %add_rsqrt_fusion), kind=kOutput, calls=%fused_computation
+  BASE count 1
+   %fusion = bf16[2048,9728]{1,0:T(8,128)(2,1)} fusion(bf16[2560,9728]{1,0:T(8,128)(2,1)} %state_leaves_301_, bf16[2048,2560]{1,0:T(8,128)(2,1)S(1)} %get-tuple-element, f32[2560]{0:T(1024)S(1)} %convert_element_type, f32[2048]{0:T(1024)S(1)} %add_rsqrt_fusion), kind=kOutput, calls=%fused_computation
+  BASE count 1
+   %fusion = bf16[2048,9728]{1,0:T(8,128)(2,1)} fusion(bf16[2560,9728]{1,0:T(8,128)(2,1)} %state_leaves_312_, bf16[2048,2560]{1,0:T(8,128)(2,1)S(1)} %get-tuple-element, f32[2560]{0:T(1024)S(1)} %convert_element_type, f32[2048]{0:T(1024)S(1)} %add_rsqrt_fusion), kind=kOutput, calls=%fused_computation
+  BASE count 1
+   %fusion = bf16[2048,9728]{1,0:T(8,128)(2,1)} fusion(bf16[2560,9728]{1,0:T(8,128)(2,1)} %state_leaves_323_, bf16[2048,2560]{1,0:T(8,128)(2,1)S(1)} %get-tuple-element, f32[2560]{0:T(1024)S(1)} %convert_element_type, f32[2048]{0:T(1024)S(1)} %add_rsqrt_fusion), kind=kOutput, calls=%fused_computation
+  BASE count 1
+   %fusion = bf16[2048,9728]{1,0:T(8,128)(2,1)} fusion(bf16[2560,9728]{1,0:T(8,128)(2,1)} %state_leaves_334_, bf16[2048,2560]{1,0:T(8,128)(2,1)S(1)} %get-tuple-element, f32[2560]{0:T(1024)S(1)} %convert_element_type, f32[2048]{0:T(1024)S(1)} %add_rsqrt_fusion), kind=kOutput, calls=%fused_computation
+  BASE count 1
+   %fusion = bf16[2048,9728]{1,0:T(8,128)(2,1)} fusion(bf16[2560,9728]{1,0:T(8,128)(2,1)} %state_leaves_345_, bf16[2048,2560]{1,0:T(8,128)(2,1)S(1)} %get-tuple-element, f32[2560]{0:T(1024)S(1)} %convert_element_type, f32[2048]{0:T(1024)S(1)} %add_rsqrt_fusion), kind=kOutput, calls=%fused_computation
+  BASE count 1
+   %fusion = bf16[2048,9728]{1,0:T(8,128)(2,1)} fusion(bf16[2560,9728]{1,0:T(8,128)(2,1)} %state_leaves_356_, bf16[2048,2560]{1,0:T(8,128)(2,1)S(1)} %get-tuple-element, f32[2560]{0:T(1024)S(1)} %convert_element_type, f32[2048]{0:T(1024)S(1)} %add_rsqrt_fusion), kind=kOutput, calls=%fused_computation
+  BASE count 1
+   %fusion = bf16[2048,9728]{1,0:T(8,128)(2,1)} fusion(bf16[2560,9728]{1,0:T(8,128)(2,1)} %state_leaves_367_, bf16[2048,2560]{1,0:T(8,128)(2,1)S(1)} %get-tuple-element, f32[2560]{0:T(1024)S(1)} %convert_element_type, f32[2048]{0:T(1024)S(1)} %add_rsqrt_fusion), kind=kOutput, calls=%fused_computation
+  BASE count 1
+   %fusion = bf16[2048,9728]{1,0:T(8,128)(2,1)} fusion(bf16[2560,9728]{1,0:T(8,128)(2,1)} %state_leaves_378_, bf16[2048,2560]{1,0:T(8,128)(2,1)S(1)} %get-tuple-element, f32[2560]{0:T(1024)S(1)} %convert_element_type, f32[2048]{0:T(1024)S(1)} %add_rsqrt_fusion), kind=kOutput, calls=%fused_computation
+  BASE count 1
+   %fusion = bf16[2048,9728]{1,0:T(8,128)(2,1)} fusion(bf16[2560,9728]{1,0:T(8,128)(2,1)} %state_leaves_389_, bf16[2048,2560]{1,0:T(8,128)(2,1)S(1)} %get-tuple-element, f32[2560]{0:T(1024)S(1)} %convert_element_type, f32[2048]{0:T(1024)S(1)} %add_rsqrt_fusion), kind=kOutput, calls=%fused_computation
+  FUSED count 1
+   %fusion = bf16[2048,9728]{1,0:T(8,128)(2,1)S(1)} fusion(bf16[2560,9728]{1,0:T(8,128)(2,1)} %state_leaves_4_, bf16[2048,2560]{1,0:T(8,128)(2,1)S(1)} %copy-done, f32[2560]{0:T(1024)S(1)} %convert_element_type, f32[2048]{0:T(1024)S(1)} %add_rsqrt_fusion), kind=kOutput, calls=%fused_computation
+  FUSED count 1
+   %fusion = bf16[2048,9728]{1,0:T(8,128)(2,1)} fusion(bf16[2560,9728]{1,0:T(8,128)(2,1)} %state_leaves_15_, bf16[2048,2560]{1,0:T(8,128)(2,1)S(1)} %get-tuple-element, f32[2560]{0:T(1024)S(1)} %convert_element_type, f32[2048]{0:T(1024)S(1)} %add_rsqrt_fusion), kind=kOutput, calls=%fused_computation
+  FUSED count 1
+   %fusion = bf16[2048,9728]{1,0:T(8,128)(2,1)} fusion(bf16[2560,9728]{1,0:T(8,128)(2,1)} %state_leaves_26_, bf16[2048,2560]{1,0:T(8,128)(2,1)S(1)} %get-tuple-element, f32[2560]{0:T(1024)S(1)} %convert_element_type, f32[2048]{0:T(1024)S(1)} %add_rsqrt_fusion), kind=kOutput, calls=%fused_computation
+  FUSED count 1
+   %fusion = bf16[2048,9728]{1,0:T(8,128)(2,1)} fusion(bf16[2560,9728]{1,0:T(8,128)(2,1)} %state_leaves_37_, bf16[2048,2560]{1,0:T(8,128)(2,1)S(1)} %get-tuple-element, f32[2560]{0:T(1024)S(1)} %convert_element_type, f32[2048]{0:T(1024)S(1)} %add_rsqrt_fusion), kind=kOutput, calls=%fused_computation
+  FUSED count 1
+   %fusion = bf16[2048,9728]{1,0:T(8,128)(2,1)} fusion(bf16[2560,9728]{1,0:T(8,128)(2,1)} %state_leaves_48_, bf16[2048,2560]{1,0:T(8,128)(2,1)S(1)} %get-tuple-element, f32[2560]{0:T(1024)S(1)} %convert_element_type, f32[2048]{0:T(1024)S(1)} %add_rsqrt_fusion), kind=kOutput, calls=%fused_computation
+  FUSED count 1
+   %fusion = bf16[2048,9728]{1,0:T(8,128)(2,1)} fusion(bf16[2560,9728]{1,0:T(8,128)(2,1)} %state_leaves_59_, bf16[2048,2560]{1,0:T(8,128)(2,1)S(1)} %get-tuple-element, f32[2560]{0:T(1024)S(1)} %convert_element_type, f32[2048]{0:T(1024)S(1)} %add_rsqrt_fusion), kind=kOutput, calls=%fused_computation
+  FUSED count 1
+   %fusion = bf16[2048,9728]{1,0:T(8,128)(2,1)} fusion(bf16[2560,9728]{1,0:T(8,128)(2,1)} %state_leaves_70_, bf16[2048,2560]{1,0:T(8,128)(2,1)S(1)} %get-tuple-element, f32[2560]{0:T(1024)S(1)} %convert_element_type, f32[2048]{0:T(1024)S(1)} %add_rsqrt_fusion), kind=kOutput, calls=%fused_computation
+  FUSED count 1
+   %fusion = bf16[2048,9728]{1,0:T(8,128)(2,1)} fusion(bf16[2560,9728]{1,0:T(8,128)(2,1)} %state_leaves_81_, bf16[2048,2560]{1,0:T(8,128)(2,1)S(1)} %get-tuple-element, f32[2560]{0:T(1024)S(1)} %convert_element_type, f32[2048]{0:T(1024)S(1)} %add_rsqrt_fusion), kind=kOutput, calls=%fused_computation
+  FUSED count 1
+   %fusion = bf16[2048,9728]{1,0:T(8,128)(2,1)} fusion(bf16[2560,9728]{1,0:T(8,128)(2,1)} %state_leaves_92_, bf16[2048,2560]{1,0:T(8,128)(2,1)S(1)} %get-tuple-element, f32[2560]{0:T(1024)S(1)} %convert_element_type, f32[2048]{0:T(1024)S(1)} %add_rsqrt_fusion), kind=kOutput, calls=%fused_computation
+  FUSED count 1
+   %fusion = bf16[2048,9728]{1,0:T(8,128)(2,1)} fusion(bf16[2560,9728]{1,0:T(8,128)(2,1)} %state_leaves_103_, bf16[2048,2560]{1,0:T(8,128)(2,1)S(1)} %get-tuple-element, f32[2560]{0:T(1024)S(1)} %convert_element_type, f32[2048]{0:T(1024)S(1)} %add_rsqrt_fusion), kind=kOutput, calls=%fused_computation
+  FUSED count 1
+   %fusion = bf16[2048,9728]{1,0:T(8,128)(2,1)} fusion(bf16[2560,9728]{1,0:T(8,128)(2,1)} %state_leaves_114_, bf16[2048,2560]{1,0:T(8,128)(2,1)S(1)} %get-tuple-element, f32[2560]{0:T(1024)S(1)} %convert_element_type, f32[2048]{0:T(1024)S(1)} %add_rsqrt_fusion), kind=kOutput, calls=%fused_computation
+  FUSED count 1
+   %fusion = bf16[2048,9728]{1,0:T(8,128)(2,1)} fusion(bf16[2560,9728]{1,0:T(8,128)(2,1)} %state_leaves_125_, bf16[2048,2560]{1,0:T(8,128)(2,1)S(1)} %get-tuple-element, f32[2560]{0:T(1024)S(1)} %convert_element_type, f32[2048]{0:T(1024)S(1)} %add_rsqrt_fusion), kind=kOutput, calls=%fused_computation
+  FUSED count 1
+   %fusion = bf16[2048,9728]{1,0:T(8,128)(2,1)} fusion(bf16[2560,9728]{1,0:T(8,128)(2,1)} %state_leaves_136_, bf16[2048,2560]{1,0:T(8,128)(2,1)S(1)} %get-tuple-element, f32[2560]{0:T(1024)S(1)} %convert_element_type, f32[2048]{0:T(1024)S(1)} %add_rsqrt_fusion), kind=kOutput, calls=%fused_computation
+  FUSED count 1
+   %fusion = bf16[2048,9728]{1,0:T(8,128)(2,1)} fusion(bf16[2560,9728]{1,0:T(8,128)(2,1)} %state_leaves_147_, bf16[2048,2560]{1,0:T(8,128)(2,1)S(1)} %get-tuple-element, f32[2560]{0:T(1024)S(1)} %convert_element_type, f32[2048]{0:T(1024)S(1)} %add_rsqrt_fusion), kind=kOutput, calls=%fused_computation
+  FUSED count 1
+   %fusion = bf16[2048,9728]{1,0:T(8,128)(2,1)} fusion(bf16[2560,9728]{1,0:T(8,128)(2,1)} %state_leaves_158_, bf16[2048,2560]{1,0:T(8,128)(2,1)S(1)} %get-tuple-element, f32[2560]{0:T(1024)S(1)} %convert_element_type, f32[2048]{0:T(1024)S(1)} %add_rsqrt_fusion), kind=kOutput, calls=%fused_computation
+  FUSED count 1
+   %fusion = bf16[2048,9728]{1,0:T(8,128)(2,1)} fusion(bf16[2560,9728]{1,0:T(8,128)(2,1)} %state_leaves_169_, bf16[2048,2560]{1,0:T(8,128)(2,1)S(1)} %get-tuple-element, f32[2560]{0:T(1024)S(1)} %convert_element_type, f32[2048]{0:T(1024)S(1)} %add_rsqrt_fusion), kind=kOutput, calls=%fused_computation
+  FUSED count 1
+   %fusion = bf16[2048,9728]{1,0:T(8,128)(2,1)} fusion(bf16[2560,9728]{1,0:T(8,128)(2,1)} %state_leaves_180_, bf16[2048,2560]{1,0:T(8,128)(2,1)S(1)} %get-tuple-element, f32[2560]{0:T(1024)S(1)} %convert_element_type, f32[2048]{0:T(1024)S(1)} %add_rsqrt_fusion), kind=kOutput, calls=%fused_computation
+  FUSED count 1
+   %fusion = bf16[2048,9728]{1,0:T(8,128)(2,1)} fusion(bf16[2560,9728]{1,0:T(8,128)(2,1)} %state_leaves_191_, bf16[2048,2560]{1,0:T(8,128)(2,1)S(1)} %get-tuple-element, f32[2560]{0:T(1024)S(1)} %convert_element_type, f32[2048]{0:T(1024)S(1)} %add_rsqrt_fusion), kind=kOutput, calls=%fused_computation
+  FUSED count 1
+   %fusion = bf16[2048,9728]{1,0:T(8,128)(2,1)} fusion(bf16[2560,9728]{1,0:T(8,128)(2,1)} %state_leaves_202_, bf16[2048,2560]{1,0:T(8,128)(2,1)S(1)} %get-tuple-element, f32[2560]{0:T(1024)S(1)} %convert_element_type, f32[2048]{0:T(1024)S(1)} %add_rsqrt_fusion), kind=kOutput, calls=%fused_computation
+  FUSED count 1
+   %fusion = bf16[2048,9728]{1,0:T(8,128)(2,1)} fusion(bf16[2560,9728]{1,0:T(8,128)(2,1)} %state_leaves_213_, bf16[2048,2560]{1,0:T(8,128)(2,1)S(1)} %get-tuple-element, f32[2560]{0:T(1024)S(1)} %convert_element_type, f32[2048]{0:T(1024)S(1)} %add_rsqrt_fusion), kind=kOutput, calls=%fused_computation
+  FUSED count 1
+   %fusion = bf16[2048,9728]{1,0:T(8,128)(2,1)} fusion(bf16[2560,9728]{1,0:T(8,128)(2,1)} %state_leaves_224_, bf16[2048,2560]{1,0:T(8,128)(2,1)S(1)} %get-tuple-element, f32[2560]{0:T(1024)S(1)} %convert_element_type, f32[2048]{0:T(1024)S(1)} %add_rsqrt_fusion), kind=kOutput, calls=%fused_computation
+  FUSED count 1
+   %fusion = bf16[2048,9728]{1,0:T(8,128)(2,1)} fusion(bf16[2560,9728]{1,0:T(8,128)(2,1)} %state_leaves_235_, bf16[2048,2560]{1,0:T(8,128)(2,1)S(1)} %get-tuple-element, f32[2560]{0:T(1024)S(1)} %convert_element_type, f32[2048]{0:T(1024)S(1)} %add_rsqrt_fusion), kind=kOutput, calls=%fused_computation
+  FUSED count 1
+   %fusion = bf16[2048,9728]{1,0:T(8,128)(2,1)} fusion(bf16[2560,9728]{1,0:T(8,128)(2,1)} %state_leaves_246_, bf16[2048,2560]{1,0:T(8,128)(2,1)S(1)} %get-tuple-element, f32[2560]{0:T(1024)S(1)} %convert_element_type, f32[2048]{0:T(1024)S(1)} %add_rsqrt_fusion), kind=kOutput, calls=%fused_computation
+  FUSED count 1
+   %fusion = bf16[2048,9728]{1,0:T(8,128)(2,1)} fusion(bf16[2560,9728]{1,0:T(8,128)(2,1)} %state_leaves_257_, bf16[2048,2560]{1,0:T(8,128)(2,1)S(1)} %get-tuple-element, f32[2560]{0:T(1024)S(1)} %convert_element_type, f32[2048]{0:T(1024)S(1)} %add_rsqrt_fusion), kind=kOutput, calls=%fused_computation
+  FUSED count 1
+   %fusion = bf16[2048,9728]{1,0:T(8,128)(2,1)} fusion(bf16[2560,9728]{1,0:T(8,128)(2,1)} %state_leaves_268_, bf16[2048,2560]{1,0:T(8,128)(2,1)S(1)} %get-tuple-element, f32[2560]{0:T(1024)S(1)} %convert_element_type, f32[2048]{0:T(1024)S(1)} %add_rsqrt_fusion), kind=kOutput, calls=%fused_computation
+  FUSED count 1
+   %fusion = bf16[2048,9728]{1,0:T(8,128)(2,1)} fusion(bf16[2560,9728]{1,0:T(8,128)(2,1)} %state_leaves_279_, bf16[2048,2560]{1,0:T(8,128)(2,1)S(1)} %get-tuple-element, f32[2560]{0:T(1024)S(1)} %convert_element_type, f32[2048]{0:T(1024)S(1)} %add_rsqrt_fusion), kind=kOutput, calls=%fused_computation
+  FUSED count 1
+   %fusion = bf16[2048,9728]{1,0:T(8,128)(2,1)} fusion(bf16[2560,9728]{1,0:T(8,128)(2,1)} %state_leaves_290_, bf16[2048,2560]{1,0:T(8,128)(2,1)S(1)} %get-tuple-element, f32[2560]{0:T(1024)S(1)} %convert_element_type, f32[2048]{0:T(1024)S(1)} %add_rsqrt_fusion), kind=kOutput, calls=%fused_computation
+  FUSED count 1
+   %fusion = bf16[2048,9728]{1,0:T(8,128)(2,1)} fusion(bf16[2560,9728]{1,0:T(8,128)(2,1)} %state_leaves_301_, bf16[2048,2560]{1,0:T(8,128)(2,1)S(1)} %get-tuple-element, f32[2560]{0:T(1024)S(1)} %convert_element_type, f32[2048]{0:T(1024)S(1)} %add_rsqrt_fusion), kind=kOutput, calls=%fused_computation
+  FUSED count 1
+   %fusion = bf16[2048,9728]{1,0:T(8,128)(2,1)} fusion(bf16[2560,9728]{1,0:T(8,128)(2,1)} %state_leaves_312_, bf16[2048,2560]{1,0:T(8,128)(2,1)S(1)} %get-tuple-element, f32[2560]{0:T(1024)S(1)} %convert_element_type, f32[2048]{0:T(1024)S(1)} %add_rsqrt_fusion), kind=kOutput, calls=%fused_computation
+  FUSED count 1
+   %fusion = bf16[2048,9728]{1,0:T(8,128)(2,1)} fusion(bf16[2560,9728]{1,0:T(8,128)(2,1)} %state_leaves_323_, bf16[2048,2560]{1,0:T(8,128)(2,1)S(1)} %get-tuple-element, f32[2560]{0:T(1024)S(1)} %convert_element_type, f32[2048]{0:T(1024)S(1)} %add_rsqrt_fusion), kind=kOutput, calls=%fused_computation
+  FUSED count 1
+   %fusion = bf16[2048,9728]{1,0:T(8,128)(2,1)} fusion(bf16[2560,9728]{1,0:T(8,128)(2,1)} %state_leaves_334_, bf16[2048,2560]{1,0:T(8,128)(2,1)S(1)} %get-tuple-element, f32[2560]{0:T(1024)S(1)} %convert_element_type, f32[2048]{0:T(1024)S(1)} %add_rsqrt_fusion), kind=kOutput, calls=%fused_computation
+  FUSED count 1
+   %fusion = bf16[2048,9728]{1,0:T(8,128)(2,1)} fusion(bf16[2560,9728]{1,0:T(8,128)(2,1)} %state_leaves_345_, bf16[2048,2560]{1,0:T(8,128)(2,1)S(1)} %get-tuple-element, f32[2560]{0:T(1024)S(1)} %convert_element_type, f32[2048]{0:T(1024)S(1)} %add_rsqrt_fusion), kind=kOutput, calls=%fused_computation
+  FUSED count 1
+   %fusion = bf16[2048,9728]{1,0:T(8,128)(2,1)} fusion(bf16[2560,9728]{1,0:T(8,128)(2,1)} %state_leaves_356_, bf16[2048,2560]{1,0:T(8,128)(2,1)S(1)} %get-tuple-element, f32[2560]{0:T(1024)S(1)} %convert_element_type, f32[2048]{0:T(1024)S(1)} %add_rsqrt_fusion), kind=kOutput, calls=%fused_computation
+  FUSED count 1
+   %fusion = bf16[2048,9728]{1,0:T(8,128)(2,1)} fusion(bf16[2560,9728]{1,0:T(8,128)(2,1)} %state_leaves_367_, bf16[2048,2560]{1,0:T(8,128)(2,1)S(1)} %get-tuple-element, f32[2560]{0:T(1024)S(1)} %convert_element_type, f32[2048]{0:T(1024)S(1)} %add_rsqrt_fusion), kind=kOutput, calls=%fused_computation
+  FUSED count 1
+   %fusion = bf16[2048,9728]{1,0:T(8,128)(2,1)} fusion(bf16[2560,9728]{1,0:T(8,128)(2,1)} %state_leaves_378_, bf16[2048,2560]{1,0:T(8,128)(2,1)S(1)} %get-tuple-element, f32[2560]{0:T(1024)S(1)} %convert_element_type, f32[2048]{0:T(1024)S(1)} %add_rsqrt_fusion), kind=kOutput, calls=%fused_computation
+  FUSED count 1
+   %fusion = bf16[2048,9728]{1,0:T(8,128)(2,1)} fusion(bf16[2560,9728]{1,0:T(8,128)(2,1)} %state_leaves_389_, bf16[2048,2560]{1,0:T(8,128)(2,1)S(1)} %get-tuple-element, f32[2560]{0:T(1024)S(1)} %convert_element_type, f32[2048]{0:T(1024)S(1)} %add_rsqrt_fusion), kind=kOutput, calls=%fused_computation
+
+=== down_proj (qwen2.py:99) ===
+base n=36, fused n=36
+base distinct normalized patterns: 36
+fused distinct normalized patterns: 36
+base patterns == fused patterns: False
+  BASE count 1
+   %fusion = (f32[2048]{0:T(1024)S(1)}, bf16[2048,2560]{1,0:T(8,128)(2,1)}) fusion(bf16[2048,2560]{1,0:T(8,128)(2,1)S(1)} %get-tuple-element, bf16[9728,2560]{1,0:T(8,128)(2,1)} %state_leaves_2_, bf16[2048,9728]{1,0:T(8,128)(2,1)} %fusion, bf16[2048,9728]{1,0:T(8,128)(2,1)S(1)} %fusion), kind=kOutput, c
+  BASE count 1
+   %fusion = (f32[2048]{0:T(1024)S(1)}, bf16[2048,2560]{1,0:T(8,128)(2,1)}) fusion(bf16[2048,2560]{1,0:T(8,128)(2,1)S(1)} %get-tuple-element, bf16[9728,2560]{1,0:T(8,128)(2,1)} %state_leaves_13_, bf16[2048,9728]{1,0:T(8,128)(2,1)} %fusion, bf16[2048,9728]{1,0:T(8,128)(2,1)S(1)} %fusion), kind=kOutput, 
+  BASE count 1
+   %fusion = (f32[2048]{0:T(1024)S(1)}, bf16[2048,2560]{1,0:T(8,128)(2,1)}) fusion(bf16[2048,2560]{1,0:T(8,128)(2,1)S(1)} %get-tuple-element, bf16[9728,2560]{1,0:T(8,128)(2,1)} %state_leaves_24_, bf16[2048,9728]{1,0:T(8,128)(2,1)} %fusion, bf16[2048,9728]{1,0:T(8,128)(2,1)S(1)} %fusion), kind=kOutput, 
+  BASE count 1
+   %fusion = (f32[2048]{0:T(1024)S(1)}, bf16[2048,2560]{1,0:T(8,128)(2,1)}) fusion(bf16[2048,2560]{1,0:T(8,128)(2,1)S(1)} %get-tuple-element, bf16[9728,2560]{1,0:T(8,128)(2,1)} %state_leaves_35_, bf16[2048,9728]{1,0:T(8,128)(2,1)} %fusion, bf16[2048,9728]{1,0:T(8,128)(2,1)S(1)} %fusion), kind=kOutput, 
+  BASE count 1
+   %fusion = (f32[2048]{0:T(1024)S(1)}, bf16[2048,2560]{1,0:T(8,128)(2,1)}) fusion(bf16[2048,2560]{1,0:T(8,128)(2,1)S(1)} %get-tuple-element, bf16[9728,2560]{1,0:T(8,128)(2,1)} %state_leaves_46_, bf16[2048,9728]{1,0:T(8,128)(2,1)} %fusion, bf16[2048,9728]{1,0:T(8,128)(2,1)S(1)} %fusion), kind=kOutput, 
+  BASE count 1
+   %fusion = (f32[2048]{0:T(1024)S(1)}, bf16[2048,2560]{1,0:T(8,128)(2,1)}) fusion(bf16[2048,2560]{1,0:T(8,128)(2,1)S(1)} %get-tuple-element, bf16[9728,2560]{1,0:T(8,128)(2,1)} %state_leaves_57_, bf16[2048,9728]{1,0:T(8,128)(2,1)} %fusion, bf16[2048,9728]{1,0:T(8,128)(2,1)S(1)} %fusion), kind=kOutput, 
+  BASE count 1
+   %fusion = (f32[2048]{0:T(1024)S(1)}, bf16[2048,2560]{1,0:T(8,128)(2,1)}) fusion(bf16[2048,2560]{1,0:T(8,128)(2,1)S(1)} %get-tuple-element, bf16[9728,2560]{1,0:T(8,128)(2,1)} %state_leaves_68_, bf16[2048,9728]{1,0:T(8,128)(2,1)} %fusion, bf16[2048,9728]{1,0:T(8,128)(2,1)S(1)} %fusion), kind=kOutput, 
+  BASE count 1
+   %fusion = (f32[2048]{0:T(1024)S(1)}, bf16[2048,2560]{1,0:T(8,128)(2,1)}) fusion(bf16[2048,2560]{1,0:T(8,128)(2,1)S(1)} %get-tuple-element, bf16[9728,2560]{1,0:T(8,128)(2,1)} %state_leaves_79_, bf16[2048,9728]{1,0:T(8,128)(2,1)} %fusion, bf16[2048,9728]{1,0:T(8,128)(2,1)S(1)} %fusion), kind=kOutput, 
+  BASE count 1
+   %fusion = (f32[2048]{0:T(1024)S(1)}, bf16[2048,2560]{1,0:T(8,128)(2,1)}) fusion(bf16[2048,2560]{1,0:T(8,128)(2,1)S(1)} %get-tuple-element, bf16[9728,2560]{1,0:T(8,128)(2,1)} %state_leaves_90_, bf16[2048,9728]{1,0:T(8,128)(2,1)} %fusion, bf16[2048,9728]{1,0:T(8,128)(2,1)S(1)} %fusion), kind=kOutput, 
+  BASE count 1
+   %fusion = (f32[2048]{0:T(1024)S(1)}, bf16[2048,2560]{1,0:T(8,128)(2,1)}) fusion(bf16[2048,2560]{1,0:T(8,128)(2,1)S(1)} %get-tuple-element, bf16[9728,2560]{1,0:T(8,128)(2,1)} %state_leaves_101_, bf16[2048,9728]{1,0:T(8,128)(2,1)} %fusion, bf16[2048,9728]{1,0:T(8,128)(2,1)S(1)} %fusion), kind=kOutput,
+  BASE count 1
+   %fusion = (f32[2048]{0:T(1024)S(1)}, bf16[2048,2560]{1,0:T(8,128)(2,1)}) fusion(bf16[2048,2560]{1,0:T(8,128)(2,1)S(1)} %get-tuple-element, bf16[9728,2560]{1,0:T(8,128)(2,1)} %state_leaves_112_, bf16[2048,9728]{1,0:T(8,128)(2,1)} %fusion, bf16[2048,9728]{1,0:T(8,128)(2,1)S(1)} %fusion), kind=kOutput,
+  BASE count 1
+   %fusion = (f32[2048]{0:T(1024)S(1)}, bf16[2048,2560]{1,0:T(8,128)(2,1)}) fusion(bf16[2048,2560]{1,0:T(8,128)(2,1)S(1)} %get-tuple-element, bf16[9728,2560]{1,0:T(8,128)(2,1)} %state_leaves_123_, bf16[2048,9728]{1,0:T(8,128)(2,1)} %fusion, bf16[2048,9728]{1,0:T(8,128)(2,1)S(1)} %fusion), kind=kOutput,
+  BASE count 1
+   %fusion = (f32[2048]{0:T(1024)S(1)}, bf16[2048,2560]{1,0:T(8,128)(2,1)}) fusion(bf16[2048,2560]{1,0:T(8,128)(2,1)S(1)} %get-tuple-element, bf16[9728,2560]{1,0:T(8,128)(2,1)} %state_leaves_134_, bf16[2048,9728]{1,0:T(8,128)(2,1)} %fusion, bf16[2048,9728]{1,0:T(8,128)(2,1)S(1)} %fusion), kind=kOutput,
+  BASE count 1
+   %fusion = (f32[2048]{0:T(1024)S(1)}, bf16[2048,2560]{1,0:T(8,128)(2,1)}) fusion(bf16[2048,2560]{1,0:T(8,128)(2,1)S(1)} %get-tuple-element, bf16[9728,2560]{1,0:T(8,128)(2,1)} %state_leaves_145_, bf16[2048,9728]{1,0:T(8,128)(2,1)} %fusion, bf16[2048,9728]{1,0:T(8,128)(2,1)S(1)} %fusion), kind=kOutput,
+  BASE count 1
+   %fusion = (f32[2048]{0:T(1024)S(1)}, bf16[2048,2560]{1,0:T(8,128)(2,1)}) fusion(bf16[2048,2560]{1,0:T(8,128)(2,1)S(1)} %get-tuple-element, bf16[9728,2560]{1,0:T(8,128)(2,1)} %state_leaves_156_, bf16[2048,9728]{1,0:T(8,128)(2,1)} %fusion, bf16[2048,9728]{1,0:T(8,128)(2,1)S(1)} %fusion), kind=kOutput,
+  BASE count 1
+   %fusion = (f32[2048]{0:T(1024)S(1)}, bf16[2048,2560]{1,0:T(8,128)(2,1)}) fusion(bf16[2048,2560]{1,0:T(8,128)(2,1)S(1)} %get-tuple-element, bf16[9728,2560]{1,0:T(8,128)(2,1)} %state_leaves_167_, bf16[2048,9728]{1,0:T(8,128)(2,1)} %fusion, bf16[2048,9728]{1,0:T(8,128)(2,1)S(1)} %fusion), kind=kOutput,
+  BASE count 1
+   %fusion = (f32[2048]{0:T(1024)S(1)}, bf16[2048,2560]{1,0:T(8,128)(2,1)}) fusion(bf16[2048,2560]{1,0:T(8,128)(2,1)S(1)} %get-tuple-element, bf16[9728,2560]{1,0:T(8,128)(2,1)} %state_leaves_178_, bf16[2048,9728]{1,0:T(8,128)(2,1)} %fusion, bf16[2048,9728]{1,0:T(8,128)(2,1)S(1)} %fusion), kind=kOutput,
+  BASE count 1
+   %fusion = (f32[2048]{0:T(1024)S(1)}, bf16[2048,2560]{1,0:T(8,128)(2,1)}) fusion(bf16[2048,2560]{1,0:T(8,128)(2,1)S(1)} %get-tuple-element, bf16[9728,2560]{1,0:T(8,128)(2,1)} %state_leaves_189_, bf16[2048,9728]{1,0:T(8,128)(2,1)} %fusion, bf16[2048,9728]{1,0:T(8,128)(2,1)S(1)} %fusion), kind=kOutput,
+  BASE count 1
+   %fusion = (f32[2048]{0:T(1024)S(1)}, bf16[2048,2560]{1,0:T(8,128)(2,1)}) fusion(bf16[2048,2560]{1,0:T(8,128)(2,1)S(1)} %get-tuple-element, bf16[9728,2560]{1,0:T(8,128)(2,1)} %state_leaves_200_, bf16[2048,9728]{1,0:T(8,128)(2,1)} %fusion, bf16[2048,9728]{1,0:T(8,128)(2,1)S(1)} %fusion), kind=kOutput,
+  BASE count 1
+   %fusion = (f32[2048]{0:T(1024)S(1)}, bf16[2048,2560]{1,0:T(8,128)(2,1)}) fusion(bf16[2048,2560]{1,0:T(8,128)(2,1)S(1)} %get-tuple-element, bf16[9728,2560]{1,0:T(8,128)(2,1)} %state_leaves_211_, bf16[2048,9728]{1,0:T(8,128)(2,1)} %fusion, bf16[2048,9728]{1,0:T(8,128)(2,1)S(1)} %fusion), kind=kOutput,
+  BASE count 1
+   %fusion = (f32[2048]{0:T(1024)S(1)}, bf16[2048,2560]{1,0:T(8,128)(2,1)}) fusion(bf16[2048,2560]{1,0:T(8,128)(2,1)S(1)} %get-tuple-element, bf16[9728,2560]{1,0:T(8,128)(2,1)} %state_leaves_222_, bf16[2048,9728]{1,0:T(8,128)(2,1)} %fusion, bf16[2048,9728]{1,0:T(8,128)(2,1)S(1)} %fusion), kind=kOutput,
+  BASE count 1
+   %fusion = (f32[2048]{0:T(1024)S(1)}, bf16[2048,2560]{1,0:T(8,128)(2,1)}) fusion(bf16[2048,2560]{1,0:T(8,128)(2,1)S(1)} %get-tuple-element, bf16[9728,2560]{1,0:T(8,128)(2,1)} %state_leaves_233_, bf16[2048,9728]{1,0:T(8,128)(2,1)} %fusion, bf16[2048,9728]{1,0:T(8,128)(2,1)S(1)} %fusion), kind=kOutput,
+  BASE count 1
+   %fusion = (f32[2048]{0:T(1024)S(1)}, bf16[2048,2560]{1,0:T(8,128)(2,1)}) fusion(bf16[2048,2560]{1,0:T(8,128)(2,1)S(1)} %get-tuple-element, bf16[9728,2560]{1,0:T(8,128)(2,1)} %state_leaves_244_, bf16[2048,9728]{1,0:T(8,128)(2,1)} %fusion, bf16[2048,9728]{1,0:T(8,128)(2,1)S(1)} %fusion), kind=kOutput,
+  BASE count 1
+   %fusion = (f32[2048]{0:T(1024)S(1)}, bf16[2048,2560]{1,0:T(8,128)(2,1)}) fusion(bf16[2048,2560]{1,0:T(8,128)(2,1)S(1)} %get-tuple-element, bf16[9728,2560]{1,0:T(8,128)(2,1)} %state_leaves_255_, bf16[2048,9728]{1,0:T(8,128)(2,1)} %fusion, bf16[2048,9728]{1,0:T(8,128)(2,1)S(1)} %fusion), kind=kOutput,
+  BASE count 1
+   %fusion = (f32[2048]{0:T(1024)S(1)}, bf16[2048,2560]{1,0:T(8,128)(2,1)}) fusion(bf16[2048,2560]{1,0:T(8,128)(2,1)S(1)} %get-tuple-element, bf16[9728,2560]{1,0:T(8,128)(2,1)} %state_leaves_266_, bf16[2048,9728]{1,0:T(8,128)(2,1)} %fusion, bf16[2048,9728]{1,0:T(8,128)(2,1)S(1)} %fusion), kind=kOutput,
+  BASE count 1
+   %fusion = (f32[2048]{0:T(1024)S(1)}, bf16[2048,2560]{1,0:T(8,128)(2,1)}) fusion(bf16[2048,2560]{1,0:T(8,128)(2,1)S(1)} %get-tuple-element, bf16[9728,2560]{1,0:T(8,128)(2,1)} %state_leaves_277_, bf16[2048,9728]{1,0:T(8,128)(2,1)} %fusion, bf16[2048,9728]{1,0:T(8,128)(2,1)S(1)} %fusion), kind=kOutput,
+  BASE count 1
+   %fusion = (f32[2048]{0:T(1024)S(1)}, bf16[2048,2560]{1,0:T(8,128)(2,1)}) fusion(bf16[2048,2560]{1,0:T(8,128)(2,1)S(1)} %get-tuple-element, bf16[9728,2560]{1,0:T(8,128)(2,1)} %state_leaves_288_, bf16[2048,9728]{1,0:T(8,128)(2,1)} %fusion, bf16[2048,9728]{1,0:T(8,128)(2,1)S(1)} %fusion), kind=kOutput,
+  BASE count 1
+   %fusion = (f32[2048]{0:T(1024)S(1)}, bf16[2048,2560]{1,0:T(8,128)(2,1)}) fusion(bf16[2048,2560]{1,0:T(8,128)(2,1)S(1)} %get-tuple-element, bf16[9728,2560]{1,0:T(8,128)(2,1)} %state_leaves_299_, bf16[2048,9728]{1,0:T(8,128)(2,1)} %fusion, bf16[2048,9728]{1,0:T(8,128)(2,1)S(1)} %fusion), kind=kOutput,
+  BASE count 1
+   %fusion = (f32[2048]{0:T(1024)S(1)}, bf16[2048,2560]{1,0:T(8,128)(2,1)}) fusion(bf16[2048,2560]{1,0:T(8,128)(2,1)S(1)} %get-tuple-element, bf16[9728,2560]{1,0:T(8,128)(2,1)} %state_leaves_310_, bf16[2048,9728]{1,0:T(8,128)(2,1)} %fusion, bf16[2048,9728]{1,0:T(8,128)(2,1)S(1)} %fusion), kind=kOutput,
+  BASE count 1
+   %fusion = (f32[2048]{0:T(1024)S(1)}, bf16[2048,2560]{1,0:T(8,128)(2,1)}) fusion(bf16[2048,2560]{1,0:T(8,128)(2,1)S(1)} %get-tuple-element, bf16[9728,2560]{1,0:T(8,128)(2,1)} %state_leaves_321_, bf16[2048,9728]{1,0:T(8,128)(2,1)} %fusion, bf16[2048,9728]{1,0:T(8,128)(2,1)S(1)} %fusion), kind=kOutput,
+  BASE count 1
+   %fusion = (f32[2048]{0:T(1024)S(1)}, bf16[2048,2560]{1,0:T(8,128)(2,1)}) fusion(bf16[2048,2560]{1,0:T(8,128)(2,1)S(1)} %get-tuple-element, bf16[9728,2560]{1,0:T(8,128)(2,1)} %state_leaves_332_, bf16[2048,9728]{1,0:T(8,128)(2,1)} %fusion, bf16[2048,9728]{1,0:T(8,128)(2,1)S(1)} %fusion), kind=kOutput,
+  BASE count 1
+   %fusion = (f32[2048]{0:T(1024)S(1)}, bf16[2048,2560]{1,0:T(8,128)(2,1)}) fusion(bf16[2048,2560]{1,0:T(8,128)(2,1)S(1)} %get-tuple-element, bf16[9728,2560]{1,0:T(8,128)(2,1)} %state_leaves_343_, bf16[2048,9728]{1,0:T(8,128)(2,1)} %fusion, bf16[2048,9728]{1,0:T(8,128)(2,1)S(1)} %fusion), kind=kOutput,
+  BASE count 1
+   %fusion = (f32[2048]{0:T(1024)S(1)}, bf16[2048,2560]{1,0:T(8,128)(2,1)}) fusion(bf16[2048,2560]{1,0:T(8,128)(2,1)S(1)} %get-tuple-element, bf16[9728,2560]{1,0:T(8,128)(2,1)} %state_leaves_354_, bf16[2048,9728]{1,0:T(8,128)(2,1)} %fusion, bf16[2048,9728]{1,0:T(8,128)(2,1)S(1)} %fusion), kind=kOutput,
+  BASE count 1
+   %fusion = (f32[2048]{0:T(1024)S(1)}, bf16[2048,2560]{1,0:T(8,128)(2,1)}) fusion(bf16[2048,2560]{1,0:T(8,128)(2,1)S(1)} %get-tuple-element, bf16[9728,2560]{1,0:T(8,128)(2,1)} %state_leaves_365_, bf16[2048,9728]{1,0:T(8,128)(2,1)} %fusion, bf16[2048,9728]{1,0:T(8,128)(2,1)S(1)} %fusion), kind=kOutput,
+  BASE count 1
+   %fusion = (f32[2048]{0:T(1024)S(1)}, bf16[2048,2560]{1,0:T(8,128)(2,1)}) fusion(bf16[2048,2560]{1,0:T(8,128)(2,1)S(1)} %get-tuple-element, bf16[9728,2560]{1,0:T(8,128)(2,1)} %state_leaves_376_, bf16[2048,9728]{1,0:T(8,128)(2,1)} %fusion, bf16[2048,9728]{1,0:T(8,128)(2,1)S(1)} %fusion), kind=kOutput,
+  BASE count 1
+   %fusion = (f32[2048]{0:T(1024)S(1)}, bf16[2048,2560]{1,0:T(8,128)(2,1)S(1)}) fusion(bf16[2048,2560]{1,0:T(8,128)(2,1)S(1)} %get-tuple-element, bf16[9728,2560]{1,0:T(8,128)(2,1)} %state_leaves_387_, bf16[2048,9728]{1,0:T(8,128)(2,1)} %fusion, bf16[2048,9728]{1,0:T(8,128)(2,1)S(1)} %fusion), kind=kOut
+  FUSED count 1
+   %fusion = (f32[2048]{0:T(1024)S(1)}, bf16[2048,2560]{1,0:T(8,128)(2,1)}) fusion(bf16[2048,2560]{1,0:T(8,128)(2,1)S(1)} %copy-done, bf16[9728,2560]{1,0:T(8,128)(2,1)} %state_leaves_2_, bf16[2048,9728]{1,0:T(8,128)(2,1)S(1)} %fusion, bf16[2048,9728]{1,0:T(8,128)(2,1)S(1)} %copy-done), kind=kOutput, ca
+  FUSED count 1
+   %fusion = (f32[2048]{0:T(1024)S(1)}, bf16[2048,2560]{1,0:T(8,128)(2,1)}) fusion(bf16[2048,2560]{1,0:T(8,128)(2,1)S(1)} %get-tuple-element, bf16[9728,2560]{1,0:T(8,128)(2,1)} %state_leaves_13_, bf16[2048,9728]{1,0:T(8,128)(2,1)} %fusion, bf16[2048,9728]{1,0:T(8,128)(2,1)S(1)} %fusion), kind=kOutput, 
+  FUSED count 1
+   %fusion = (f32[2048]{0:T(1024)S(1)}, bf16[2048,2560]{1,0:T(8,128)(2,1)}) fusion(bf16[2048,2560]{1,0:T(8,128)(2,1)S(1)} %get-tuple-element, bf16[9728,2560]{1,0:T(8,128)(2,1)} %state_leaves_24_, bf16[2048,9728]{1,0:T(8,128)(2,1)} %fusion, bf16[2048,9728]{1,0:T(8,128)(2,1)S(1)} %fusion), kind=kOutput, 
+  FUSED count 1
+   %fusion = (f32[2048]{0:T(1024)S(1)}, bf16[2048,2560]{1,0:T(8,128)(2,1)}) fusion(bf16[2048,2560]{1,0:T(8,128)(2,1)S(1)} %get-tuple-element, bf16[9728,2560]{1,0:T(8,128)(2,1)} %state_leaves_35_, bf16[2048,9728]{1,0:T(8,128)(2,1)} %fusion, bf16[2048,9728]{1,0:T(8,128)(2,1)S(1)} %fusion), kind=kOutput, 
+  FUSED count 1
+   %fusion = (f32[2048]{0:T(1024)S(1)}, bf16[2048,2560]{1,0:T(8,128)(2,1)}) fusion(bf16[2048,2560]{1,0:T(8,128)(2,1)S(1)} %get-tuple-element, bf16[9728,2560]{1,0:T(8,128)(2,1)} %state_leaves_46_, bf16[2048,9728]{1,0:T(8,128)(2,1)} %fusion, bf16[2048,9728]{1,0:T(8,128)(2,1)S(1)} %fusion), kind=kOutput, 
+  FUSED count 1
+   %fusion = (f32[2048]{0:T(1024)S(1)}, bf16[2048,2560]{1,0:T(8,128)(2,1)}) fusion(bf16[2048,2560]{1,0:T(8,128)(2,1)S(1)} %get-tuple-element, bf16[9728,2560]{1,0:T(8,128)(2,1)} %state_leaves_57_, bf16[2048,9728]{1,0:T(8,128)(2,1)} %fusion, bf16[2048,9728]{1,0:T(8,128)(2,1)S(1)} %fusion), kind=kOutput, 
+  FUSED count 1
+   %fusion = (f32[2048]{0:T(1024)S(1)}, bf16[2048,2560]{1,0:T(8,128)(2,1)}) fusion(bf16[2048,2560]{1,0:T(8,128)(2,1)S(1)} %get-tuple-element, bf16[9728,2560]{1,0:T(8,128)(2,1)} %state_leaves_68_, bf16[2048,9728]{1,0:T(8,128)(2,1)} %fusion, bf16[2048,9728]{1,0:T(8,128)(2,1)S(1)} %fusion), kind=kOutput, 
+  FUSED count 1
+   %fusion = (f32[2048]{0:T(1024)S(1)}, bf16[2048,2560]{1,0:T(8,128)(2,1)}) fusion(bf16[2048,2560]{1,0:T(8,128)(2,1)S(1)} %get-tuple-element, bf16[9728,2560]{1,0:T(8,128)(2,1)} %state_leaves_79_, bf16[2048,9728]{1,0:T(8,128)(2,1)} %fusion, bf16[2048,9728]{1,0:T(8,128)(2,1)S(1)} %fusion), kind=kOutput, 
+  FUSED count 1
+   %fusion = (f32[2048]{0:T(1024)S(1)}, bf16[2048,2560]{1,0:T(8,128)(2,1)}) fusion(bf16[2048,2560]{1,0:T(8,128)(2,1)S(1)} %get-tuple-element, bf16[9728,2560]{1,0:T(8,128)(2,1)} %state_leaves_90_, bf16[2048,9728]{1,0:T(8,128)(2,1)} %fusion, bf16[2048,9728]{1,0:T(8,128)(2,1)S(1)} %fusion), kind=kOutput, 
+  FUSED count 1
+   %fusion = (f32[2048]{0:T(1024)S(1)}, bf16[2048,2560]{1,0:T(8,128)(2,1)}) fusion(bf16[2048,2560]{1,0:T(8,128)(2,1)S(1)} %get-tuple-element, bf16[9728,2560]{1,0:T(8,128)(2,1)} %state_leaves_101_, bf16[2048,9728]{1,0:T(8,128)(2,1)} %fusion, bf16[2048,9728]{1,0:T(8,128)(2,1)S(1)} %fusion), kind=kOutput,
+  FUSED count 1
+   %fusion = (f32[2048]{0:T(1024)S(1)}, bf16[2048,2560]{1,0:T(8,128)(2,1)}) fusion(bf16[2048,2560]{1,0:T(8,128)(2,1)S(1)} %get-tuple-element, bf16[9728,2560]{1,0:T(8,128)(2,1)} %state_leaves_112_, bf16[2048,9728]{1,0:T(8,128)(2,1)} %fusion, bf16[2048,9728]{1,0:T(8,128)(2,1)S(1)} %fusion), kind=kOutput,
+  FUSED count 1
+   %fusion = (f32[2048]{0:T(1024)S(1)}, bf16[2048,2560]{1,0:T(8,128)(2,1)}) fusion(bf16[2048,2560]{1,0:T(8,128)(2,1)S(1)} %get-tuple-element, bf16[9728,2560]{1,0:T(8,128)(2,1)} %state_leaves_123_, bf16[2048,9728]{1,0:T(8,128)(2,1)} %fusion, bf16[2048,9728]{1,0:T(8,128)(2,1)S(1)} %fusion), kind=kOutput,
+  FUSED count 1
+   %fusion = (f32[2048]{0:T(1024)S(1)}, bf16[2048,2560]{1,0:T(8,128)(2,1)}) fusion(bf16[2048,2560]{1,0:T(8,128)(2,1)S(1)} %get-tuple-element, bf16[9728,2560]{1,0:T(8,128)(2,1)} %state_leaves_134_, bf16[2048,9728]{1,0:T(8,128)(2,1)} %fusion, bf16[2048,9728]{1,0:T(8,128)(2,1)S(1)} %fusion), kind=kOutput,
+  FUSED count 1
+   %fusion = (f32[2048]{0:T(1024)S(1)}, bf16[2048,2560]{1,0:T(8,128)(2,1)}) fusion(bf16[2048,2560]{1,0:T(8,128)(2,1)S(1)} %get-tuple-element, bf16[9728,2560]{1,0:T(8,128)(2,1)} %state_leaves_145_, bf16[2048,9728]{1,0:T(8,128)(2,1)} %fusion, bf16[2048,9728]{1,0:T(8,128)(2,1)S(1)} %fusion), kind=kOutput,
+  FUSED count 1
+   %fusion = (f32[2048]{0:T(1024)S(1)}, bf16[2048,2560]{1,0:T(8,128)(2,1)}) fusion(bf16[2048,2560]{1,0:T(8,128)(2,1)S(1)} %get-tuple-element, bf16[9728,2560]{1,0:T(8,128)(2,1)} %state_leaves_156_, bf16[2048,9728]{1,0:T(8,128)(2,1)} %fusion, bf16[2048,9728]{1,0:T(8,128)(2,1)S(1)} %fusion), kind=kOutput,
+  FUSED count 1
+   %fusion = (f32[2048]{0:T(1024)S(1)}, bf16[2048,2560]{1,0:T(8,128)(2,1)}) fusion(bf16[2048,2560]{1,0:T(8,128)(2,1)S(1)} %get-tuple-element, bf16[9728,2560]{1,0:T(8,128)(2,1)} %state_leaves_167_, bf16[2048,9728]{1,0:T(8,128)(2,1)} %fusion, bf16[2048,9728]{1,0:T(8,128)(2,1)S(1)} %fusion), kind=kOutput,
+  FUSED count 1
+   %fusion = (f32[2048]{0:T(1024)S(1)}, bf16[2048,2560]{1,0:T(8,128)(2,1)}) fusion(bf16[2048,2560]{1,0:T(8,128)(2,1)S(1)} %get-tuple-element, bf16[9728,2560]{1,0:T(8,128)(2,1)} %state_leaves_178_, bf16[2048,9728]{1,0:T(8,128)(2,1)} %fusion, bf16[2048,9728]{1,0:T(8,128)(2,1)S(1)} %fusion), kind=kOutput,
+  FUSED count 1
+   %fusion = (f32[2048]{0:T(1024)S(1)}, bf16[2048,2560]{1,0:T(8,128)(2,1)}) fusion(bf16[2048,2560]{1,0:T(8,128)(2,1)S(1)} %get-tuple-element, bf16[9728,2560]{1,0:T(8,128)(2,1)} %state_leaves_189_, bf16[2048,9728]{1,0:T(8,128)(2,1)} %fusion, bf16[2048,9728]{1,0:T(8,128)(2,1)S(1)} %fusion), kind=kOutput,
+  FUSED count 1
+   %fusion = (f32[2048]{0:T(1024)S(1)}, bf16[2048,2560]{1,0:T(8,128)(2,1)}) fusion(bf16[2048,2560]{1,0:T(8,128)(2,1)S(1)} %get-tuple-element, bf16[9728,2560]{1,0:T(8,128)(2,1)} %state_leaves_200_, bf16[2048,9728]{1,0:T(8,128)(2,1)} %fusion, bf16[2048,9728]{1,0:T(8,128)(2,1)S(1)} %fusion), kind=kOutput,
+  FUSED count 1
+   %fusion = (f32[2048]{0:T(1024)S(1)}, bf16[2048,2560]{1,0:T(8,128)(2,1)}) fusion(bf16[2048,2560]{1,0:T(8,128)(2,1)S(1)} %get-tuple-element, bf16[9728,2560]{1,0:T(8,128)(2,1)} %state_leaves_211_, bf16[2048,9728]{1,0:T(8,128)(2,1)} %fusion, bf16[2048,9728]{1,0:T(8,128)(2,1)S(1)} %fusion), kind=kOutput,
+  FUSED count 1
+   %fusion = (f32[2048]{0:T(1024)S(1)}, bf16[2048,2560]{1,0:T(8,128)(2,1)}) fusion(bf16[2048,2560]{1,0:T(8,128)(2,1)S(1)} %get-tuple-element, bf16[9728,2560]{1,0:T(8,128)(2,1)} %state_leaves_222_, bf16[2048,9728]{1,0:T(8,128)(2,1)} %fusion, bf16[2048,9728]{1,0:T(8,128)(2,1)S(1)} %fusion), kind=kOutput,
+  FUSED count 1
+   %fusion = (f32[2048]{0:T(1024)S(1)}, bf16[2048,2560]{1,0:T(8,128)(2,1)}) fusion(bf16[2048,2560]{1,0:T(8,128)(2,1)S(1)} %get-tuple-element, bf16[9728,2560]{1,0:T(8,128)(2,1)} %state_leaves_233_, bf16[2048,9728]{1,0:T(8,128)(2,1)} %fusion, bf16[2048,9728]{1,0:T(8,128)(2,1)S(1)} %fusion), kind=kOutput,
+  FUSED count 1
+   %fusion = (f32[2048]{0:T(1024)S(1)}, bf16[2048,2560]{1,0:T(8,128)(2,1)}) fusion(bf16[2048,2560]{1,0:T(8,128)(2,1)S(1)} %get-tuple-element, bf16[9728,2560]{1,0:T(8,128)(2,1)} %state_leaves_244_, bf16[2048,9728]{1,0:T(8,128)(2,1)} %fusion, bf16[2048,9728]{1,0:T(8,128)(2,1)S(1)} %fusion), kind=kOutput,
+  FUSED count 1
+   %fusion = (f32[2048]{0:T(1024)S(1)}, bf16[2048,2560]{1,0:T(8,128)(2,1)}) fusion(bf16[2048,2560]{1,0:T(8,128)(2,1)S(1)} %get-tuple-element, bf16[9728,2560]{1,0:T(8,128)(2,1)} %state_leaves_255_, bf16[2048,9728]{1,0:T(8,128)(2,1)} %fusion, bf16[2048,9728]{1,0:T(8,128)(2,1)S(1)} %fusion), kind=kOutput,
+  FUSED count 1
+   %fusion = (f32[2048]{0:T(1024)S(1)}, bf16[2048,2560]{1,0:T(8,128)(2,1)}) fusion(bf16[2048,2560]{1,0:T(8,128)(2,1)S(1)} %get-tuple-element, bf16[9728,2560]{1,0:T(8,128)(2,1)} %state_leaves_266_, bf16[2048,9728]{1,0:T(8,128)(2,1)} %fusion, bf16[2048,9728]{1,0:T(8,128)(2,1)S(1)} %fusion), kind=kOutput,
+  FUSED count 1
+   %fusion = (f32[2048]{0:T(1024)S(1)}, bf16[2048,2560]{1,0:T(8,128)(2,1)}) fusion(bf16[2048,2560]{1,0:T(8,128)(2,1)S(1)} %get-tuple-element, bf16[9728,2560]{1,0:T(8,128)(2,1)} %state_leaves_277_, bf16[2048,9728]{1,0:T(8,128)(2,1)} %fusion, bf16[2048,9728]{1,0:T(8,128)(2,1)S(1)} %fusion), kind=kOutput,
+  FUSED count 1
+   %fusion = (f32[2048]{0:T(1024)S(1)}, bf16[2048,2560]{1,0:T(8,128)(2,1)}) fusion(bf16[2048,2560]{1,0:T(8,128)(2,1)S(1)} %get-tuple-element, bf16[9728,2560]{1,0:T(8,128)(2,1)} %state_leaves_288_, bf16[2048,9728]{1,0:T(8,128)(2,1)} %fusion, bf16[2048,9728]{1,0:T(8,128)(2,1)S(1)} %fusion), kind=kOutput,
+  FUSED count 1
+   %fusion = (f32[2048]{0:T(1024)S(1)}, bf16[2048,2560]{1,0:T(8,128)(2,1)}) fusion(bf16[2048,2560]{1,0:T(8,128)(2,1)S(1)} %get-tuple-element, bf16[9728,2560]{1,0:T(8,128)(2,1)} %state_leaves_299_, bf16[2048,9728]{1,0:T(8,128)(2,1)} %fusion, bf16[2048,9728]{1,0:T(8,128)(2,1)S(1)} %fusion), kind=kOutput,
+  FUSED count 1
+   %fusion = (f32[2048]{0:T(1024)S(1)}, bf16[2048,2560]{1,0:T(8,128)(2,1)}) fusion(bf16[2048,2560]{1,0:T(8,128)(2,1)S(1)} %get-tuple-element, bf16[9728,2560]{1,0:T(8,128)(2,1)} %state_leaves_310_, bf16[2048,9728]{1,0:T(8,128)(2,1)} %fusion, bf16[2048,9728]{1,0:T(8,128)(2,1)S(1)} %fusion), kind=kOutput,
+  FUSED count 1
+   %fusion = (f32[2048]{0:T(1024)S(1)}, bf16[2048,2560]{1,0:T(8,128)(2,1)}) fusion(bf16[2048,2560]{1,0:T(8,128)(2,1)S(1)} %get-tuple-element, bf16[9728,2560]{1,0:T(8,128)(2,1)} %state_leaves_321_, bf16[2048,9728]{1,0:T(8,128)(2,1)} %fusion, bf16[2048,9728]{1,0:T(8,128)(2,1)S(1)} %fusion), kind=kOutput,
+  FUSED count 1
+   %fusion = (f32[2048]{0:T(1024)S(1)}, bf16[2048,2560]{1,0:T(8,128)(2,1)}) fusion(bf16[2048,2560]{1,0:T(8,128)(2,1)S(1)} %get-tuple-element, bf16[9728,2560]{1,0:T(8,128)(2,1)} %state_leaves_332_, bf16[2048,9728]{1,0:T(8,128)(2,1)} %fusion, bf16[2048,9728]{1,0:T(8,128)(2,1)S(1)} %fusion), kind=kOutput,
+  FUSED count 1
+   %fusion = (f32[2048]{0:T(1024)S(1)}, bf16[2048,2560]{1,0:T(8,128)(2,1)}) fusion(bf16[2048,2560]{1,0:T(8,128)(2,1)S(1)} %get-tuple-element, bf16[9728,2560]{1,0:T(8,128)(2,1)} %state_leaves_343_, bf16[2048,9728]{1,0:T(8,128)(2,1)} %fusion, bf16[2048,9728]{1,0:T(8,128)(2,1)S(1)} %fusion), kind=kOutput,
+  FUSED count 1
+   %fusion = (f32[2048]{0:T(1024)S(1)}, bf16[2048,2560]{1,0:T(8,128)(2,1)}) fusion(bf16[2048,2560]{1,0:T(8,128)(2,1)S(1)} %get-tuple-element, bf16[9728,2560]{1,0:T(8,128)(2,1)} %state_leaves_354_, bf16[2048,9728]{1,0:T(8,128)(2,1)} %fusion, bf16[2048,9728]{1,0:T(8,128)(2,1)S(1)} %fusion), kind=kOutput,
+  FUSED count 1
+   %fusion = (f32[2048]{0:T(1024)S(1)}, bf16[2048,2560]{1,0:T(8,128)(2,1)}) fusion(bf16[2048,2560]{1,0:T(8,128)(2,1)S(1)} %get-tuple-element, bf16[9728,2560]{1,0:T(8,128)(2,1)} %state_leaves_365_, bf16[2048,9728]{1,0:T(8,128)(2,1)} %fusion, bf16[2048,9728]{1,0:T(8,128)(2,1)S(1)} %fusion), kind=kOutput,
+  FUSED count 1
+   %fusion = (f32[2048]{0:T(1024)S(1)}, bf16[2048,2560]{1,0:T(8,128)(2,1)}) fusion(bf16[2048,2560]{1,0:T(8,128)(2,1)S(1)} %get-tuple-element, bf16[9728,2560]{1,0:T(8,128)(2,1)} %state_leaves_376_, bf16[2048,9728]{1,0:T(8,128)(2,1)} %fusion, bf16[2048,9728]{1,0:T(8,128)(2,1)S(1)} %fusion), kind=kOutput,
+  FUSED count 1
+   %fusion = (f32[2048]{0:T(1024)S(1)}, bf16[2048,2560]{1,0:T(8,128)(2,1)S(1)}) fusion(bf16[2048,2560]{1,0:T(8,128)(2,1)S(1)} %get-tuple-element, bf16[9728,2560]{1,0:T(8,128)(2,1)} %state_leaves_387_, bf16[2048,9728]{1,0:T(8,128)(2,1)} %fusion, bf16[2048,9728]{1,0:T(8,128)(2,1)S(1)} %fusion), kind=kOut
+
+=== gate_proj (qwen2.py:96) ===
+base n=36, fused n=36
+base distinct normalized patterns: 36
+fused distinct normalized patterns: 36
+base patterns == fused patterns: False
+  BASE count 1
+   %fusion = bf16[2048,9728]{1,0:T(8,128)(2,1)S(1)} fusion(bf16[2560,9728]{1,0:T(8,128)(2,1)} %state_leaves_3_, bf16[2048,2560]{1,0:T(8,128)(2,1)S(1)} %get-tuple-element, f32[2560]{0:T(1024)S(1)} %convert_element_type, f32[2048]{0:T(1024)S(1)} %add_rsqrt_fusion), kind=kOutput, calls=%fused_computation
+  BASE count 1
+   %fusion = bf16[2048,9728]{1,0:T(8,128)(2,1)S(1)} fusion(bf16[2560,9728]{1,0:T(8,128)(2,1)} %state_leaves_14_, bf16[2048,2560]{1,0:T(8,128)(2,1)S(1)} %get-tuple-element, f32[2560]{0:T(1024)S(1)} %convert_element_type, f32[2048]{0:T(1024)S(1)} %add_rsqrt_fusion), kind=kOutput, calls=%fused_computation
+  BASE count 1
+   %fusion = bf16[2048,9728]{1,0:T(8,128)(2,1)S(1)} fusion(bf16[2560,9728]{1,0:T(8,128)(2,1)} %state_leaves_25_, bf16[2048,2560]{1,0:T(8,128)(2,1)S(1)} %get-tuple-element, f32[2560]{0:T(1024)S(1)} %convert_element_type, f32[2048]{0:T(1024)S(1)} %add_rsqrt_fusion), kind=kOutput, calls=%fused_computation
+  BASE count 1
+   %fusion = bf16[2048,9728]{1,0:T(8,128)(2,1)S(1)} fusion(bf16[2560,9728]{1,0:T(8,128)(2,1)} %state_leaves_36_, bf16[2048,2560]{1,0:T(8,128)(2,1)S(1)} %get-tuple-element, f32[2560]{0:T(1024)S(1)} %convert_element_type, f32[2048]{0:T(1024)S(1)} %add_rsqrt_fusion), kind=kOutput, calls=%fused_computation
+  BASE count 1
+   %fusion = bf16[2048,9728]{1,0:T(8,128)(2,1)S(1)} fusion(bf16[2560,9728]{1,0:T(8,128)(2,1)} %state_leaves_47_, bf16[2048,2560]{1,0:T(8,128)(2,1)S(1)} %get-tuple-element, f32[2560]{0:T(1024)S(1)} %convert_element_type, f32[2048]{0:T(1024)S(1)} %add_rsqrt_fusion), kind=kOutput, calls=%fused_computation
+  BASE count 1
+   %fusion = bf16[2048,9728]{1,0:T(8,128)(2,1)S(1)} fusion(bf16[2560,9728]{1,0:T(8,128)(2,1)} %state_leaves_58_, bf16[2048,2560]{1,0:T(8,128)(2,1)S(1)} %get-tuple-element, f32[2560]{0:T(1024)S(1)} %convert_element_type, f32[2048]{0:T(1024)S(1)} %add_rsqrt_fusion), kind=kOutput, calls=%fused_computation
+  BASE count 1
+   %fusion = bf16[2048,9728]{1,0:T(8,128)(2,1)S(1)} fusion(bf16[2560,9728]{1,0:T(8,128)(2,1)} %state_leaves_69_, bf16[2048,2560]{1,0:T(8,128)(2,1)S(1)} %get-tuple-element, f32[2560]{0:T(1024)S(1)} %convert_element_type, f32[2048]{0:T(1024)S(1)} %add_rsqrt_fusion), kind=kOutput, calls=%fused_computation
+  BASE count 1
+   %fusion = bf16[2048,9728]{1,0:T(8,128)(2,1)S(1)} fusion(bf16[2560,9728]{1,0:T(8,128)(2,1)} %state_leaves_80_, bf16[2048,2560]{1,0:T(8,128)(2,1)S(1)} %get-tuple-element, f32[2560]{0:T(1024)S(1)} %convert_element_type, f32[2048]{0:T(1024)S(1)} %add_rsqrt_fusion), kind=kOutput, calls=%fused_computation
+  BASE count 1
+   %fusion = bf16[2048,9728]{1,0:T(8,128)(2,1)S(1)} fusion(bf16[2560,9728]{1,0:T(8,128)(2,1)} %state_leaves_91_, bf16[2048,2560]{1,0:T(8,128)(2,1)S(1)} %get-tuple-element, f32[2560]{0:T(1024)S(1)} %convert_element_type, f32[2048]{0:T(1024)S(1)} %add_rsqrt_fusion), kind=kOutput, calls=%fused_computation
+  BASE count 1
+   %fusion = bf16[2048,9728]{1,0:T(8,128)(2,1)S(1)} fusion(bf16[2560,9728]{1,0:T(8,128)(2,1)} %state_leaves_102_, bf16[2048,2560]{1,0:T(8,128)(2,1)S(1)} %get-tuple-element, f32[2560]{0:T(1024)S(1)} %convert_element_type, f32[2048]{0:T(1024)S(1)} %add_rsqrt_fusion), kind=kOutput, calls=%fused_computatio
+  BASE count 1
+   %fusion = bf16[2048,9728]{1,0:T(8,128)(2,1)S(1)} fusion(bf16[2560,9728]{1,0:T(8,128)(2,1)} %state_leaves_113_, bf16[2048,2560]{1,0:T(8,128)(2,1)S(1)} %get-tuple-element, f32[2560]{0:T(1024)S(1)} %convert_element_type, f32[2048]{0:T(1024)S(1)} %add_rsqrt_fusion), kind=kOutput, calls=%fused_computatio
+  BASE count 1
+   %fusion = bf16[2048,9728]{1,0:T(8,128)(2,1)S(1)} fusion(bf16[2560,9728]{1,0:T(8,128)(2,1)} %state_leaves_124_, bf16[2048,2560]{1,0:T(8,128)(2,1)S(1)} %get-tuple-element, f32[2560]{0:T(1024)S(1)} %convert_element_type, f32[2048]{0:T(1024)S(1)} %add_rsqrt_fusion), kind=kOutput, calls=%fused_computatio
+  BASE count 1
+   %fusion = bf16[2048,9728]{1,0:T(8,128)(2,1)S(1)} fusion(bf16[2560,9728]{1,0:T(8,128)(2,1)} %state_leaves_135_, bf16[2048,2560]{1,0:T(8,128)(2,1)S(1)} %get-tuple-element, f32[2560]{0:T(1024)S(1)} %convert_element_type, f32[2048]{0:T(1024)S(1)} %add_rsqrt_fusion), kind=kOutput, calls=%fused_computatio
+  BASE count 1
+   %fusion = bf16[2048,9728]{1,0:T(8,128)(2,1)S(1)} fusion(bf16[2560,9728]{1,0:T(8,128)(2,1)} %state_leaves_146_, bf16[2048,2560]{1,0:T(8,128)(2,1)S(1)} %get-tuple-element, f32[2560]{0:T(1024)S(1)} %convert_element_type, f32[2048]{0:T(1024)S(1)} %add_rsqrt_fusion), kind=kOutput, calls=%fused_computatio
+  BASE count 1
+   %fusion = bf16[2048,9728]{1,0:T(8,128)(2,1)S(1)} fusion(bf16[2560,9728]{1,0:T(8,128)(2,1)} %state_leaves_157_, bf16[2048,2560]{1,0:T(8,128)(2,1)S(1)} %get-tuple-element, f32[2560]{0:T(1024)S(1)} %convert_element_type, f32[2048]{0:T(1024)S(1)} %add_rsqrt_fusion), kind=kOutput, calls=%fused_computatio
+  BASE count 1
+   %fusion = bf16[2048,9728]{1,0:T(8,128)(2,1)S(1)} fusion(bf16[2560,9728]{1,0:T(8,128)(2,1)} %state_leaves_168_, bf16[2048,2560]{1,0:T(8,128)(2,1)S(1)} %get-tuple-element, f32[2560]{0:T(1024)S(1)} %convert_element_type, f32[2048]{0:T(1024)S(1)} %add_rsqrt_fusion), kind=kOutput, calls=%fused_computatio
+  BASE count 1
+   %fusion = bf16[2048,9728]{1,0:T(8,128)(2,1)S(1)} fusion(bf16[2560,9728]{1,0:T(8,128)(2,1)} %state_leaves_179_, bf16[2048,2560]{1,0:T(8,128)(2,1)S(1)} %get-tuple-element, f32[2560]{0:T(1024)S(1)} %convert_element_type, f32[2048]{0:T(1024)S(1)} %add_rsqrt_fusion), kind=kOutput, calls=%fused_computatio
+  BASE count 1
+   %fusion = bf16[2048,9728]{1,0:T(8,128)(2,1)S(1)} fusion(bf16[2560,9728]{1,0:T(8,128)(2,1)} %state_leaves_190_, bf16[2048,2560]{1,0:T(8,128)(2,1)S(1)} %get-tuple-element, f32[2560]{0:T(1024)S(1)} %convert_element_type, f32[2048]{0:T(1024)S(1)} %add_rsqrt_fusion), kind=kOutput, calls=%fused_computatio
+  BASE count 1
+   %fusion = bf16[2048,9728]{1,0:T(8,128)(2,1)S(1)} fusion(bf16[2560,9728]{1,0:T(8,128)(2,1)} %state_leaves_201_, bf16[2048,2560]{1,0:T(8,128)(2,1)S(1)} %get-tuple-element, f32[2560]{0:T(1024)S(1)} %convert_element_type, f32[2048]{0:T(1024)S(1)} %add_rsqrt_fusion), kind=kOutput, calls=%fused_computatio
+  BASE count 1
+   %fusion = bf16[2048,9728]{1,0:T(8,128)(2,1)S(1)} fusion(bf16[2560,9728]{1,0:T(8,128)(2,1)} %state_leaves_212_, bf16[2048,2560]{1,0:T(8,128)(2,1)S(1)} %get-tuple-element, f32[2560]{0:T(1024)S(1)} %convert_element_type, f32[2048]{0:T(1024)S(1)} %add_rsqrt_fusion), kind=kOutput, calls=%fused_computatio
+  BASE count 1
+   %fusion = bf16[2048,9728]{1,0:T(8,128)(2,1)S(1)} fusion(bf16[2560,9728]{1,0:T(8,128)(2,1)} %state_leaves_223_, bf16[2048,2560]{1,0:T(8,128)(2,1)S(1)} %get-tuple-element, f32[2560]{0:T(1024)S(1)} %convert_element_type, f32[2048]{0:T(1024)S(1)} %add_rsqrt_fusion), kind=kOutput, calls=%fused_computatio
+  BASE count 1
+   %fusion = bf16[2048,9728]{1,0:T(8,128)(2,1)S(1)} fusion(bf16[2560,9728]{1,0:T(8,128)(2,1)} %state_leaves_234_, bf16[2048,2560]{1,0:T(8,128)(2,1)S(1)} %get-tuple-element, f32[2560]{0:T(1024)S(1)} %convert_element_type, f32[2048]{0:T(1024)S(1)} %add_rsqrt_fusion), kind=kOutput, calls=%fused_computatio
+  BASE count 1
+   %fusion = bf16[2048,9728]{1,0:T(8,128)(2,1)S(1)} fusion(bf16[2560,9728]{1,0:T(8,128)(2,1)} %state_leaves_245_, bf16[2048,2560]{1,0:T(8,128)(2,1)S(1)} %get-tuple-element, f32[2560]{0:T(1024)S(1)} %convert_element_type, f32[2048]{0:T(1024)S(1)} %add_rsqrt_fusion), kind=kOutput, calls=%fused_computatio
+  BASE count 1
+   %fusion = bf16[2048,9728]{1,0:T(8,128)(2,1)S(1)} fusion(bf16[2560,9728]{1,0:T(8,128)(2,1)} %state_leaves_256_, bf16[2048,2560]{1,0:T(8,128)(2,1)S(1)} %get-tuple-element, f32[2560]{0:T(1024)S(1)} %convert_element_type, f32[2048]{0:T(1024)S(1)} %add_rsqrt_fusion), kind=kOutput, calls=%fused_computatio
+  BASE count 1
+   %fusion = bf16[2048,9728]{1,0:T(8,128)(2,1)S(1)} fusion(bf16[2560,9728]{1,0:T(8,128)(2,1)} %state_leaves_267_, bf16[2048,2560]{1,0:T(8,128)(2,1)S(1)} %get-tuple-element, f32[2560]{0:T(1024)S(1)} %convert_element_type, f32[2048]{0:T(1024)S(1)} %add_rsqrt_fusion), kind=kOutput, calls=%fused_computatio
+  BASE count 1
+   %fusion = bf16[2048,9728]{1,0:T(8,128)(2,1)S(1)} fusion(bf16[2560,9728]{1,0:T(8,128)(2,1)} %state_leaves_278_, bf16[2048,2560]{1,0:T(8,128)(2,1)S(1)} %get-tuple-element, f32[2560]{0:T(1024)S(1)} %convert_element_type, f32[2048]{0:T(1024)S(1)} %add_rsqrt_fusion), kind=kOutput, calls=%fused_computatio
+  BASE count 1
+   %fusion = bf16[2048,9728]{1,0:T(8,128)(2,1)S(1)} fusion(bf16[2560,9728]{1,0:T(8,128)(2,1)} %state_leaves_289_, bf16[2048,2560]{1,0:T(8,128)(2,1)S(1)} %get-tuple-element, f32[2560]{0:T(1024)S(1)} %convert_element_type, f32[2048]{0:T(1024)S(1)} %add_rsqrt_fusion), kind=kOutput, calls=%fused_computatio
+  BASE count 1
+   %fusion = bf16[2048,9728]{1,0:T(8,128)(2,1)S(1)} fusion(bf16[2560,9728]{1,0:T(8,128)(2,1)} %state_leaves_300_, bf16[2048,2560]{1,0:T(8,128)(2,1)S(1)} %get-tuple-element, f32[2560]{0:T(1024)S(1)} %convert_element_type, f32[2048]{0:T(1024)S(1)} %add_rsqrt_fusion), kind=kOutput, calls=%fused_computatio
+  BASE count 1
+   %fusion = bf16[2048,9728]{1,0:T(8,128)(2,1)S(1)} fusion(bf16[2560,9728]{1,0:T(8,128)(2,1)} %state_leaves_311_, bf16[2048,2560]{1,0:T(8,128)(2,1)S(1)} %get-tuple-element, f32[2560]{0:T(1024)S(1)} %convert_element_type, f32[2048]{0:T(1024)S(1)} %add_rsqrt_fusion), kind=kOutput, calls=%fused_computatio
+  BASE count 1
+   %fusion = bf16[2048,9728]{1,0:T(8,128)(2,1)S(1)} fusion(bf16[2560,9728]{1,0:T(8,128)(2,1)} %state_leaves_322_, bf16[2048,2560]{1,0:T(8,128)(2,1)S(1)} %get-tuple-element, f32[2560]{0:T(1024)S(1)} %convert_element_type, f32[2048]{0:T(1024)S(1)} %add_rsqrt_fusion), kind=kOutput, calls=%fused_computatio
+  BASE count 1
+   %fusion = bf16[2048,9728]{1,0:T(8,128)(2,1)S(1)} fusion(bf16[2560,9728]{1,0:T(8,128)(2,1)} %state_leaves_333_, bf16[2048,2560]{1,0:T(8,128)(2,1)S(1)} %get-tuple-element, f32[2560]{0:T(1024)S(1)} %convert_element_type, f32[2048]{0:T(1024)S(1)} %add_rsqrt_fusion), kind=kOutput, calls=%fused_computatio
+  BASE count 1
+   %fusion = bf16[2048,9728]{1,0:T(8,128)(2,1)S(1)} fusion(bf16[2560,9728]{1,0:T(8,128)(2,1)} %state_leaves_344_, bf16[2048,2560]{1,0:T(8,128)(2,1)S(1)} %get-tuple-element, f32[2560]{0:T(1024)S(1)} %convert_element_type, f32[2048]{0:T(1024)S(1)} %add_rsqrt_fusion), kind=kOutput, calls=%fused_computatio
+  BASE count 1
+   %fusion = bf16[2048,9728]{1,0:T(8,128)(2,1)S(1)} fusion(bf16[2560,9728]{1,0:T(8,128)(2,1)} %state_leaves_355_, bf16[2048,2560]{1,0:T(8,128)(2,1)S(1)} %get-tuple-element, f32[2560]{0:T(1024)S(1)} %convert_element_type, f32[2048]{0:T(1024)S(1)} %add_rsqrt_fusion), kind=kOutput, calls=%fused_computatio
+  BASE count 1
+   %fusion = bf16[2048,9728]{1,0:T(8,128)(2,1)S(1)} fusion(bf16[2560,9728]{1,0:T(8,128)(2,1)} %state_leaves_366_, bf16[2048,2560]{1,0:T(8,128)(2,1)S(1)} %get-tuple-element, f32[2560]{0:T(1024)S(1)} %convert_element_type, f32[2048]{0:T(1024)S(1)} %add_rsqrt_fusion), kind=kOutput, calls=%fused_computatio
+  BASE count 1
+   %fusion = bf16[2048,9728]{1,0:T(8,128)(2,1)S(1)} fusion(bf16[2560,9728]{1,0:T(8,128)(2,1)} %state_leaves_377_, bf16[2048,2560]{1,0:T(8,128)(2,1)S(1)} %get-tuple-element, f32[2560]{0:T(1024)S(1)} %convert_element_type, f32[2048]{0:T(1024)S(1)} %add_rsqrt_fusion), kind=kOutput, calls=%fused_computatio
+  BASE count 1
+   %fusion = bf16[2048,9728]{1,0:T(8,128)(2,1)S(1)} fusion(bf16[2560,9728]{1,0:T(8,128)(2,1)} %state_leaves_388_, bf16[2048,2560]{1,0:T(8,128)(2,1)S(1)} %get-tuple-element, f32[2560]{0:T(1024)S(1)} %convert_element_type, f32[2048]{0:T(1024)S(1)} %add_rsqrt_fusion), kind=kOutput, calls=%fused_computatio
+  FUSED count 1
+   %fusion = bf16[2048,9728]{1,0:T(8,128)(2,1)} fusion(bf16[2560,9728]{1,0:T(8,128)(2,1)S(1)} %bitcast, bf16[2048,2560]{1,0:T(8,128)(2,1)} %get-tuple-element, f32[2560]{0:T(1024)S(1)} %convert_element_type, f32[2048]{0:T(1024)S(1)} %add_rsqrt_fusion), kind=kOutput, calls=%fused_computation
+  FUSED count 1
+   %fusion = bf16[2048,9728]{1,0:T(8,128)(2,1)S(1)} fusion(bf16[2560,9728]{1,0:T(8,128)(2,1)} %state_leaves_14_, bf16[2048,2560]{1,0:T(8,128)(2,1)S(1)} %get-tuple-element, f32[2560]{0:T(1024)S(1)} %convert_element_type, f32[2048]{0:T(1024)S(1)} %add_rsqrt_fusion), kind=kOutput, calls=%fused_computation
+  FUSED count 1
+   %fusion = bf16[2048,9728]{1,0:T(8,128)(2,1)S(1)} fusion(bf16[2560,9728]{1,0:T(8,128)(2,1)} %state_leaves_25_, bf16[2048,2560]{1,0:T(8,128)(2,1)S(1)} %get-tuple-element, f32[2560]{0:T(1024)S(1)} %convert_element_type, f32[2048]{0:T(1024)S(1)} %add_rsqrt_fusion), kind=kOutput, calls=%fused_computation
+  FUSED count 1
+   %fusion = bf16[2048,9728]{1,0:T(8,128)(2,1)S(1)} fusion(bf16[2560,9728]{1,0:T(8,128)(2,1)} %state_leaves_36_, bf16[2048,2560]{1,0:T(8,128)(2,1)S(1)} %get-tuple-element, f32[2560]{0:T(1024)S(1)} %convert_element_type, f32[2048]{0:T(1024)S(1)} %add_rsqrt_fusion), kind=kOutput, calls=%fused_computation
+  FUSED count 1
+   %fusion = bf16[2048,9728]{1,0:T(8,128)(2,1)S(1)} fusion(bf16[2560,9728]{1,0:T(8,128)(2,1)} %state_leaves_47_, bf16[2048,2560]{1,0:T(8,128)(2,1)S(1)} %get-tuple-element, f32[2560]{0:T(1024)S(1)} %convert_element_type, f32[2048]{0:T(1024)S(1)} %add_rsqrt_fusion), kind=kOutput, calls=%fused_computation
+  FUSED count 1
+   %fusion = bf16[2048,9728]{1,0:T(8,128)(2,1)S(1)} fusion(bf16[2560,9728]{1,0:T(8,128)(2,1)} %state_leaves_58_, bf16[2048,2560]{1,0:T(8,128)(2,1)S(1)} %get-tuple-element, f32[2560]{0:T(1024)S(1)} %convert_element_type, f32[2048]{0:T(1024)S(1)} %add_rsqrt_fusion), kind=kOutput, calls=%fused_computation
+  FUSED count 1
+   %fusion = bf16[2048,9728]{1,0:T(8,128)(2,1)S(1)} fusion(bf16[2560,9728]{1,0:T(8,128)(2,1)} %state_leaves_69_, bf16[2048,2560]{1,0:T(8,128)(2,1)S(1)} %get-tuple-element, f32[2560]{0:T(1024)S(1)} %convert_element_type, f32[2048]{0:T(1024)S(1)} %add_rsqrt_fusion), kind=kOutput, calls=%fused_computation
+  FUSED count 1
+   %fusion = bf16[2048,9728]{1,0:T(8,128)(2,1)S(1)} fusion(bf16[2560,9728]{1,0:T(8,128)(2,1)} %state_leaves_80_, bf16[2048,2560]{1,0:T(8,128)(2,1)S(1)} %get-tuple-element, f32[2560]{0:T(1024)S(1)} %convert_element_type, f32[2048]{0:T(1024)S(1)} %add_rsqrt_fusion), kind=kOutput, calls=%fused_computation
+  FUSED count 1
+   %fusion = bf16[2048,9728]{1,0:T(8,128)(2,1)S(1)} fusion(bf16[2560,9728]{1,0:T(8,128)(2,1)} %state_leaves_91_, bf16[2048,2560]{1,0:T(8,128)(2,1)S(1)} %get-tuple-element, f32[2560]{0:T(1024)S(1)} %convert_element_type, f32[2048]{0:T(1024)S(1)} %add_rsqrt_fusion), kind=kOutput, calls=%fused_computation
+  FUSED count 1
+   %fusion = bf16[2048,9728]{1,0:T(8,128)(2,1)S(1)} fusion(bf16[2560,9728]{1,0:T(8,128)(2,1)} %state_leaves_102_, bf16[2048,2560]{1,0:T(8,128)(2,1)S(1)} %get-tuple-element, f32[2560]{0:T(1024)S(1)} %convert_element_type, f32[2048]{0:T(1024)S(1)} %add_rsqrt_fusion), kind=kOutput, calls=%fused_computatio
+  FUSED count 1
+   %fusion = bf16[2048,9728]{1,0:T(8,128)(2,1)S(1)} fusion(bf16[2560,9728]{1,0:T(8,128)(2,1)} %state_leaves_113_, bf16[2048,2560]{1,0:T(8,128)(2,1)S(1)} %get-tuple-element, f32[2560]{0:T(1024)S(1)} %convert_element_type, f32[2048]{0:T(1024)S(1)} %add_rsqrt_fusion), kind=kOutput, calls=%fused_computatio
+  FUSED count 1
+   %fusion = bf16[2048,9728]{1,0:T(8,128)(2,1)S(1)} fusion(bf16[2560,9728]{1,0:T(8,128)(2,1)} %state_leaves_124_, bf16[2048,2560]{1,0:T(8,128)(2,1)S(1)} %get-tuple-element, f32[2560]{0:T(1024)S(1)} %convert_element_type, f32[2048]{0:T(1024)S(1)} %add_rsqrt_fusion), kind=kOutput, calls=%fused_computatio
+  FUSED count 1
+   %fusion = bf16[2048,9728]{1,0:T(8,128)(2,1)S(1)} fusion(bf16[2560,9728]{1,0:T(8,128)(2,1)} %state_leaves_135_, bf16[2048,2560]{1,0:T(8,128)(2,1)S(1)} %get-tuple-element, f32[2560]{0:T(1024)S(1)} %convert_element_type, f32[2048]{0:T(1024)S(1)} %add_rsqrt_fusion), kind=kOutput, calls=%fused_computatio
+  FUSED count 1
+   %fusion = bf16[2048,9728]{1,0:T(8,128)(2,1)S(1)} fusion(bf16[2560,9728]{1,0:T(8,128)(2,1)} %state_leaves_146_, bf16[2048,2560]{1,0:T(8,128)(2,1)S(1)} %get-tuple-element, f32[2560]{0:T(1024)S(1)} %convert_element_type, f32[2048]{0:T(1024)S(1)} %add_rsqrt_fusion), kind=kOutput, calls=%fused_computatio
+  FUSED count 1
+   %fusion = bf16[2048,9728]{1,0:T(8,128)(2,1)S(1)} fusion(bf16[2560,9728]{1,0:T(8,128)(2,1)} %state_leaves_157_, bf16[2048,2560]{1,0:T(8,128)(2,1)S(1)} %get-tuple-element, f32[2560]{0:T(1024)S(1)} %convert_element_type, f32[2048]{0:T(1024)S(1)} %add_rsqrt_fusion), kind=kOutput, calls=%fused_computatio
+  FUSED count 1
+   %fusion = bf16[2048,9728]{1,0:T(8,128)(2,1)S(1)} fusion(bf16[2560,9728]{1,0:T(8,128)(2,1)} %state_leaves_168_, bf16[2048,2560]{1,0:T(8,128)(2,1)S(1)} %get-tuple-element, f32[2560]{0:T(1024)S(1)} %convert_element_type, f32[2048]{0:T(1024)S(1)} %add_rsqrt_fusion), kind=kOutput, calls=%fused_computatio
+  FUSED count 1
+   %fusion = bf16[2048,9728]{1,0:T(8,128)(2,1)S(1)} fusion(bf16[2560,9728]{1,0:T(8,128)(2,1)} %state_leaves_179_, bf16[2048,2560]{1,0:T(8,128)(2,1)S(1)} %get-tuple-element, f32[2560]{0:T(1024)S(1)} %convert_element_type, f32[2048]{0:T(1024)S(1)} %add_rsqrt_fusion), kind=kOutput, calls=%fused_computatio
+  FUSED count 1
+   %fusion = bf16[2048,9728]{1,0:T(8,128)(2,1)S(1)} fusion(bf16[2560,9728]{1,0:T(8,128)(2,1)} %state_leaves_190_, bf16[2048,2560]{1,0:T(8,128)(2,1)S(1)} %get-tuple-element, f32[2560]{0:T(1024)S(1)} %convert_element_type, f32[2048]{0:T(1024)S(1)} %add_rsqrt_fusion), kind=kOutput, calls=%fused_computatio
+  FUSED count 1
+   %fusion = bf16[2048,9728]{1,0:T(8,128)(2,1)S(1)} fusion(bf16[2560,9728]{1,0:T(8,128)(2,1)} %state_leaves_201_, bf16[2048,2560]{1,0:T(8,128)(2,1)S(1)} %get-tuple-element, f32[2560]{0:T(1024)S(1)} %convert_element_type, f32[2048]{0:T(1024)S(1)} %add_rsqrt_fusion), kind=kOutput, calls=%fused_computatio
+  FUSED count 1
+   %fusion = bf16[2048,9728]{1,0:T(8,128)(2,1)S(1)} fusion(bf16[2560,9728]{1,0:T(8,128)(2,1)} %state_leaves_212_, bf16[2048,2560]{1,0:T(8,128)(2,1)S(1)} %get-tuple-element, f32[2560]{0:T(1024)S(1)} %convert_element_type, f32[2048]{0:T(1024)S(1)} %add_rsqrt_fusion), kind=kOutput, calls=%fused_computatio
+  FUSED count 1
+   %fusion = bf16[2048,9728]{1,0:T(8,128)(2,1)S(1)} fusion(bf16[2560,9728]{1,0:T(8,128)(2,1)} %state_leaves_223_, bf16[2048,2560]{1,0:T(8,128)(2,1)S(1)} %get-tuple-element, f32[2560]{0:T(1024)S(1)} %convert_element_type, f32[2048]{0:T(1024)S(1)} %add_rsqrt_fusion), kind=kOutput, calls=%fused_computatio
+  FUSED count 1
+   %fusion = bf16[2048,9728]{1,0:T(8,128)(2,1)S(1)} fusion(bf16[2560,9728]{1,0:T(8,128)(2,1)} %state_leaves_234_, bf16[2048,2560]{1,0:T(8,128)(2,1)S(1)} %get-tuple-element, f32[2560]{0:T(1024)S(1)} %convert_element_type, f32[2048]{0:T(1024)S(1)} %add_rsqrt_fusion), kind=kOutput, calls=%fused_computatio
+  FUSED count 1
+   %fusion = bf16[2048,9728]{1,0:T(8,128)(2,1)S(1)} fusion(bf16[2560,9728]{1,0:T(8,128)(2,1)} %state_leaves_245_, bf16[2048,2560]{1,0:T(8,128)(2,1)S(1)} %get-tuple-element, f32[2560]{0:T(1024)S(1)} %convert_element_type, f32[2048]{0:T(1024)S(1)} %add_rsqrt_fusion), kind=kOutput, calls=%fused_computatio
+  FUSED count 1
+   %fusion = bf16[2048,9728]{1,0:T(8,128)(2,1)S(1)} fusion(bf16[2560,9728]{1,0:T(8,128)(2,1)} %state_leaves_256_, bf16[2048,2560]{1,0:T(8,128)(2,1)S(1)} %get-tuple-element, f32[2560]{0:T(1024)S(1)} %convert_element_type, f32[2048]{0:T(1024)S(1)} %add_rsqrt_fusion), kind=kOutput, calls=%fused_computatio
+  FUSED count 1
+   %fusion = bf16[2048,9728]{1,0:T(8,128)(2,1)S(1)} fusion(bf16[2560,9728]{1,0:T(8,128)(2,1)} %state_leaves_267_, bf16[2048,2560]{1,0:T(8,128)(2,1)S(1)} %get-tuple-element, f32[2560]{0:T(1024)S(1)} %convert_element_type, f32[2048]{0:T(1024)S(1)} %add_rsqrt_fusion), kind=kOutput, calls=%fused_computatio
+  FUSED count 1
+   %fusion = bf16[2048,9728]{1,0:T(8,128)(2,1)S(1)} fusion(bf16[2560,9728]{1,0:T(8,128)(2,1)} %state_leaves_278_, bf16[2048,2560]{1,0:T(8,128)(2,1)S(1)} %get-tuple-element, f32[2560]{0:T(1024)S(1)} %convert_element_type, f32[2048]{0:T(1024)S(1)} %add_rsqrt_fusion), kind=kOutput, calls=%fused_computatio
+  FUSED count 1
+   %fusion = bf16[2048,9728]{1,0:T(8,128)(2,1)S(1)} fusion(bf16[2560,9728]{1,0:T(8,128)(2,1)} %state_leaves_289_, bf16[2048,2560]{1,0:T(8,128)(2,1)S(1)} %get-tuple-element, f32[2560]{0:T(1024)S(1)} %convert_element_type, f32[2048]{0:T(1024)S(1)} %add_rsqrt_fusion), kind=kOutput, calls=%fused_computatio
+  FUSED count 1
+   %fusion = bf16[2048,9728]{1,0:T(8,128)(2,1)S(1)} fusion(bf16[2560,9728]{1,0:T(8,128)(2,1)} %state_leaves_300_, bf16[2048,2560]{1,0:T(8,128)(2,1)S(1)} %get-tuple-element, f32[2560]{0:T(1024)S(1)} %convert_element_type, f32[2048]{0:T(1024)S(1)} %add_rsqrt_fusion), kind=kOutput, calls=%fused_computatio
+  FUSED count 1
+   %fusion = bf16[2048,9728]{1,0:T(8,128)(2,1)S(1)} fusion(bf16[2560,9728]{1,0:T(8,128)(2,1)} %state_leaves_311_, bf16[2048,2560]{1,0:T(8,128)(2,1)S(1)} %get-tuple-element, f32[2560]{0:T(1024)S(1)} %convert_element_type, f32[2048]{0:T(1024)S(1)} %add_rsqrt_fusion), kind=kOutput, calls=%fused_computatio
+  FUSED count 1
+   %fusion = bf16[2048,9728]{1,0:T(8,128)(2,1)S(1)} fusion(bf16[2560,9728]{1,0:T(8,128)(2,1)} %state_leaves_322_, bf16[2048,2560]{1,0:T(8,128)(2,1)S(1)} %get-tuple-element, f32[2560]{0:T(1024)S(1)} %convert_element_type, f32[2048]{0:T(1024)S(1)} %add_rsqrt_fusion), kind=kOutput, calls=%fused_computatio
+  FUSED count 1
+   %fusion = bf16[2048,9728]{1,0:T(8,128)(2,1)S(1)} fusion(bf16[2560,9728]{1,0:T(8,128)(2,1)} %state_leaves_333_, bf16[2048,2560]{1,0:T(8,128)(2,1)S(1)} %get-tuple-element, f32[2560]{0:T(1024)S(1)} %convert_element_type, f32[2048]{0:T(1024)S(1)} %add_rsqrt_fusion), kind=kOutput, calls=%fused_computatio
+  FUSED count 1
+   %fusion = bf16[2048,9728]{1,0:T(8,128)(2,1)S(1)} fusion(bf16[2560,9728]{1,0:T(8,128)(2,1)} %state_leaves_344_, bf16[2048,2560]{1,0:T(8,128)(2,1)S(1)} %get-tuple-element, f32[2560]{0:T(1024)S(1)} %convert_element_type, f32[2048]{0:T(1024)S(1)} %add_rsqrt_fusion), kind=kOutput, calls=%fused_computatio
+  FUSED count 1
+   %fusion = bf16[2048,9728]{1,0:T(8,128)(2,1)S(1)} fusion(bf16[2560,9728]{1,0:T(8,128)(2,1)} %state_leaves_355_, bf16[2048,2560]{1,0:T(8,128)(2,1)S(1)} %get-tuple-element, f32[2560]{0:T(1024)S(1)} %convert_element_type, f32[2048]{0:T(1024)S(1)} %add_rsqrt_fusion), kind=kOutput, calls=%fused_computatio
+  FUSED count 1
+   %fusion = bf16[2048,9728]{1,0:T(8,128)(2,1)S(1)} fusion(bf16[2560,9728]{1,0:T(8,128)(2,1)} %state_leaves_366_, bf16[2048,2560]{1,0:T(8,128)(2,1)S(1)} %get-tuple-element, f32[2560]{0:T(1024)S(1)} %convert_element_type, f32[2048]{0:T(1024)S(1)} %add_rsqrt_fusion), kind=kOutput, calls=%fused_computatio
+  FUSED count 1
+   %fusion = bf16[2048,9728]{1,0:T(8,128)(2,1)S(1)} fusion(bf16[2560,9728]{1,0:T(8,128)(2,1)} %state_leaves_377_, bf16[2048,2560]{1,0:T(8,128)(2,1)S(1)} %get-tuple-element, f32[2560]{0:T(1024)S(1)} %convert_element_type, f32[2048]{0:T(1024)S(1)} %add_rsqrt_fusion), kind=kOutput, calls=%fused_computatio
+  FUSED count 1
+   %fusion = bf16[2048,9728]{1,0:T(8,128)(2,1)S(1)} fusion(bf16[2560,9728]{1,0:T(8,128)(2,1)} %state_leaves_388_, bf16[2048,2560]{1,0:T(8,128)(2,1)S(1)} %get-tuple-element, f32[2560]{0:T(1024)S(1)} %convert_element_type, f32[2048]{0:T(1024)S(1)} %add_rsqrt_fusion), kind=kOutput, calls=%fused_computatio
+

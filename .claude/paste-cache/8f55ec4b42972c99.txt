@@ -1,0 +1,8 @@
+      565 -        # All-fresh sequences (kv_len == q_len) so no cached portion: kernel                                                                                                                                                       
+      566 -        # computes 100% of K/V from x, making baseline comparison exact.                                                                                                                                                           
+      567 -        seq_lens = [(192, 192), (128, 128), (64, 64)]                                                                                                                                                                              
+      565 +        # Single fresh sequence (kv_len == q_len, length == bq_sz) so there is                                                                                                                                                     
+      566 +        # exactly one bq tile and one bkv tile: compute_kv_from_x_bkv runs once,                                                                                                                                                   
+      567 +        # no cross-tile K/V overwrites, making the baseline comparison exact.                                                                                                                                                      
+      568 +        bq_sz_used = block_sizes[0]                                                                                                                                                                                                
+      569 +        seq_lens = [(bq_sz_used, bq_sz_used)]     

@@ -1,0 +1,793 @@
+==== TRUE ====
+  ts=   1033523.489 dur=   27.676 copy-done.35                        
+  ts=   1033551.167 dur=    0.001 copy-start.110                      
+  ts=   1033551.169 dur=   35.755 multiply_reduce_fusion              /home/tarading/tpu-inference/tpu_inference/layers/common/quantization/unquantized.py:53
+  ts=   1033586.932 dur=    0.003 copy-done.110                       
+  ts=   1033586.942 dur=    0.006 convert_element_type.144            /home/tarading/vllm_env/lib/python3.12/site-packages/flax/nnx/nn/normalization.py:175
+  ts=   1033586.956 dur=    0.012 add_rsqrt_fusion.72                 /home/tarading/vllm_env/lib/python3.12/site-packages/flax/nnx/nn/normalization.py:171
+  ts=   1033586.971 dur=    1.021 multiply_convert_fusion             /home/tarading/vllm_env/lib/python3.12/site-packages/flax/nnx/nn/normalization.py:183
+  ts=   1033590.389 dur=    0.011 copy-start                          
+  ts=   1033590.409 dur=    0.005 copy-start.1                        
+  ts=   1033590.422 dur=    1.069 copy-done.1                         
+  ts=   1033591.490 dur=    0.004 compare_select_fusion               /home/tarading/tpu-inference/tpu_inference/runner/tpu_runner.py:1585
+  ts=   1033591.495 dur=    0.008 pad_clamp_fusion                    /home/tarading/tpu-inference/tpu_inference/runner/tpu_runner.py:1585
+  ts=   1033591.503 dur=    0.004 copy-done                           
+  ts=   1033591.514 dur=    1.045 gather_custom_fusion                /home/tarading/tpu-inference/tpu_inference/runner/tpu_runner.py:1585
+  ts=   1033595.993 dur=    0.011 copy-start                          
+  ts=   1033596.013 dur=    0.682 copy-done                           
+  ts=   1033596.696 dur=  503.571 fusion                              /home/tarading/tpu-inference/tpu_inference/layers/jax/embed.py:65
+  ts=   1034101.936 dur=    7.645 convert_element_type.1              /home/tarading/tpu-inference/tpu_inference/runner/tpu_runner.py:1313
+  ts=   1034112.927 dur=    0.005 copy-start                          
+  ts=   1034112.940 dur=    6.986 iota_reduce_fusion                  /home/tarading/tpu-inference/tpu_inference/layers/jax/sample/sampling.py:125
+  ts=   1034119.928 dur=    0.003 copy-done                           
+  ts=   1034119.932 dur=    3.469 copy.2                              
+  ts=   1034125.529 dur=    1.029 split.8                             /home/tarading/tpu-inference/tpu_inference/utils.py:497
+  ts=   1034126.559 dur=    1.136 split.7                             /home/tarading/tpu-inference/tpu_inference/utils.py:497
+  ts=   1034127.697 dur=    0.930 split.6                             /home/tarading/tpu-inference/tpu_inference/utils.py:497
+  ts=   1034128.628 dur=    0.976 split.5                             /home/tarading/tpu-inference/tpu_inference/utils.py:497
+  ts=   1034129.605 dur=    1.799 split.9                             /home/tarading/tpu-inference/tpu_inference/utils.py:497
+  ts=   1034139.864 dur=    0.585 fusion.1046                         /home/tarading/vllm_env/lib/python3.12/site-packages/flax/nnx/nn/linear.py:1319
+  ts=   1034140.449 dur=    0.002 copy-start.1                        
+  ts=   1034140.452 dur=    0.002 copy-start.4                        
+  ts=   1034140.455 dur=    0.004 copy-start.150                      
+  ts=   1034140.468 dur=   68.671 gather_custom_fusion                /home/tarading/vllm_env/lib/python3.12/site-packages/flax/nnx/nn/linear.py:1319
+  ts=   1034209.148 dur=    0.004 copy-done.1                         
+  ts=   1034209.159 dur=    0.009 copy-start                          
+  ts=   1034209.177 dur=    0.011 compare_and_fusion                  /home/tarading/vllm_env/lib/python3.12/site-packages/flax/nnx/nn/linear.py:1319
+  ts=   1034209.196 dur=    0.007 copy-start.2                        
+  ts=   1034209.211 dur=    0.010 slice-start.195                     
+  ts=   1034209.229 dur=    5.015 fusion.253                          /home/tarading/vllm_env/lib/python3.12/site-packages/flax/nnx/nn/normalization.py:102
+  ts=   1034214.253 dur=    0.013 add_rsqrt_fusion.144                /home/tarading/vllm_env/lib/python3.12/site-packages/flax/nnx/nn/normalization.py:171
+  ts=   1034214.269 dur=    0.004 copy-done.4                         
+  ts=   1034214.280 dur=    0.006 convert_element_type.0              /home/tarading/vllm_env/lib/python3.12/site-packages/flax/nnx/nn/normalization.py:175
+  ts=   1034214.295 dur=    0.003 copy-done.150                       
+  ts=   1034214.307 dur=    0.009 copy-start.77                       
+  ts=   1034214.323 dur=    0.010 slice-start.196                     
+  ts=   1034214.342 dur=   15.936 fusion.543                          /home/tarading/tpu-inference/tpu_inference/layers/common/quantization/unquantized.py:53
+  ts=   1034230.287 dur=    0.022 add_rsqrt_fusion.71                 /home/tarading/vllm_env/lib/python3.12/site-packages/flax/nnx/nn/normalization.py:171
+  ts=   1034230.317 dur=    0.003 copy-done.77                        
+  ts=   1034230.327 dur=    0.005 convert_element_type.2              /home/tarading/vllm_env/lib/python3.12/site-packages/flax/nnx/nn/normalization.py:175
+  ts=   1034230.339 dur=    2.002 fusion.542                          /home/tarading/vllm_env/lib/python3.12/site-packages/flax/nnx/nn/normalization.py:183
+  ts=   1034232.349 dur=    0.003 slice-done.195                      
+  ts=   1034232.360 dur=    0.003 slice-done.196                      
+  ts=   1034232.369 dur=    0.001 custom-call.40                      
+  ts=   1034232.378 dur=    0.009 slice-start.15                      
+  ts=   1034232.395 dur=    0.006 slice-start.16                      
+  ts=   1034232.409 dur=    0.006 slice-start.17                      
+  ts=   1034232.424 dur=   19.520 fusion.794                          /home/tarading/tpu-inference/tpu_inference/layers/common/quantization/unquantized.py:53
+  ts=   1034251.952 dur=    0.009 slice-start.18                      
+  ts=   1034251.968 dur=    1.499 pad_maximum_fusion                  /home/tarading/tpu-inference/tpu_inference/kernels/ragged_paged_attention/v3/kernel.py:1312
+  ts=   1034253.474 dur=    0.009 slice-start.19                      
+  ts=   1034253.490 dur=   15.832 copy.579                            /home/tarading/tpu-inference/tpu_inference/kernels/ragged_paged_attention/v3/kernel.py:1321
+  ts=   1034269.323 dur=    0.003 copy-done                           
+  ts=   1034269.327 dur=    0.003 copy-done.2                         
+  ts=   1034269.329 dur=    0.003 slice-done.15                       
+  ts=   1034269.335 dur=    0.003 slice-done.16                       
+  ts=   1034269.345 dur=    0.003 slice-done.17                       
+  ts=   1034269.356 dur=    0.003 slice-done.18                       
+  ts=   1034269.367 dur=    0.003 slice-done.19                       
+  ts=   1034269.377 dur=    0.001 custom-call.4                       
+  ts=   1034269.385 dur=    0.009 copy-start.78                       
+  ts=   1034269.403 dur=  147.536 fusion.181                          /home/tarading/tpu-inference/tpu_inference/layers/common/quantization/unquantized.py:53
+  ts=   1034416.947 dur=    0.280 add_rsqrt_fusion.35                 /home/tarading/vllm_env/lib/python3.12/site-packages/flax/nnx/nn/normalization.py:171
+  ts=   1034417.235 dur=    0.003 copy-done.78                        
+  ts=   1034417.245 dur=    0.006 convert_element_type.1              /home/tarading/vllm_env/lib/python3.12/site-packages/flax/nnx/nn/normalization.py:175
+  ts=   1034417.259 dur=    8.306 fusion.180                          /home/tarading/vllm_env/lib/python3.12/site-packages/flax/nnx/nn/normalization.py:183
+  ts=   1034425.574 dur=   27.446 copy.327                            /home/tarading/tpu-inference/tpu_inference/kernels/ragged_paged_attention/v3/kernel.py:1360
+  ts=   1034453.020 dur=    0.390 broadcast.1749                      /home/tarading/tpu-inference/tpu_inference/layers/common/attention_interface.py:417
+  ts=   1034453.412 dur=    0.441 broadcast.1750                      /home/tarading/tpu-inference/tpu_inference/layers/common/attention_interface.py:417
+  ts=   1034453.854 dur=    0.410 broadcast.1751                      /home/tarading/tpu-inference/tpu_inference/layers/common/attention_interface.py:417
+  ts=   1034454.264 dur=   24.296 RPAd-p_128-bq_1_1-bkv_4096_4096.72  /home/tarading/tpu-inference/tpu_inference/kernels/ragged_paged_attention/v3/kernel.py:2069
+  ts=   1034478.569 dur=  594.610 RPAm-p_128-bq_256_128-bkv_1024_512.72 /home/tarading/tpu-inference/tpu_inference/kernels/ragged_paged_attention/v3/kernel.py:2069
+  ts=   1035073.179 dur=    0.001 slice-start                         
+  ts=   1035073.182 dur=    0.001 copy-start.3                        
+  ts=   1035073.183 dur=    0.002 copy-start.149                      
+  ts=   1035073.192 dur=    0.010 slice-start.1                       
+  ts=   1035073.210 dur=    0.006 slice-start.2                       
+  ts=   1035073.225 dur=    0.009 slice-start.3                       
+  ts=   1035073.243 dur=    0.006 slice-start.4                       
+  ts=   1035073.258 dur=    0.006 slice-start.5                       
+  ts=   1035073.272 dur=   22.078 copy.331                            /home/tarading/tpu-inference/tpu_inference/kernels/ragged_paged_attention/v3/kernel.py:1387
+  ts=   1035095.358 dur=    0.003 slice-done                          
+  ts=   1035095.369 dur=    0.003 copy-done.3                         
+  ts=   1035095.380 dur=    6.659 copy-done.149                       
+  ts=   1035102.040 dur=    2.877 slice-done.1                        
+  ts=   1035104.918 dur=    1.496 slice-done.2                        
+  ts=   1035106.415 dur=    0.000 custom-call.2                       
+  ts=   1035106.416 dur=    0.002 copy-start.5                        
+  ts=   1035106.418 dur=    0.002 slice-start.6                       
+  ts=   1035106.421 dur=    0.001 slice-start.7                       
+  ts=   1035106.423 dur=    0.003 slice-start.8                       
+  ts=   1035106.434 dur=    0.006 slice-start.9                       
+  ts=   1035106.449 dur=    0.006 slice-start.10                      
+  ts=   1035106.464 dur=    0.007 slice-start.11                      
+  ts=   1035106.480 dur=    0.006 slice-start.12                      
+  ts=   1035106.495 dur=    0.006 slice-start.13                      
+  ts=   1035106.510 dur=    0.007 slice-start.14                      
+  ts=   1035106.527 dur=   57.150 fusion.255                          /home/tarading/tpu-inference/tpu_inference/layers/common/quantization/unquantized.py:53
+  ts=   1035163.678 dur=    0.011 add_rsqrt_fusion.143                /home/tarading/vllm_env/lib/python3.12/site-packages/flax/nnx/nn/normalization.py:171
+  ts=   1035163.689 dur=    0.003 copy-done.5                         
+  ts=   1035163.692 dur=    0.004 convert_element_type.3              /home/tarading/vllm_env/lib/python3.12/site-packages/flax/nnx/nn/normalization.py:175
+  ts=   1035163.702 dur=    0.003 slice-done.3                        
+  ts=   1035163.712 dur=    0.004 slice-done.4                        
+  ts=   1035163.722 dur=    0.003 slice-done.5                        
+  ts=   1035163.732 dur=    0.004 slice-done.6                        
+  ts=   1035163.743 dur=    0.003 slice-done.7                        
+  ts=   1035163.752 dur=    0.004 slice-done.8                        
+  ts=   1035163.763 dur=    0.003 slice-done.9                        
+  ts=   1035163.772 dur=    0.004 slice-done.10                       
+  ts=   1035163.783 dur=    0.003 slice-done.11                       
+  ts=   1035163.793 dur=    0.003 slice-done.12                       
+  ts=   1035163.803 dur=    0.003 slice-done.13                       
+  ts=   1035163.813 dur=    0.003 slice-done.14                       
+  ts=   1035163.823 dur=    0.000 custom-call.3                       
+  ts=   1035163.832 dur=    0.009 copy-start.221                      
+  ts=   1035163.848 dur=  133.350 fusion.792                          /home/tarading/tpu-inference/tpu_inference/layers/common/quantization/unquantized.py:53
+  ts=   1035297.198 dur=    0.003 copy-done.221                       
+  ts=   1035297.202 dur=    0.001 copy-start.222                      
+  ts=   1035297.203 dur=  145.382 fusion.790                          /home/tarading/tpu-inference/tpu_inference/layers/common/quantization/unquantized.py:53
+==== FALSE ====
+  ts=   1033503.627 dur=   22.764 RPAm-p_128-bq_64_128-bkv_1024_512.89 /home/tarading/tpu-inference/tpu_inference/kernels/ragged_paged_attention/v3/kernel.py:2069
+  ts=   1033526.391 dur=    0.001 copy-start.75                       
+  ts=   1033526.393 dur=    1.730 copy.450                            /home/tarading/tpu-inference/tpu_inference/kernels/ragged_paged_attention/v3/kernel.py:1387
+  ts=   1033528.130 dur=    0.009 copy-start.19                       
+  ts=   1033528.147 dur=   18.305 fusion.648                          /home/tarading/tpu-inference/tpu_inference/layers/common/quantization/unquantized.py:53
+  ts=   1033546.461 dur=    0.003 copy-done.75                        
+  ts=   1033546.472 dur=    0.006 convert_element_type.289            /home/tarading/vllm_env/lib/python3.12/site-packages/flax/nnx/nn/normalization.py:175
+  ts=   1033546.487 dur=    0.013 add_rsqrt_fusion.109                /home/tarading/vllm_env/lib/python3.12/site-packages/flax/nnx/nn/normalization.py:171
+  ts=   1033546.502 dur=    0.010 slice-start.85                      
+  ts=   1033546.520 dur=    0.007 slice-start.86                      
+  ts=   1033546.536 dur=   40.094 fusion.975                          /home/tarading/tpu-inference/tpu_inference/layers/common/quantization/unquantized.py:53
+  ts=   1033586.638 dur=   21.018 copy-done.19                        
+  ts=   1033607.656 dur=    0.002 copy-start.76                       
+  ts=   1033607.659 dur=    0.001 slice-start.87                      
+  ts=   1033607.661 dur=    0.001 slice-start.88                      
+  ts=   1033607.663 dur=    0.001 slice-start.89                      
+  ts=   1033607.669 dur=   45.483 fusion.650                          /home/tarading/tpu-inference/tpu_inference/layers/common/quantization/unquantized.py:53
+  ts=   1033653.153 dur=    0.003 copy-done.76                        
+  ts=   1033653.156 dur=    0.001 slice-start.283                     
+  ts=   1033653.158 dur=    0.004 convert_element_type.290            /home/tarading/vllm_env/lib/python3.12/site-packages/flax/nnx/nn/normalization.py:175
+  ts=   1033653.166 dur=    0.010 slice-start.284                     
+  ts=   1033653.183 dur=    0.013 add_rsqrt_fusion.108                /home/tarading/vllm_env/lib/python3.12/site-packages/flax/nnx/nn/normalization.py:171
+  ts=   1033653.198 dur=    0.003 slice-done.85                       
+  ts=   1033653.208 dur=    0.003 slice-done.86                       
+  ts=   1033653.218 dur=    0.003 slice-done.87                       
+  ts=   1033653.228 dur=    0.003 slice-done.88                       
+  ts=   1033653.238 dur=    0.004 slice-done.89                       
+  ts=   1033653.248 dur=    0.001 custom-call.19                      
+  ts=   1033653.257 dur=    0.009 copy-start.150                      
+  ts=   1033653.273 dur=   29.420 fusion.469                          /home/tarading/tpu-inference/tpu_inference/layers/common/quantization/unquantized.py:53
+  ts=   1033682.702 dur=    0.010 slice-start.211                     
+  ts=   1033682.719 dur=    0.004 copy-done.150                       
+  ts=   1033682.731 dur=    0.005 convert_element_type.291            /home/tarading/vllm_env/lib/python3.12/site-packages/flax/nnx/nn/normalization.py:175
+  ts=   1033682.744 dur=    0.015 add_rsqrt_fusion.17                 /home/tarading/vllm_env/lib/python3.12/site-packages/flax/nnx/nn/normalization.py:171
+  ts=   1033682.764 dur=    0.684 fusion.468                          /home/tarading/vllm_env/lib/python3.12/site-packages/flax/nnx/nn/normalization.py:183
+  ts=   1033683.456 dur=    1.984 fusion.830                          
+  ts=   1033685.447 dur=    0.149 pad_maximum_fusion.18               /home/tarading/tpu-inference/tpu_inference/layers/jax/rope_interface.py:204
+  ts=   1033685.602 dur=    0.009 slice-start.212                     
+  ts=   1033685.619 dur=    2.129 copy.453                            /home/tarading/tpu-inference/tpu_inference/kernels/ragged_paged_attention/v3/kernel.py:1360
+  ts=   1033687.749 dur=    0.003 slice-done.283                      
+  ts=   1033687.753 dur=    0.003 slice-done.284                      
+  ts=   1033687.756 dur=    0.000 custom-call.91                      
+  ts=   1033687.757 dur=    3.690 fusion.140                          /home/tarading/tpu-inference/tpu_inference/layers/common/quantization/unquantized.py:53
+  ts=   1033691.456 dur=    0.004 slice-done.211                      
+  ts=   1033691.467 dur=    0.004 slice-done.212                      
+  ts=   1033691.478 dur=    0.000 custom-call.55                      
+  ts=   1033691.487 dur=    0.009 copy-start.151                      
+  ts=   1033691.504 dur=    3.387 fusion.1334                         /home/tarading/tpu-inference/tpu_inference/layers/common/quantization/unquantized.py:53
+  ts=   1033694.899 dur=    0.004 copy-done.151                       
+  ts=   1033694.911 dur=    0.005 convert_element_type.292            /home/tarading/vllm_env/lib/python3.12/site-packages/flax/nnx/nn/normalization.py:175
+  ts=   1033694.924 dur=    0.014 add_rsqrt_fusion.53                 /home/tarading/vllm_env/lib/python3.12/site-packages/flax/nnx/nn/normalization.py:171
+  ts=   1033694.941 dur=    0.550 fusion.1333                         /home/tarading/vllm_env/lib/python3.12/site-packages/flax/nnx/nn/normalization.py:183
+  ts=   1033695.499 dur=    0.780 fusion.1550                         
+  ts=   1033696.287 dur=    0.064 pad_maximum_fusion.54               /home/tarading/tpu-inference/tpu_inference/kernels/ragged_paged_attention/v3/kernel.py:1312
+  ts=   1033696.359 dur=    1.127 copy.633                            /home/tarading/tpu-inference/tpu_inference/kernels/ragged_paged_attention/v3/kernel.py:1321
+  ts=   1033697.487 dur=    6.326 RPAd-p_128-bq_1_1-bkv_4096_4096.90  /home/tarading/tpu-inference/tpu_inference/kernels/ragged_paged_attention/v3/kernel.py:2069
+  ts=   1033703.822 dur=   23.005 RPAm-p_128-bq_64_128-bkv_1024_512.90 /home/tarading/tpu-inference/tpu_inference/kernels/ragged_paged_attention/v3/kernel.py:2069
+  ts=   1033726.827 dur=    0.002 copy-start.77                       
+  ts=   1033726.831 dur=    1.683 copy.457                            /home/tarading/tpu-inference/tpu_inference/kernels/ragged_paged_attention/v3/kernel.py:1387
+  ts=   1033728.519 dur=    0.010 copy-start.20                       
+  ts=   1033728.537 dur=   18.844 fusion.652                          /home/tarading/tpu-inference/tpu_inference/layers/common/quantization/unquantized.py:53
+  ts=   1033747.389 dur=    0.004 copy-done.77                        
+  ts=   1033747.400 dur=    0.006 convert_element_type.293            /home/tarading/vllm_env/lib/python3.12/site-packages/flax/nnx/nn/normalization.py:175
+  ts=   1033747.416 dur=    0.013 add_rsqrt_fusion.107                /home/tarading/vllm_env/lib/python3.12/site-packages/flax/nnx/nn/normalization.py:171
+  ts=   1033747.431 dur=    0.011 slice-start.90                      
+  ts=   1033747.449 dur=    0.006 slice-start.91                      
+  ts=   1033747.464 dur=   40.592 fusion.971                          /home/tarading/tpu-inference/tpu_inference/layers/common/quantization/unquantized.py:53
+  ts=   1033788.064 dur=   20.331 copy-done.20                        
+  ts=   1033808.396 dur=    0.001 copy-start.78                       
+  ts=   1033808.398 dur=    0.001 slice-start.92                      
+  ts=   1033808.400 dur=    0.001 slice-start.93                      
+  ts=   1033808.402 dur=    0.002 slice-start.94                      
+  ts=   1033808.408 dur=   44.250 fusion.654                          /home/tarading/tpu-inference/tpu_inference/layers/common/quantization/unquantized.py:53
+  ts=   1033852.658 dur=    0.003 copy-done.78                        
+  ts=   1033852.662 dur=    0.001 slice-start.285                     
+  ts=   1033852.663 dur=    0.004 convert_element_type.294            /home/tarading/vllm_env/lib/python3.12/site-packages/flax/nnx/nn/normalization.py:175
+  ts=   1033852.672 dur=    0.009 slice-start.286                     
+  ts=   1033852.688 dur=    0.013 add_rsqrt_fusion.106                /home/tarading/vllm_env/lib/python3.12/site-packages/flax/nnx/nn/normalization.py:171
+  ts=   1033852.703 dur=    0.003 slice-done.90                       
+  ts=   1033852.713 dur=    0.003 slice-done.91                       
+  ts=   1033852.723 dur=    0.003 slice-done.92                       
+  ts=   1033852.733 dur=    0.003 slice-done.93                       
+  ts=   1033852.743 dur=    0.003 slice-done.94                       
+  ts=   1033852.753 dur=    0.001 custom-call.20                      
+  ts=   1033852.762 dur=    0.009 copy-start.152                      
+  ts=   1033852.779 dur=   29.534 fusion.471                          /home/tarading/tpu-inference/tpu_inference/layers/common/quantization/unquantized.py:53
+  ts=   1033882.321 dur=    0.010 slice-start.213                     
+  ts=   1033882.339 dur=    0.003 copy-done.152                       
+  ts=   1033882.349 dur=    0.005 convert_element_type.295            /home/tarading/vllm_env/lib/python3.12/site-packages/flax/nnx/nn/normalization.py:175
+  ts=   1033882.363 dur=    0.015 add_rsqrt_fusion.16                 /home/tarading/vllm_env/lib/python3.12/site-packages/flax/nnx/nn/normalization.py:171
+  ts=   1033882.383 dur=    0.890 fusion.470                          /home/tarading/vllm_env/lib/python3.12/site-packages/flax/nnx/nn/normalization.py:183
+  ts=   1033883.282 dur=    2.119 fusion.834                          
+  ts=   1033885.409 dur=    0.146 pad_maximum_fusion.19               /home/tarading/tpu-inference/tpu_inference/layers/jax/rope_interface.py:204
+  ts=   1033885.558 dur=    0.009 slice-start.214                     
+  ts=   1033885.576 dur=    2.141 copy.460                            /home/tarading/tpu-inference/tpu_inference/kernels/ragged_paged_attention/v3/kernel.py:1360
+  ts=   1033887.718 dur=    0.003 slice-done.285                      
+  ts=   1033887.722 dur=    0.003 slice-done.286                      
+  ts=   1033887.724 dur=    0.000 custom-call.92                      
+  ts=   1033887.725 dur=    3.603 fusion.136                          /home/tarading/tpu-inference/tpu_inference/layers/common/quantization/unquantized.py:53
+  ts=   1033891.337 dur=    0.004 slice-done.213                      
+  ts=   1033891.348 dur=    0.003 slice-done.214                      
+  ts=   1033891.359 dur=    0.000 custom-call.56                      
+  ts=   1033891.368 dur=    0.009 copy-start.153                      
+  ts=   1033891.385 dur=    3.370 fusion.1336                         /home/tarading/tpu-inference/tpu_inference/layers/common/quantization/unquantized.py:53
+  ts=   1033894.764 dur=    0.003 copy-done.153                       
+  ts=   1033894.774 dur=    0.005 convert_element_type.296            /home/tarading/vllm_env/lib/python3.12/site-packages/flax/nnx/nn/normalization.py:175
+  ts=   1033894.788 dur=    0.014 add_rsqrt_fusion.52                 /home/tarading/vllm_env/lib/python3.12/site-packages/flax/nnx/nn/normalization.py:171
+  ts=   1033894.804 dur=    0.350 fusion.1335                         /home/tarading/vllm_env/lib/python3.12/site-packages/flax/nnx/nn/normalization.py:183
+  ts=   1033895.163 dur=    0.780 fusion.1554                         
+  ts=   1033895.952 dur=    0.064 pad_maximum_fusion.55               /home/tarading/tpu-inference/tpu_inference/kernels/ragged_paged_attention/v3/kernel.py:1312
+  ts=   1033896.024 dur=    1.126 copy.636                            /home/tarading/tpu-inference/tpu_inference/kernels/ragged_paged_attention/v3/kernel.py:1321
+  ts=   1033897.151 dur=    6.255 RPAd-p_128-bq_1_1-bkv_4096_4096.91  /home/tarading/tpu-inference/tpu_inference/kernels/ragged_paged_attention/v3/kernel.py:2069
+  ts=   1033903.414 dur=   22.736 RPAm-p_128-bq_64_128-bkv_1024_512.91 /home/tarading/tpu-inference/tpu_inference/kernels/ragged_paged_attention/v3/kernel.py:2069
+  ts=   1033926.152 dur=    0.001 copy-start.79                       
+  ts=   1033926.153 dur=    1.683 copy.464                            /home/tarading/tpu-inference/tpu_inference/kernels/ragged_paged_attention/v3/kernel.py:1387
+  ts=   1033927.843 dur=    0.009 copy-start.21                       
+  ts=   1033927.860 dur=   18.508 fusion.656                          /home/tarading/tpu-inference/tpu_inference/layers/common/quantization/unquantized.py:53
+  ts=   1033946.376 dur=    0.004 copy-done.79                        
+  ts=   1033946.387 dur=    0.006 convert_element_type.297            /home/tarading/vllm_env/lib/python3.12/site-packages/flax/nnx/nn/normalization.py:175
+  ts=   1033946.402 dur=    0.013 add_rsqrt_fusion.105                /home/tarading/vllm_env/lib/python3.12/site-packages/flax/nnx/nn/normalization.py:171
+  ts=   1033946.417 dur=    0.010 slice-start.95                      
+  ts=   1033946.436 dur=    0.006 slice-start.96                      
+  ts=   1033946.451 dur=   40.009 fusion.967                          /home/tarading/tpu-inference/tpu_inference/layers/common/quantization/unquantized.py:53
+  ts=   1033986.468 dur=   20.927 copy-done.21                        
+  ts=   1034007.397 dur=    0.003 copy-start.80                       
+  ts=   1034007.399 dur=    0.001 slice-start.97                      
+  ts=   1034007.402 dur=    0.001 slice-start.98                      
+  ts=   1034007.404 dur=    0.001 slice-start.99                      
+  ts=   1034007.409 dur=   45.310 fusion.658                          /home/tarading/tpu-inference/tpu_inference/layers/common/quantization/unquantized.py:53
+  ts=   1034052.719 dur=    0.003 copy-done.80                        
+  ts=   1034052.723 dur=    0.001 slice-start.287                     
+  ts=   1034052.724 dur=    0.004 convert_element_type.298            /home/tarading/vllm_env/lib/python3.12/site-packages/flax/nnx/nn/normalization.py:175
+  ts=   1034052.733 dur=    0.009 slice-start.288                     
+  ts=   1034052.751 dur=    0.011 add_rsqrt_fusion.104                /home/tarading/vllm_env/lib/python3.12/site-packages/flax/nnx/nn/normalization.py:171
+  ts=   1034052.765 dur=    0.003 slice-done.95                       
+  ts=   1034052.776 dur=    0.003 slice-done.96                       
+  ts=   1034052.785 dur=    0.003 slice-done.97                       
+  ts=   1034052.796 dur=    0.004 slice-done.98                       
+  ts=   1034052.806 dur=    0.003 slice-done.99                       
+  ts=   1034052.816 dur=    0.001 custom-call.21                      
+  ts=   1034052.824 dur=    0.009 copy-start.154                      
+  ts=   1034052.842 dur=   29.441 fusion.473                          /home/tarading/tpu-inference/tpu_inference/layers/common/quantization/unquantized.py:53
+  ts=   1034082.291 dur=    0.010 slice-start.215                     
+  ts=   1034082.309 dur=    0.003 copy-done.154                       
+  ts=   1034082.319 dur=    0.005 convert_element_type.299            /home/tarading/vllm_env/lib/python3.12/site-packages/flax/nnx/nn/normalization.py:175
+  ts=   1034082.333 dur=    0.015 add_rsqrt_fusion.15                 /home/tarading/vllm_env/lib/python3.12/site-packages/flax/nnx/nn/normalization.py:171
+  ts=   1034082.353 dur=    0.680 fusion.472                          /home/tarading/vllm_env/lib/python3.12/site-packages/flax/nnx/nn/normalization.py:183
+  ts=   1034083.042 dur=    2.019 fusion.838                          
+  ts=   1034085.069 dur=    0.147 pad_maximum_fusion.20               /home/tarading/tpu-inference/tpu_inference/layers/jax/rope_interface.py:204
+  ts=   1034085.222 dur=    0.009 slice-start.216                     
+  ts=   1034085.239 dur=    2.123 copy.467                            /home/tarading/tpu-inference/tpu_inference/kernels/ragged_paged_attention/v3/kernel.py:1360
+  ts=   1034087.363 dur=    0.003 slice-done.287                      
+  ts=   1034087.367 dur=    0.003 slice-done.288                      
+  ts=   1034087.369 dur=    0.001 custom-call.93                      
+  ts=   1034087.371 dur=    3.786 fusion.132                          /home/tarading/tpu-inference/tpu_inference/layers/common/quantization/unquantized.py:53
+  ts=   1034091.166 dur=    0.003 slice-done.215                      
+  ts=   1034091.177 dur=    0.003 slice-done.216                      
+  ts=   1034091.188 dur=    0.000 custom-call.57                      
+  ts=   1034091.197 dur=    0.009 copy-start.155                      
+  ts=   1034091.214 dur=    3.390 fusion.1338                         /home/tarading/tpu-inference/tpu_inference/layers/common/quantization/unquantized.py:53
+  ts=   1034094.613 dur=    0.004 copy-done.155                       
+  ts=   1034094.624 dur=    0.006 convert_element_type.300            /home/tarading/vllm_env/lib/python3.12/site-packages/flax/nnx/nn/normalization.py:175
+  ts=   1034094.638 dur=    0.013 add_rsqrt_fusion.51                 /home/tarading/vllm_env/lib/python3.12/site-packages/flax/nnx/nn/normalization.py:171
+  ts=   1034094.653 dur=    0.551 fusion.1337                         /home/tarading/vllm_env/lib/python3.12/site-packages/flax/nnx/nn/normalization.py:183
+  ts=   1034095.213 dur=    0.778 fusion.1558                         
+  ts=   1034095.999 dur=    0.064 pad_maximum_fusion.56               /home/tarading/tpu-inference/tpu_inference/kernels/ragged_paged_attention/v3/kernel.py:1312
+  ts=   1034096.071 dur=    1.131 copy.639                            /home/tarading/tpu-inference/tpu_inference/kernels/ragged_paged_attention/v3/kernel.py:1321
+  ts=   1034097.202 dur=    6.251 RPAd-p_128-bq_1_1-bkv_4096_4096.92  /home/tarading/tpu-inference/tpu_inference/kernels/ragged_paged_attention/v3/kernel.py:2069
+  ts=   1034103.461 dur=   22.756 RPAm-p_128-bq_64_128-bkv_1024_512.92 /home/tarading/tpu-inference/tpu_inference/kernels/ragged_paged_attention/v3/kernel.py:2069
+  ts=   1034126.218 dur=    0.001 copy-start.81                       
+  ts=   1034126.221 dur=    1.751 copy.471                            /home/tarading/tpu-inference/tpu_inference/kernels/ragged_paged_attention/v3/kernel.py:1387
+  ts=   1034127.979 dur=    0.009 copy-start.22                       
+  ts=   1034127.996 dur=   18.387 fusion.660                          /home/tarading/tpu-inference/tpu_inference/layers/common/quantization/unquantized.py:53
+  ts=   1034146.392 dur=    0.004 copy-done.81                        
+  ts=   1034146.403 dur=    0.006 convert_element_type.301            /home/tarading/vllm_env/lib/python3.12/site-packages/flax/nnx/nn/normalization.py:175
+  ts=   1034146.418 dur=    0.013 add_rsqrt_fusion.103                /home/tarading/vllm_env/lib/python3.12/site-packages/flax/nnx/nn/normalization.py:171
+  ts=   1034146.433 dur=    0.010 slice-start.100                     
+  ts=   1034146.452 dur=    0.007 slice-start.101                     
+  ts=   1034146.467 dur=   39.970 fusion.963                          /home/tarading/tpu-inference/tpu_inference/layers/common/quantization/unquantized.py:53
+  ts=   1034186.446 dur=   21.155 copy-done.22                        
+  ts=   1034207.601 dur=    0.001 copy-start.82                       
+  ts=   1034207.603 dur=    0.001 slice-start.102                     
+  ts=   1034207.605 dur=    0.001 slice-start.103                     
+  ts=   1034207.607 dur=    0.002 slice-start.104                     
+  ts=   1034207.613 dur=   45.219 fusion.662                          /home/tarading/tpu-inference/tpu_inference/layers/common/quantization/unquantized.py:53
+  ts=   1034252.832 dur=    0.003 copy-done.82                        
+  ts=   1034252.836 dur=    0.001 slice-start.289                     
+  ts=   1034252.837 dur=    0.004 convert_element_type.302            /home/tarading/vllm_env/lib/python3.12/site-packages/flax/nnx/nn/normalization.py:175
+  ts=   1034252.846 dur=    0.009 slice-start.290                     
+  ts=   1034252.862 dur=    0.014 add_rsqrt_fusion.102                /home/tarading/vllm_env/lib/python3.12/site-packages/flax/nnx/nn/normalization.py:171
+  ts=   1034252.878 dur=    0.003 slice-done.100                      
+  ts=   1034252.887 dur=    0.004 slice-done.101                      
+  ts=   1034252.898 dur=    0.003 slice-done.102                      
+  ts=   1034252.908 dur=    0.003 slice-done.103                      
+  ts=   1034252.918 dur=    0.003 slice-done.104                      
+  ts=   1034252.928 dur=    0.001 custom-call.22                      
+  ts=   1034252.937 dur=    0.009 copy-start.156                      
+  ts=   1034252.953 dur=   29.611 fusion.475                          /home/tarading/tpu-inference/tpu_inference/layers/common/quantization/unquantized.py:53
+  ts=   1034282.572 dur=    0.010 slice-start.217                     
+  ts=   1034282.591 dur=    0.003 copy-done.156                       
+  ts=   1034282.600 dur=    0.005 convert_element_type.303            /home/tarading/vllm_env/lib/python3.12/site-packages/flax/nnx/nn/normalization.py:175
+  ts=   1034282.614 dur=    0.014 add_rsqrt_fusion.14                 /home/tarading/vllm_env/lib/python3.12/site-packages/flax/nnx/nn/normalization.py:171
+  ts=   1034282.634 dur=    0.889 fusion.474                          /home/tarading/vllm_env/lib/python3.12/site-packages/flax/nnx/nn/normalization.py:183
+  ts=   1034283.532 dur=    2.232 fusion.842                          
+  ts=   1034285.773 dur=    0.143 pad_maximum_fusion.21               /home/tarading/tpu-inference/tpu_inference/layers/jax/rope_interface.py:204
+  ts=   1034285.922 dur=    0.010 slice-start.218                     
+  ts=   1034285.941 dur=    2.131 copy.474                            /home/tarading/tpu-inference/tpu_inference/kernels/ragged_paged_attention/v3/kernel.py:1360
+  ts=   1034288.073 dur=    0.003 slice-done.289                      
+  ts=   1034288.076 dur=    0.004 slice-done.290                      
+  ts=   1034288.079 dur=    0.000 custom-call.94                      
+  ts=   1034288.081 dur=    3.591 fusion.128                          /home/tarading/tpu-inference/tpu_inference/layers/common/quantization/unquantized.py:53
+  ts=   1034291.681 dur=    0.003 slice-done.217                      
+  ts=   1034291.692 dur=    0.003 slice-done.218                      
+  ts=   1034291.702 dur=    0.001 custom-call.58                      
+  ts=   1034291.712 dur=    0.009 copy-start.157                      
+  ts=   1034291.729 dur=    3.533 fusion.1340                         /home/tarading/tpu-inference/tpu_inference/layers/common/quantization/unquantized.py:53
+  ts=   1034295.270 dur=    0.003 copy-done.157                       
+  ts=   1034295.280 dur=    0.005 convert_element_type.304            /home/tarading/vllm_env/lib/python3.12/site-packages/flax/nnx/nn/normalization.py:175
+  ts=   1034295.294 dur=    0.013 add_rsqrt_fusion.50                 /home/tarading/vllm_env/lib/python3.12/site-packages/flax/nnx/nn/normalization.py:171
+  ts=   1034295.311 dur=    0.350 fusion.1339                         /home/tarading/vllm_env/lib/python3.12/site-packages/flax/nnx/nn/normalization.py:183
+  ts=   1034295.669 dur=    0.878 fusion.1562                         
+  ts=   1034296.556 dur=    0.064 pad_maximum_fusion.57               /home/tarading/tpu-inference/tpu_inference/kernels/ragged_paged_attention/v3/kernel.py:1312
+  ts=   1034296.628 dur=    1.131 copy.642                            /home/tarading/tpu-inference/tpu_inference/kernels/ragged_paged_attention/v3/kernel.py:1321
+  ts=   1034297.760 dur=    6.276 RPAd-p_128-bq_1_1-bkv_4096_4096.93  /home/tarading/tpu-inference/tpu_inference/kernels/ragged_paged_attention/v3/kernel.py:2069
+  ts=   1034304.046 dur=   22.863 RPAm-p_128-bq_64_128-bkv_1024_512.93 /home/tarading/tpu-inference/tpu_inference/kernels/ragged_paged_attention/v3/kernel.py:2069
+  ts=   1034326.909 dur=    0.001 copy-start.83                       
+  ts=   1034326.911 dur=    1.671 copy.478                            /home/tarading/tpu-inference/tpu_inference/kernels/ragged_paged_attention/v3/kernel.py:1387
+  ts=   1034328.588 dur=    0.009 copy-start.23                       
+  ts=   1034328.605 dur=   18.165 fusion.664                          /home/tarading/tpu-inference/tpu_inference/layers/common/quantization/unquantized.py:53
+  ts=   1034346.779 dur=    0.003 copy-done.83                        
+  ts=   1034346.789 dur=    0.006 convert_element_type.305            /home/tarading/vllm_env/lib/python3.12/site-packages/flax/nnx/nn/normalization.py:175
+  ts=   1034346.804 dur=    0.014 add_rsqrt_fusion.101                /home/tarading/vllm_env/lib/python3.12/site-packages/flax/nnx/nn/normalization.py:171
+  ts=   1034346.821 dur=    0.010 slice-start.105                     
+  ts=   1034346.839 dur=    0.006 slice-start.106                     
+  ts=   1034346.854 dur=   40.730 fusion.959                          /home/tarading/tpu-inference/tpu_inference/layers/common/quantization/unquantized.py:53
+  ts=   1034387.593 dur=   20.413 copy-done.23                        
+  ts=   1034408.006 dur=    0.001 copy-start.84                       
+  ts=   1034408.008 dur=    0.003 slice-start.107                     
+  ts=   1034408.011 dur=    0.001 slice-start.108                     
+  ts=   1034408.013 dur=    0.001 slice-start.109                     
+  ts=   1034408.019 dur=   45.644 fusion.666                          /home/tarading/tpu-inference/tpu_inference/layers/common/quantization/unquantized.py:53
+  ts=   1034453.664 dur=    0.003 copy-done.84                        
+  ts=   1034453.667 dur=    0.001 slice-start.291                     
+  ts=   1034453.669 dur=    0.004 convert_element_type.306            /home/tarading/vllm_env/lib/python3.12/site-packages/flax/nnx/nn/normalization.py:175
+  ts=   1034453.677 dur=    0.010 slice-start.292                     
+  ts=   1034453.694 dur=    0.013 add_rsqrt_fusion.100                /home/tarading/vllm_env/lib/python3.12/site-packages/flax/nnx/nn/normalization.py:171
+  ts=   1034453.709 dur=    0.003 slice-done.105                      
+  ts=   1034453.719 dur=    0.003 slice-done.106                      
+  ts=   1034453.730 dur=    0.003 slice-done.107                      
+  ts=   1034453.739 dur=    0.003 slice-done.108                      
+  ts=   1034453.750 dur=    0.003 slice-done.109                      
+  ts=   1034453.760 dur=    0.000 custom-call.23                      
+  ts=   1034453.768 dur=    0.009 copy-start.158                      
+  ts=   1034453.784 dur=   29.517 fusion.477                          /home/tarading/tpu-inference/tpu_inference/layers/common/quantization/unquantized.py:53
+  ts=   1034483.311 dur=    0.009 slice-start.219                     
+  ts=   1034483.328 dur=    0.003 copy-done.158                       
+  ts=   1034483.339 dur=    0.005 convert_element_type.307            /home/tarading/vllm_env/lib/python3.12/site-packages/flax/nnx/nn/normalization.py:175
+  ts=   1034483.353 dur=    0.014 add_rsqrt_fusion.13                 /home/tarading/vllm_env/lib/python3.12/site-packages/flax/nnx/nn/normalization.py:171
+  ts=   1034483.373 dur=    0.681 fusion.476                          /home/tarading/vllm_env/lib/python3.12/site-packages/flax/nnx/nn/normalization.py:183
+  ts=   1034484.063 dur=    1.927 fusion.846                          
+  ts=   1034485.999 dur=    0.146 pad_maximum_fusion.22               /home/tarading/tpu-inference/tpu_inference/layers/jax/rope_interface.py:204
+  ts=   1034486.151 dur=    0.010 slice-start.220                     
+  ts=   1034486.168 dur=    2.130 copy.481                            /home/tarading/tpu-inference/tpu_inference/kernels/ragged_paged_attention/v3/kernel.py:1360
+  ts=   1034488.299 dur=    0.003 slice-done.291                      
+  ts=   1034488.302 dur=    0.003 slice-done.292                      
+  ts=   1034488.306 dur=    0.000 custom-call.95                      
+  ts=   1034488.307 dur=    3.670 fusion.124                          /home/tarading/tpu-inference/tpu_inference/layers/common/quantization/unquantized.py:53
+  ts=   1034491.985 dur=    0.003 slice-done.219                      
+  ts=   1034491.997 dur=    0.003 slice-done.220                      
+  ts=   1034492.008 dur=    0.000 custom-call.59                      
+  ts=   1034492.017 dur=    0.009 copy-start.159                      
+  ts=   1034492.034 dur=    3.374 fusion.1342                         /home/tarading/tpu-inference/tpu_inference/layers/common/quantization/unquantized.py:53
+  ts=   1034495.416 dur=    0.004 copy-done.159                       
+  ts=   1034495.427 dur=    0.005 convert_element_type.308            /home/tarading/vllm_env/lib/python3.12/site-packages/flax/nnx/nn/normalization.py:175
+  ts=   1034495.441 dur=    0.013 add_rsqrt_fusion.49                 /home/tarading/vllm_env/lib/python3.12/site-packages/flax/nnx/nn/normalization.py:171
+  ts=   1034495.456 dur=    0.551 fusion.1341                         /home/tarading/vllm_env/lib/python3.12/site-packages/flax/nnx/nn/normalization.py:183
+  ts=   1034496.016 dur=    0.779 fusion.1566                         
+  ts=   1034496.802 dur=    0.064 pad_maximum_fusion.58               /home/tarading/tpu-inference/tpu_inference/kernels/ragged_paged_attention/v3/kernel.py:1312
+  ts=   1034496.874 dur=    1.134 copy.645                            /home/tarading/tpu-inference/tpu_inference/kernels/ragged_paged_attention/v3/kernel.py:1321
+  ts=   1034498.009 dur=    6.251 RPAd-p_128-bq_1_1-bkv_4096_4096.94  /home/tarading/tpu-inference/tpu_inference/kernels/ragged_paged_attention/v3/kernel.py:2069
+  ts=   1034504.268 dur=   22.579 RPAm-p_128-bq_64_128-bkv_1024_512.94 /home/tarading/tpu-inference/tpu_inference/kernels/ragged_paged_attention/v3/kernel.py:2069
+  ts=   1034526.847 dur=    0.002 copy-start.85                       
+  ts=   1034526.849 dur=    1.681 copy.485                            /home/tarading/tpu-inference/tpu_inference/kernels/ragged_paged_attention/v3/kernel.py:1387
+  ts=   1034528.538 dur=    0.009 copy-start.24                       
+  ts=   1034528.556 dur=   18.309 fusion.668                          /home/tarading/tpu-inference/tpu_inference/layers/common/quantization/unquantized.py:53
+  ts=   1034546.873 dur=    0.003 copy-done.85                        
+  ts=   1034546.884 dur=    0.006 convert_element_type.309            /home/tarading/vllm_env/lib/python3.12/site-packages/flax/nnx/nn/normalization.py:175
+  ts=   1034546.899 dur=    0.013 add_rsqrt_fusion.99                 /home/tarading/vllm_env/lib/python3.12/site-packages/flax/nnx/nn/normalization.py:171
+  ts=   1034546.914 dur=    0.010 slice-start.110                     
+  ts=   1034546.933 dur=    0.006 slice-start.111                     
+  ts=   1034546.948 dur=   40.671 fusion.955                          /home/tarading/tpu-inference/tpu_inference/layers/common/quantization/unquantized.py:53
+  ts=   1034587.627 dur=   20.515 copy-done.24                        
+  ts=   1034608.142 dur=    0.002 copy-start.86                       
+  ts=   1034608.144 dur=    0.001 slice-start.112                     
+  ts=   1034608.147 dur=    0.001 slice-start.113                     
+  ts=   1034608.149 dur=    0.001 slice-start.114                     
+  ts=   1034608.154 dur=   45.491 fusion.670                          /home/tarading/tpu-inference/tpu_inference/layers/common/quantization/unquantized.py:53
+  ts=   1034653.647 dur=    0.003 copy-done.86                        
+  ts=   1034653.649 dur=    0.001 slice-start.293                     
+  ts=   1034653.652 dur=    0.004 convert_element_type.310            /home/tarading/vllm_env/lib/python3.12/site-packages/flax/nnx/nn/normalization.py:175
+  ts=   1034653.659 dur=    0.009 slice-start.294                     
+  ts=   1034653.677 dur=    0.013 add_rsqrt_fusion.98                 /home/tarading/vllm_env/lib/python3.12/site-packages/flax/nnx/nn/normalization.py:171
+  ts=   1034653.692 dur=    0.003 slice-done.110                      
+  ts=   1034653.702 dur=    0.003 slice-done.111                      
+  ts=   1034653.712 dur=    0.003 slice-done.112                      
+  ts=   1034653.722 dur=    0.003 slice-done.113                      
+  ts=   1034653.733 dur=    0.003 slice-done.114                      
+  ts=   1034653.742 dur=    0.001 custom-call.24                      
+  ts=   1034653.751 dur=    0.009 copy-start.160                      
+  ts=   1034653.767 dur=   29.795 fusion.479                          /home/tarading/tpu-inference/tpu_inference/layers/common/quantization/unquantized.py:53
+  ts=   1034683.569 dur=    0.010 slice-start.221                     
+  ts=   1034683.587 dur=    0.004 copy-done.160                       
+  ts=   1034683.598 dur=    0.005 convert_element_type.311            /home/tarading/vllm_env/lib/python3.12/site-packages/flax/nnx/nn/normalization.py:175
+  ts=   1034683.612 dur=    0.015 add_rsqrt_fusion.12                 /home/tarading/vllm_env/lib/python3.12/site-packages/flax/nnx/nn/normalization.py:171
+  ts=   1034683.632 dur=    0.884 fusion.478                          /home/tarading/vllm_env/lib/python3.12/site-packages/flax/nnx/nn/normalization.py:183
+  ts=   1034684.524 dur=    2.080 fusion.850                          
+  ts=   1034686.613 dur=    0.146 pad_maximum_fusion.23               /home/tarading/tpu-inference/tpu_inference/layers/jax/rope_interface.py:204
+  ts=   1034686.764 dur=    0.010 slice-start.222                     
+  ts=   1034686.783 dur=    2.124 copy.488                            /home/tarading/tpu-inference/tpu_inference/kernels/ragged_paged_attention/v3/kernel.py:1360
+  ts=   1034688.907 dur=    0.004 slice-done.293                      
+  ts=   1034688.911 dur=    0.003 slice-done.294                      
+  ts=   1034688.914 dur=    0.000 custom-call.96                      
+  ts=   1034688.916 dur=    3.680 fusion.120                          /home/tarading/tpu-inference/tpu_inference/layers/common/quantization/unquantized.py:53
+  ts=   1034692.604 dur=    0.004 slice-done.221                      
+  ts=   1034692.616 dur=    0.004 slice-done.222                      
+  ts=   1034692.627 dur=    0.000 custom-call.60                      
+  ts=   1034692.636 dur=    0.009 copy-start.161                      
+  ts=   1034692.653 dur=    3.490 fusion.1344                         /home/tarading/tpu-inference/tpu_inference/layers/common/quantization/unquantized.py:53
+  ts=   1034696.152 dur=    0.003 copy-done.161                       
+  ts=   1034696.162 dur=    0.006 convert_element_type.312            /home/tarading/vllm_env/lib/python3.12/site-packages/flax/nnx/nn/normalization.py:175
+  ts=   1034696.176 dur=    0.014 add_rsqrt_fusion.48                 /home/tarading/vllm_env/lib/python3.12/site-packages/flax/nnx/nn/normalization.py:171
+  ts=   1034696.192 dur=    0.350 fusion.1343                         /home/tarading/vllm_env/lib/python3.12/site-packages/flax/nnx/nn/normalization.py:183
+  ts=   1034696.551 dur=    0.825 fusion.1570                         
+  ts=   1034697.384 dur=    0.063 pad_maximum_fusion.59               /home/tarading/tpu-inference/tpu_inference/kernels/ragged_paged_attention/v3/kernel.py:1312
+  ts=   1034697.456 dur=    1.129 copy.648                            /home/tarading/tpu-inference/tpu_inference/kernels/ragged_paged_attention/v3/kernel.py:1321
+  ts=   1034698.584 dur=    6.280 RPAd-p_128-bq_1_1-bkv_4096_4096.95  /home/tarading/tpu-inference/tpu_inference/kernels/ragged_paged_attention/v3/kernel.py:2069
+  ts=   1034704.873 dur=   22.761 RPAm-p_128-bq_64_128-bkv_1024_512.95 /home/tarading/tpu-inference/tpu_inference/kernels/ragged_paged_attention/v3/kernel.py:2069
+  ts=   1034727.635 dur=    0.001 copy-start.87                       
+  ts=   1034727.637 dur=    1.755 copy.492                            /home/tarading/tpu-inference/tpu_inference/kernels/ragged_paged_attention/v3/kernel.py:1387
+  ts=   1034729.399 dur=    0.008 copy-start.25                       
+  ts=   1034729.416 dur=   18.244 fusion.672                          /home/tarading/tpu-inference/tpu_inference/layers/common/quantization/unquantized.py:53
+  ts=   1034747.668 dur=    0.003 copy-done.87                        
+  ts=   1034747.679 dur=    0.005 convert_element_type.313            /home/tarading/vllm_env/lib/python3.12/site-packages/flax/nnx/nn/normalization.py:175
+  ts=   1034747.693 dur=    0.014 add_rsqrt_fusion.97                 /home/tarading/vllm_env/lib/python3.12/site-packages/flax/nnx/nn/normalization.py:171
+  ts=   1034747.709 dur=    0.010 slice-start.115                     
+  ts=   1034747.727 dur=    0.007 slice-start.116                     
+  ts=   1034747.743 dur=   40.110 fusion.951                          /home/tarading/tpu-inference/tpu_inference/layers/common/quantization/unquantized.py:53
+  ts=   1034787.862 dur=   21.247 copy-done.25                        
+  ts=   1034809.110 dur=    0.001 copy-start.88                       
+  ts=   1034809.113 dur=    0.001 slice-start.117                     
+  ts=   1034809.114 dur=    0.001 slice-start.118                     
+  ts=   1034809.117 dur=    0.003 slice-start.119                     
+  ts=   1034809.122 dur=   45.104 fusion.674                          /home/tarading/tpu-inference/tpu_inference/layers/common/quantization/unquantized.py:53
+  ts=   1034854.226 dur=    0.003 copy-done.88                        
+  ts=   1034854.229 dur=    0.001 slice-start.295                     
+  ts=   1034854.231 dur=    0.004 convert_element_type.314            /home/tarading/vllm_env/lib/python3.12/site-packages/flax/nnx/nn/normalization.py:175
+  ts=   1034854.239 dur=    0.009 slice-start.296                     
+  ts=   1034854.256 dur=    0.012 add_rsqrt_fusion.96                 /home/tarading/vllm_env/lib/python3.12/site-packages/flax/nnx/nn/normalization.py:171
+  ts=   1034854.271 dur=    0.003 slice-done.115                      
+  ts=   1034854.282 dur=    0.003 slice-done.116                      
+  ts=   1034854.292 dur=    0.003 slice-done.117                      
+  ts=   1034854.302 dur=    0.003 slice-done.118                      
+  ts=   1034854.312 dur=    0.003 slice-done.119                      
+  ts=   1034854.322 dur=    0.000 custom-call.25                      
+  ts=   1034854.331 dur=    0.009 copy-start.162                      
+  ts=   1034854.347 dur=   29.458 fusion.481                          /home/tarading/tpu-inference/tpu_inference/layers/common/quantization/unquantized.py:53
+  ts=   1034883.813 dur=    0.010 slice-start.223                     
+  ts=   1034883.831 dur=    0.003 copy-done.162                       
+  ts=   1034883.842 dur=    0.005 convert_element_type.315            /home/tarading/vllm_env/lib/python3.12/site-packages/flax/nnx/nn/normalization.py:175
+  ts=   1034883.856 dur=    0.015 add_rsqrt_fusion.11                 /home/tarading/vllm_env/lib/python3.12/site-packages/flax/nnx/nn/normalization.py:171
+  ts=   1034883.876 dur=    0.680 fusion.480                          /home/tarading/vllm_env/lib/python3.12/site-packages/flax/nnx/nn/normalization.py:183
+  ts=   1034884.564 dur=    2.001 fusion.854                          
+  ts=   1034886.574 dur=    0.148 pad_maximum_fusion.24               /home/tarading/tpu-inference/tpu_inference/layers/jax/rope_interface.py:204
+  ts=   1034886.727 dur=    0.009 slice-start.224                     
+  ts=   1034886.744 dur=    2.127 copy.495                            /home/tarading/tpu-inference/tpu_inference/kernels/ragged_paged_attention/v3/kernel.py:1360
+  ts=   1034888.873 dur=    0.003 slice-done.295                      
+  ts=   1034888.876 dur=    0.004 slice-done.296                      
+  ts=   1034888.879 dur=    0.000 custom-call.97                      
+  ts=   1034888.880 dur=    3.689 fusion.116                          /home/tarading/tpu-inference/tpu_inference/layers/common/quantization/unquantized.py:53
+  ts=   1034892.578 dur=    0.003 slice-done.223                      
+  ts=   1034892.588 dur=    0.003 slice-done.224                      
+  ts=   1034892.599 dur=    0.000 custom-call.61                      
+  ts=   1034892.608 dur=    0.009 copy-start.163                      
+  ts=   1034892.626 dur=    3.370 fusion.1346                         /home/tarading/tpu-inference/tpu_inference/layers/common/quantization/unquantized.py:53
+  ts=   1034896.004 dur=    0.003 copy-done.163                       
+  ts=   1034896.014 dur=    0.005 convert_element_type.316            /home/tarading/vllm_env/lib/python3.12/site-packages/flax/nnx/nn/normalization.py:175
+  ts=   1034896.028 dur=    0.014 add_rsqrt_fusion.47                 /home/tarading/vllm_env/lib/python3.12/site-packages/flax/nnx/nn/normalization.py:171
+  ts=   1034896.044 dur=    0.551 fusion.1345                         /home/tarading/vllm_env/lib/python3.12/site-packages/flax/nnx/nn/normalization.py:183
+  ts=   1034896.603 dur=    0.856 fusion.1574                         
+  ts=   1034897.467 dur=    0.064 pad_maximum_fusion.60               /home/tarading/tpu-inference/tpu_inference/kernels/ragged_paged_attention/v3/kernel.py:1312
+  ts=   1034897.539 dur=    1.134 copy.651                            /home/tarading/tpu-inference/tpu_inference/kernels/ragged_paged_attention/v3/kernel.py:1321
+  ts=   1034898.673 dur=    6.282 RPAd-p_128-bq_1_1-bkv_4096_4096.96  /home/tarading/tpu-inference/tpu_inference/kernels/ragged_paged_attention/v3/kernel.py:2069
+  ts=   1034904.964 dur=   22.669 RPAm-p_128-bq_64_128-bkv_1024_512.96 /home/tarading/tpu-inference/tpu_inference/kernels/ragged_paged_attention/v3/kernel.py:2069
+  ts=   1034927.634 dur=    0.001 copy-start.89                       
+  ts=   1034927.637 dur=    1.663 copy.499                            /home/tarading/tpu-inference/tpu_inference/kernels/ragged_paged_attention/v3/kernel.py:1387
+  ts=   1034929.306 dur=    0.009 copy-start.26                       
+  ts=   1034929.323 dur=   18.318 fusion.676                          /home/tarading/tpu-inference/tpu_inference/layers/common/quantization/unquantized.py:53
+  ts=   1034947.649 dur=    0.003 copy-done.89                        
+  ts=   1034947.660 dur=    0.006 convert_element_type.317            /home/tarading/vllm_env/lib/python3.12/site-packages/flax/nnx/nn/normalization.py:175
+  ts=   1034947.676 dur=    0.013 add_rsqrt_fusion.95                 /home/tarading/vllm_env/lib/python3.12/site-packages/flax/nnx/nn/normalization.py:171
+  ts=   1034947.691 dur=    0.010 slice-start.120                     
+  ts=   1034947.709 dur=    0.006 slice-start.121                     
+  ts=   1034947.724 dur=   40.245 fusion.947                          /home/tarading/tpu-inference/tpu_inference/layers/common/quantization/unquantized.py:53
+  ts=   1034987.978 dur=   20.506 copy-done.26                        
+  ts=   1035008.484 dur=    0.002 copy-start.90                       
+  ts=   1035008.488 dur=    0.001 slice-start.122                     
+  ts=   1035008.489 dur=    0.001 slice-start.123                     
+  ts=   1035008.492 dur=    0.001 slice-start.124                     
+  ts=   1035008.498 dur=   45.473 fusion.678                          /home/tarading/tpu-inference/tpu_inference/layers/common/quantization/unquantized.py:53
+  ts=   1035053.972 dur=    0.003 copy-done.90                        
+  ts=   1035053.974 dur=    0.001 slice-start.297                     
+  ts=   1035053.977 dur=    0.003 convert_element_type.318            /home/tarading/vllm_env/lib/python3.12/site-packages/flax/nnx/nn/normalization.py:175
+  ts=   1035053.984 dur=    0.009 slice-start.298                     
+  ts=   1035054.002 dur=    0.012 add_rsqrt_fusion.94                 /home/tarading/vllm_env/lib/python3.12/site-packages/flax/nnx/nn/normalization.py:171
+  ts=   1035054.017 dur=    0.003 slice-done.120                      
+  ts=   1035054.027 dur=    0.003 slice-done.121                      
+  ts=   1035054.037 dur=    0.003 slice-done.122                      
+  ts=   1035054.047 dur=    0.004 slice-done.123                      
+  ts=   1035054.057 dur=    0.003 slice-done.124                      
+  ts=   1035054.067 dur=    0.001 custom-call.26                      
+  ts=   1035054.076 dur=    0.009 copy-start.164                      
+  ts=   1035054.093 dur=   29.586 fusion.483                          /home/tarading/tpu-inference/tpu_inference/layers/common/quantization/unquantized.py:53
+  ts=   1035083.687 dur=    0.010 slice-start.225                     
+  ts=   1035083.704 dur=    0.003 copy-done.164                       
+  ts=   1035083.716 dur=    0.006 convert_element_type.319            /home/tarading/vllm_env/lib/python3.12/site-packages/flax/nnx/nn/normalization.py:175
+  ts=   1035083.729 dur=    0.015 add_rsqrt_fusion.10                 /home/tarading/vllm_env/lib/python3.12/site-packages/flax/nnx/nn/normalization.py:171
+  ts=   1035083.749 dur=    0.890 fusion.482                          /home/tarading/vllm_env/lib/python3.12/site-packages/flax/nnx/nn/normalization.py:183
+  ts=   1035084.647 dur=    2.178 fusion.858                          
+  ts=   1035086.833 dur=    0.146 pad_maximum_fusion.25               /home/tarading/tpu-inference/tpu_inference/layers/jax/rope_interface.py:204
+  ts=   1035086.982 dur=    0.010 slice-start.226                     
+  ts=   1035087.000 dur=    2.126 copy.502                            /home/tarading/tpu-inference/tpu_inference/kernels/ragged_paged_attention/v3/kernel.py:1360
+  ts=   1035089.127 dur=    0.004 slice-done.297                      
+  ts=   1035089.131 dur=    0.003 slice-done.298                      
+  ts=   1035089.134 dur=    0.000 custom-call.98                      
+  ts=   1035089.135 dur=    3.589 fusion.112                          /home/tarading/tpu-inference/tpu_inference/layers/common/quantization/unquantized.py:53
+  ts=   1035092.733 dur=    0.003 slice-done.225                      
+  ts=   1035092.743 dur=    0.003 slice-done.226                      
+  ts=   1035092.754 dur=    0.000 custom-call.62                      
+  ts=   1035092.763 dur=    0.010 copy-start.165                      
+  ts=   1035092.781 dur=    3.371 fusion.1348                         /home/tarading/tpu-inference/tpu_inference/layers/common/quantization/unquantized.py:53
+  ts=   1035096.160 dur=    0.003 copy-done.165                       
+  ts=   1035096.171 dur=    0.006 convert_element_type.320            /home/tarading/vllm_env/lib/python3.12/site-packages/flax/nnx/nn/normalization.py:175
+  ts=   1035096.184 dur=    0.014 add_rsqrt_fusion.46                 /home/tarading/vllm_env/lib/python3.12/site-packages/flax/nnx/nn/normalization.py:171
+  ts=   1035096.201 dur=    0.350 fusion.1347                         /home/tarading/vllm_env/lib/python3.12/site-packages/flax/nnx/nn/normalization.py:183
+  ts=   1035096.558 dur=    0.781 fusion.1578                         
+  ts=   1035097.347 dur=    0.064 pad_maximum_fusion.61               /home/tarading/tpu-inference/tpu_inference/kernels/ragged_paged_attention/v3/kernel.py:1312
+  ts=   1035097.419 dur=    1.125 copy.654                            /home/tarading/tpu-inference/tpu_inference/kernels/ragged_paged_attention/v3/kernel.py:1321
+  ts=   1035098.546 dur=    6.260 RPAd-p_128-bq_1_1-bkv_4096_4096.97  /home/tarading/tpu-inference/tpu_inference/kernels/ragged_paged_attention/v3/kernel.py:2069
+  ts=   1035104.814 dur=   22.784 RPAm-p_128-bq_64_128-bkv_1024_512.97 /home/tarading/tpu-inference/tpu_inference/kernels/ragged_paged_attention/v3/kernel.py:2069
+  ts=   1035127.599 dur=    0.001 copy-start.91                       
+  ts=   1035127.601 dur=    1.684 copy.506                            /home/tarading/tpu-inference/tpu_inference/kernels/ragged_paged_attention/v3/kernel.py:1387
+  ts=   1035129.292 dur=    0.009 copy-start.27                       
+  ts=   1035129.308 dur=   18.216 fusion.680                          /home/tarading/tpu-inference/tpu_inference/layers/common/quantization/unquantized.py:53
+  ts=   1035147.533 dur=    0.003 copy-done.91                        
+  ts=   1035147.544 dur=    0.006 convert_element_type.321            /home/tarading/vllm_env/lib/python3.12/site-packages/flax/nnx/nn/normalization.py:175
+  ts=   1035147.559 dur=    0.013 add_rsqrt_fusion.93                 /home/tarading/vllm_env/lib/python3.12/site-packages/flax/nnx/nn/normalization.py:171
+  ts=   1035147.576 dur=    0.009 slice-start.125                     
+  ts=   1035147.593 dur=    0.007 slice-start.126                     
+  ts=   1035147.608 dur=   40.002 fusion.943                          /home/tarading/tpu-inference/tpu_inference/layers/common/quantization/unquantized.py:53
+  ts=   1035187.619 dur=   20.741 copy-done.27                        
+  ts=   1035208.362 dur=    0.001 copy-start.92                       
+  ts=   1035208.364 dur=    0.001 slice-start.127                     
+  ts=   1035208.366 dur=    0.001 slice-start.128                     
+  ts=   1035208.368 dur=    0.003 slice-start.129                     
+  ts=   1035208.373 dur=   45.099 fusion.682                          /home/tarading/tpu-inference/tpu_inference/layers/common/quantization/unquantized.py:53
+  ts=   1035253.473 dur=    0.003 copy-done.92                        
+  ts=   1035253.476 dur=    0.001 slice-start.299                     
+  ts=   1035253.478 dur=    0.003 convert_element_type.322            /home/tarading/vllm_env/lib/python3.12/site-packages/flax/nnx/nn/normalization.py:175
+  ts=   1035253.485 dur=    0.009 slice-start.300                     
+  ts=   1035253.503 dur=    0.013 add_rsqrt_fusion.92                 /home/tarading/vllm_env/lib/python3.12/site-packages/flax/nnx/nn/normalization.py:171
+  ts=   1035253.518 dur=    0.003 slice-done.125                      
+  ts=   1035253.527 dur=    0.004 slice-done.126                      
+  ts=   1035253.538 dur=    0.003 slice-done.127                      
+  ts=   1035253.548 dur=    0.003 slice-done.128                      
+  ts=   1035253.559 dur=    0.003 slice-done.129                      
+  ts=   1035253.568 dur=    0.001 custom-call.27                      
+  ts=   1035253.577 dur=    0.009 copy-start.166                      
+  ts=   1035253.593 dur=   29.469 fusion.485                          /home/tarading/tpu-inference/tpu_inference/layers/common/quantization/unquantized.py:53
+  ts=   1035283.071 dur=    0.009 slice-start.227                     
+  ts=   1035283.087 dur=    0.004 copy-done.166                       
+  ts=   1035283.098 dur=    0.006 convert_element_type.323            /home/tarading/vllm_env/lib/python3.12/site-packages/flax/nnx/nn/normalization.py:175
+  ts=   1035283.112 dur=    0.015 add_rsqrt_fusion.9                  /home/tarading/vllm_env/lib/python3.12/site-packages/flax/nnx/nn/normalization.py:171
+  ts=   1035283.133 dur=    0.680 fusion.484                          /home/tarading/vllm_env/lib/python3.12/site-packages/flax/nnx/nn/normalization.py:183
+  ts=   1035283.822 dur=    1.871 fusion.862                          
+  ts=   1035285.702 dur=    0.150 pad_maximum_fusion.26               /home/tarading/tpu-inference/tpu_inference/layers/jax/rope_interface.py:204
+  ts=   1035285.856 dur=    0.010 slice-start.228                     
+  ts=   1035285.874 dur=    2.136 copy.509                            /home/tarading/tpu-inference/tpu_inference/kernels/ragged_paged_attention/v3/kernel.py:1360
+  ts=   1035288.012 dur=    0.003 slice-done.299                      
+  ts=   1035288.015 dur=    0.003 slice-done.300                      
+  ts=   1035288.018 dur=    0.001 custom-call.99                      
+  ts=   1035288.019 dur=    3.655 fusion.108                          /home/tarading/tpu-inference/tpu_inference/layers/common/quantization/unquantized.py:53
+  ts=   1035291.682 dur=    0.004 slice-done.227                      
+  ts=   1035291.693 dur=    0.003 slice-done.228                      
+  ts=   1035291.704 dur=    0.000 custom-call.63                      
+  ts=   1035291.713 dur=    0.009 copy-start.167                      
+  ts=   1035291.731 dur=    3.371 fusion.1350                         /home/tarading/tpu-inference/tpu_inference/layers/common/quantization/unquantized.py:53
+  ts=   1035295.111 dur=    0.003 copy-done.167                       
+  ts=   1035295.122 dur=    0.005 convert_element_type.324            /home/tarading/vllm_env/lib/python3.12/site-packages/flax/nnx/nn/normalization.py:175
+  ts=   1035295.135 dur=    0.013 add_rsqrt_fusion.45                 /home/tarading/vllm_env/lib/python3.12/site-packages/flax/nnx/nn/normalization.py:171
+  ts=   1035295.151 dur=    0.551 fusion.1349                         /home/tarading/vllm_env/lib/python3.12/site-packages/flax/nnx/nn/normalization.py:183
+  ts=   1035295.711 dur=    0.778 fusion.1582                         
+  ts=   1035296.497 dur=    0.064 pad_maximum_fusion.62               /home/tarading/tpu-inference/tpu_inference/kernels/ragged_paged_attention/v3/kernel.py:1312
+  ts=   1035296.569 dur=    1.124 copy.657                            /home/tarading/tpu-inference/tpu_inference/kernels/ragged_paged_attention/v3/kernel.py:1321
+  ts=   1035297.694 dur=    6.273 RPAd-p_128-bq_1_1-bkv_4096_4096.98  /home/tarading/tpu-inference/tpu_inference/kernels/ragged_paged_attention/v3/kernel.py:2069
+  ts=   1037012.512 dur=    0.001 copy-start.110                      
+  ts=   1037012.514 dur=    0.001 slice-start.172                     
+  ts=   1037012.516 dur=    0.002 slice-start.173                     
+  ts=   1037012.519 dur=    0.001 slice-start.174                     
+  ts=   1037012.524 dur=   46.007 fusion.718                          /home/tarading/tpu-inference/tpu_inference/layers/common/quantization/unquantized.py:53
+  ts=   1037058.533 dur=    0.003 copy-done.110                       
+  ts=   1037058.536 dur=    0.001 slice-start.317                     
+  ts=   1037058.538 dur=    0.004 convert_element_type.358            /home/tarading/vllm_env/lib/python3.12/site-packages/flax/nnx/nn/normalization.py:175
+  ts=   1037058.546 dur=    0.010 slice-start.318                     
+  ts=   1037058.563 dur=    0.013 add_rsqrt_fusion.74                 /home/tarading/vllm_env/lib/python3.12/site-packages/flax/nnx/nn/normalization.py:171
+  ts=   1037058.578 dur=    0.003 slice-done.170                      
+  ts=   1037058.588 dur=    0.003 slice-done.171                      
+  ts=   1037058.599 dur=    0.003 slice-done.172                      
+  ts=   1037058.609 dur=    0.003 slice-done.173                      
+  ts=   1037058.619 dur=    0.003 slice-done.174                      
+  ts=   1037058.629 dur=    0.001 custom-call.36                      
+  ts=   1037058.638 dur=    0.009 copy-start.184                      
+  ts=   1037058.654 dur=   29.556 fusion.503                          /home/tarading/tpu-inference/tpu_inference/layers/common/quantization/unquantized.py:53
+  ts=   1037088.219 dur=    0.009 slice-start.245                     
+  ts=   1037088.237 dur=    0.003 copy-done.184                       
+  ts=   1037088.247 dur=    0.006 convert_element_type.359            /home/tarading/vllm_env/lib/python3.12/site-packages/flax/nnx/nn/normalization.py:175
+  ts=   1037088.262 dur=    0.014 add_rsqrt_fusion                    /home/tarading/vllm_env/lib/python3.12/site-packages/flax/nnx/nn/normalization.py:171
+  ts=   1037088.282 dur=    0.884 fusion.502                          /home/tarading/vllm_env/lib/python3.12/site-packages/flax/nnx/nn/normalization.py:183
+  ts=   1037089.174 dur=    2.221 fusion.898                          
+  ts=   1037091.404 dur=    0.145 pad_maximum_fusion.35               /home/tarading/tpu-inference/tpu_inference/layers/jax/rope_interface.py:204
+  ts=   1037091.556 dur=    0.009 slice-start.246                     
+  ts=   1037091.573 dur=    2.118 copy.572                            /home/tarading/tpu-inference/tpu_inference/kernels/ragged_paged_attention/v3/kernel.py:1360
+  ts=   1037093.692 dur=    0.003 slice-done.317                      
+  ts=   1037093.696 dur=    0.003 slice-done.318                      
+  ts=   1037093.699 dur=    0.000 custom-call.108                     
+  ts=   1037093.699 dur=    3.605 fusion.72                           /home/tarading/tpu-inference/tpu_inference/layers/common/quantization/unquantized.py:53
+  ts=   1037097.313 dur=    0.003 slice-done.245                      
+  ts=   1037097.324 dur=    0.003 slice-done.246                      
+  ts=   1037097.336 dur=    0.000 custom-call.72                      
+  ts=   1037097.344 dur=    0.009 copy-start.185                      
+  ts=   1037097.362 dur=    3.372 fusion.1368                         /home/tarading/tpu-inference/tpu_inference/layers/common/quantization/unquantized.py:53
+  ts=   1037100.743 dur=    0.003 copy-done.185                       
+  ts=   1037100.753 dur=    0.006 convert_element_type.360            /home/tarading/vllm_env/lib/python3.12/site-packages/flax/nnx/nn/normalization.py:175
+  ts=   1037100.768 dur=    0.012 add_rsqrt_fusion.36                 /home/tarading/vllm_env/lib/python3.12/site-packages/flax/nnx/nn/normalization.py:171
+  ts=   1037100.783 dur=    0.350 fusion.1367                         /home/tarading/vllm_env/lib/python3.12/site-packages/flax/nnx/nn/normalization.py:183
+  ts=   1037101.142 dur=    0.780 fusion.1618                         
+  ts=   1037101.931 dur=    0.063 pad_maximum_fusion.71               /home/tarading/tpu-inference/tpu_inference/kernels/ragged_paged_attention/v3/kernel.py:1312
+  ts=   1037102.002 dur=    1.134 copy.684                            /home/tarading/tpu-inference/tpu_inference/kernels/ragged_paged_attention/v3/kernel.py:1321
+  ts=   1037103.137 dur=    6.265 RPAd-p_128-bq_1_1-bkv_4096_4096.107 /home/tarading/tpu-inference/tpu_inference/kernels/ragged_paged_attention/v3/kernel.py:2069
+  ts=   1037109.411 dur=   22.758 RPAm-p_128-bq_64_128-bkv_1024_512.107 /home/tarading/tpu-inference/tpu_inference/kernels/ragged_paged_attention/v3/kernel.py:2069
+  ts=   1037132.169 dur=    0.001 copy-start.111                      
+  ts=   1037132.171 dur=    1.685 copy.576                            /home/tarading/tpu-inference/tpu_inference/kernels/ragged_paged_attention/v3/kernel.py:1387
+  ts=   1037133.862 dur=   16.157 fusion.720                          /home/tarading/tpu-inference/tpu_inference/layers/common/quantization/unquantized.py:53
+  ts=   1037150.027 dur=    0.004 copy-done.111                       
+  ts=   1037150.038 dur=    0.006 convert_element_type.361            /home/tarading/vllm_env/lib/python3.12/site-packages/flax/nnx/nn/normalization.py:175
+  ts=   1037150.052 dur=    0.013 add_rsqrt_fusion.73                 /home/tarading/vllm_env/lib/python3.12/site-packages/flax/nnx/nn/normalization.py:171
+  ts=   1037150.067 dur=    0.009 copy-start.37                       
+  ts=   1037150.084 dur=   37.682 fusion.903                          /home/tarading/tpu-inference/tpu_inference/layers/common/quantization/unquantized.py:53
+  ts=   1037187.775 dur=   27.075 copy-done.37                        
+  ts=   1037214.851 dur=    0.002 copy-start.112                      
+  ts=   1037214.853 dur=   36.363 multiply_reduce_fusion              /home/tarading/tpu-inference/tpu_inference/layers/common/quantization/unquantized.py:53
+  ts=   1037251.224 dur=    0.003 copy-done.112                       
+  ts=   1037251.234 dur=    0.006 convert_element_type.362            /home/tarading/vllm_env/lib/python3.12/site-packages/flax/nnx/nn/normalization.py:175
+  ts=   1037251.248 dur=    0.013 add_rsqrt_fusion.72                 /home/tarading/vllm_env/lib/python3.12/site-packages/flax/nnx/nn/normalization.py:171
+  ts=   1037251.263 dur=    1.019 multiply_convert_fusion             /home/tarading/vllm_env/lib/python3.12/site-packages/flax/nnx/nn/normalization.py:183
+  ts=   1037254.496 dur=    0.011 copy-start                          
+  ts=   1037254.515 dur=    0.005 copy-start.1                        
+  ts=   1037254.528 dur=    1.126 copy-done.1                         
+  ts=   1037255.655 dur=    0.003 compare_select_fusion               /home/tarading/tpu-inference/tpu_inference/runner/tpu_runner.py:1585
+  ts=   1037255.659 dur=    0.008 pad_clamp_fusion                    /home/tarading/tpu-inference/tpu_inference/runner/tpu_runner.py:1585
+  ts=   1037255.667 dur=    0.004 copy-done                           
+  ts=   1037255.678 dur=    1.026 gather_custom_fusion                /home/tarading/tpu-inference/tpu_inference/runner/tpu_runner.py:1585
+  ts=   1037259.899 dur=    0.011 copy-start                          
+  ts=   1037259.919 dur=    0.677 copy-done                           
+  ts=   1037260.598 dur=  503.371 fusion                              /home/tarading/tpu-inference/tpu_inference/layers/jax/embed.py:65
+  ts=   1037765.649 dur=    7.821 convert_element_type.1              /home/tarading/tpu-inference/tpu_inference/runner/tpu_runner.py:1313
+  ts=   1037776.906 dur=    0.006 copy-start                          
+  ts=   1037776.919 dur=    7.175 iota_reduce_fusion                  /home/tarading/tpu-inference/tpu_inference/layers/jax/sample/sampling.py:125
+  ts=   1037784.096 dur=    0.003 copy-done                           
+  ts=   1037784.099 dur=    3.494 copy.2                              
+  ts=   1037789.871 dur=    1.032 split.8                             /home/tarading/tpu-inference/tpu_inference/utils.py:497
+  ts=   1037790.904 dur=    1.032 split.7                             /home/tarading/tpu-inference/tpu_inference/utils.py:497
+  ts=   1037791.938 dur=    0.961 split.6                             /home/tarading/tpu-inference/tpu_inference/utils.py:497
+  ts=   1037792.899 dur=    1.103 split.5                             /home/tarading/tpu-inference/tpu_inference/utils.py:497
+  ts=   1037794.003 dur=    1.814 split.9                             /home/tarading/tpu-inference/tpu_inference/utils.py:497
+  ts=   1037804.216 dur=    0.538 convert_element_type.219            /home/tarading/tpu-inference/tpu_inference/layers/jax/rope_interface.py:174
+  ts=   1037804.754 dur=    0.030 fusion.1336                         /home/tarading/tpu-inference/tpu_inference/layers/jax/rope_interface.py:292
+  ts=   1037804.784 dur=    0.005 slice-start.180                     
+  ts=   1037804.798 dur=    4.904 multiply_cosine_fusion              /home/tarading/tpu-inference/tpu_inference/layers/jax/rope_interface.py:180
+  ts=   1037809.711 dur=    0.006 copy-start                          
+  ts=   1037809.725 dur=    0.006 copy-start.1                        
+  ts=   1037809.740 dur=    0.729 fusion.1334                         /home/tarading/vllm_env/lib/python3.12/site-packages/flax/nnx/nn/linear.py:1319
+  ts=   1037810.471 dur=    0.001 copy-start.4                        
+  ts=   1037810.472 dur=    0.001 copy-start.7                        
+  ts=   1037810.474 dur=    0.005 slice-start.181                     
+  ts=   1037810.487 dur=   65.589 gather_custom_fusion                /home/tarading/vllm_env/lib/python3.12/site-packages/flax/nnx/nn/linear.py:1319
+  ts=   1037876.084 dur=    0.003 copy-done.4                         
+  ts=   1037876.096 dur=    0.009 copy-start.2                        
+  ts=   1037876.113 dur=    0.010 compare_and_fusion                  /home/tarading/vllm_env/lib/python3.12/site-packages/flax/nnx/nn/linear.py:1319
+  ts=   1037876.132 dur=    0.006 copy-start.5                        
+  ts=   1037876.147 dur=    5.009 fusion.253                          /home/tarading/vllm_env/lib/python3.12/site-packages/flax/nnx/nn/normalization.py:102
+  ts=   1037881.164 dur=    0.015 add_rsqrt_fusion.144                /home/tarading/vllm_env/lib/python3.12/site-packages/flax/nnx/nn/normalization.py:171
+  ts=   1037881.182 dur=    0.004 copy-done.7                         
+  ts=   1037881.193 dur=    0.006 convert_element_type.217            /home/tarading/vllm_env/lib/python3.12/site-packages/flax/nnx/nn/normalization.py:175
+  ts=   1037881.208 dur=    0.003 slice-done.180                      
+  ts=   1037881.219 dur=    0.003 slice-done.181                      
+  ts=   1037881.231 dur=    0.000 custom-call.38                      
+  ts=   1037881.239 dur=    0.009 copy-start.80                       
+  ts=   1037881.257 dur=   15.786 fusion.687                          /home/tarading/tpu-inference/tpu_inference/layers/common/quantization/unquantized.py:53
+  ts=   1037897.051 dur=    0.010 slice-start.182                     
+  ts=   1037897.068 dur=    0.022 add_rsqrt_fusion.71                 /home/tarading/vllm_env/lib/python3.12/site-packages/flax/nnx/nn/normalization.py:171
+  ts=   1037897.098 dur=    0.004 copy-done.80                        
+  ts=   1037897.108 dur=    0.005 convert_element_type.220            /home/tarading/vllm_env/lib/python3.12/site-packages/flax/nnx/nn/normalization.py:175
+  ts=   1037897.122 dur=    2.110 fusion.686                          /home/tarading/vllm_env/lib/python3.12/site-packages/flax/nnx/nn/normalization.py:183
+  ts=   1037899.239 dur=    0.010 slice-start.183                     
+  ts=   1037899.257 dur=    1.782 fusion.1191                         
+  ts=   1037901.047 dur=    0.086 slice-done.182                      
+  ts=   1037901.134 dur=    0.334 slice-done.183                      
+  ts=   1037901.468 dur=    0.001 custom-call.39                      
+  ts=   1037901.471 dur=    0.000 slice-start                         
+  ts=   1037901.472 dur=    0.001 slice-start.1                       
+  ts=   1037901.473 dur=    0.002 slice-start.2                       
+  ts=   1037901.476 dur=   17.201 fusion.938                          /home/tarading/tpu-inference/tpu_inference/layers/common/quantization/unquantized.py:53
+  ts=   1037918.686 dur=    0.009 slice-start.3                       
+  ts=   1037918.702 dur=    1.522 pad_maximum_fusion.36               /home/tarading/tpu-inference/tpu_inference/kernels/ragged_paged_attention/v3/kernel.py:1312
+  ts=   1037920.233 dur=    0.009 slice-start.4                       
+  ts=   1037920.249 dur=   15.866 copy.579                            /home/tarading/tpu-inference/tpu_inference/kernels/ragged_paged_attention/v3/kernel.py:1321
+  ts=   1037936.116 dur=    0.004 copy-done.2                         
+  ts=   1037936.119 dur=    0.003 copy-done.5                         
+  ts=   1037936.123 dur=    0.003 slice-done                          
+  ts=   1037936.127 dur=    0.004 slice-done.1                        
+  ts=   1037936.138 dur=    0.004 slice-done.2                        
+  ts=   1037936.148 dur=    0.004 slice-done.3                        
+  ts=   1037936.159 dur=    0.003 slice-done.4                        
+  ts=   1037936.171 dur=    0.000 custom-call.2                       
+  ts=   1037936.179 dur=    0.008 copy-start.81                       
+  ts=   1037936.196 dur=  147.455 fusion.181                          /home/tarading/tpu-inference/tpu_inference/layers/common/quantization/unquantized.py:53
+  ts=   1038083.658 dur=    0.245 add_rsqrt_fusion.35                 /home/tarading/vllm_env/lib/python3.12/site-packages/flax/nnx/nn/normalization.py:171
+  ts=   1038083.911 dur=    0.004 copy-done.81                        
+  ts=   1038083.922 dur=    0.005 convert_element_type.218            /home/tarading/vllm_env/lib/python3.12/site-packages/flax/nnx/nn/normalization.py:175
+  ts=   1038083.936 dur=    8.300 fusion.180                          /home/tarading/vllm_env/lib/python3.12/site-packages/flax/nnx/nn/normalization.py:183
+  ts=   1038092.244 dur=    0.003 copy-done                           
+  ts=   1038092.255 dur=    0.003 copy-done.1                         
+  ts=   1038092.265 dur=    7.804 fusion.507                          
+  ts=   1038100.078 dur=    2.418 pad_maximum_fusion                  /home/tarading/tpu-inference/tpu_inference/layers/jax/rope_interface.py:204
+  ts=   1038102.504 dur=   27.595 copy.327                            /home/tarading/tpu-inference/tpu_inference/kernels/ragged_paged_attention/v3/kernel.py:1360
+  ts=   1038130.100 dur=    0.398 broadcast.1864                      /home/tarading/tpu-inference/tpu_inference/layers/common/attention_interface.py:417
+  ts=   1038130.499 dur=    0.394 broadcast.1865                      /home/tarading/tpu-inference/tpu_inference/layers/common/attention_interface.py:417
+  ts=   1038130.893 dur=    0.450 broadcast.1866                      /home/tarading/tpu-inference/tpu_inference/layers/common/attention_interface.py:417
+  ts=   1038131.344 dur=    6.284 RPAd-p_128-bq_1_1-bkv_4096_4096.72  /home/tarading/tpu-inference/tpu_inference/kernels/ragged_paged_attention/v3/kernel.py:2069
+  ts=   1038137.637 dur=  320.679 RPAm-p_128-bq_256_128-bkv_1024_512.72 /home/tarading/tpu-inference/tpu_inference/kernels/ragged_paged_attention/v3/kernel.py:2069
+  ts=   1038458.316 dur=    0.002 copy-start.3                        
+  ts=   1038458.318 dur=    0.001 copy-start.6                        
+  ts=   1038458.321 dur=    0.001 copy-start.152                      
+  ts=   1038458.329 dur=   22.501 copy.331                            /home/tarading/tpu-inference/tpu_inference/kernels/ragged_paged_attention/v3/kernel.py:1387
+  ts=   1038480.839 dur=    0.003 copy-done.3                         
+  ts=   1038480.851 dur=    0.003 copy-done.6                         
+  ts=   1038480.862 dur=    9.605 copy-done.152                       
+  ts=   1038490.467 dur=    0.002 copy-start.8                        
+  ts=   1038490.469 dur=   50.641 fusion.255                          /home/tarading/tpu-inference/tpu_inference/layers/common/quantization/unquantized.py:53
+  ts=   1038541.118 dur=    0.013 add_rsqrt_fusion.143                /home/tarading/vllm_env/lib/python3.12/site-packages/flax/nnx/nn/normalization.py:171
+  ts=   1038541.133 dur=    0.003 copy-done.8                         
+  ts=   1038541.143 dur=    0.006 convert_element_type.221            /home/tarading/vllm_env/lib/python3.12/site-packages/flax/nnx/nn/normalization.py:175
+  ts=   1038541.157 dur=  139.944 fusion.936                          /home/tarading/tpu-inference/tpu_inference/layers/common/quantization/unquantized.py:53
+  ts=   1038681.108 dur=  140.920 fusion.934                          /home/tarading/tpu-inference/tpu_inference/layers/common/quantization/unquantized.py:53

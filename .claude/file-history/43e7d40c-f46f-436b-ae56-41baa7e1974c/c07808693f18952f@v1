@@ -1,0 +1,155 @@
+<!DOCTYPE html>
+<html><head>
+<meta charset="UTF-8">
+<title>RPAm Kernel Timeline</title>
+<style>
+*{box-sizing:border-box;margin:0;padding:0}
+body{font:11px/1.5 'Consolas','Courier New',monospace;background:#0d1117;color:#c9d1d9;padding:16px}
+h1{color:#58a6ff;font-size:14px;margin-bottom:2px}
+.sub{color:#8b949e;font-size:10px;margin-bottom:14px}
+h2{color:#7ee787;font-size:11px;margin:0 0 5px;font-weight:bold}
+.card{background:#161b22;border:1px solid #30363d;border-radius:6px;padding:10px;margin-bottom:14px}
+.zoom-row{display:flex;gap:12px;margin-bottom:14px;flex-wrap:wrap}
+.zoom-card{flex:0 0 340px;background:#161b22;border:1px solid #30363d;border-radius:6px;padding:10px}
+.scroll{overflow-x:auto;overflow-y:hidden}
+.scroll::-webkit-scrollbar{height:6px}
+.scroll::-webkit-scrollbar-track{background:#21262d;border-radius:3px}
+.scroll::-webkit-scrollbar-thumb{background:#444c56;border-radius:3px}
+canvas{display:block}
+.note{color:#6e7681;font-size:9px;margin-top:4px}
+.warn{color:#e3b341;font-size:9px;margin-top:4px}
+.legend{display:flex;flex-wrap:wrap;gap:4px 14px;margin-top:10px;font-size:9px}
+.li{display:flex;align-items:center;gap:3px}
+.lb{width:10px;height:10px;border-radius:2px;flex-shrink:0}
+</style>
+</head><body>
+<h1>RPAm Kernel — DMA / MXU / VPU Timeline</h1>
+<div class="sub">Qwen3-4B · 2048 tokens · bq_sz=256 · bkv_sz=1024 · v6e-1 · causal mask ·
+  MXU <b>A</b>=QK+PV matmuls · VPU <b>AV</b>=softmax+acc (both active during flash attention) ·
+  Constants from op_bench.py</div>
+
+<div class="zoom-row">
+  <div class="zoom-card"><h2>BASELINE — 0–80µs zoom</h2><canvas id="z0" height="115"></canvas></div>
+  <div class="zoom-card"><h2>FUSED — 0–80µs zoom</h2><canvas id="z1" height="115"></canvas></div>
+  <div class="zoom-card"><h2>XLA external — 0–160µs zoom</h2><canvas id="z2" height="115"></canvas></div>
+</div>
+
+<div class="card">
+  <h2>BASELINE (no projection) — model 253µs ≈ 253µs measured ✓</h2>
+  <div class="scroll"><canvas id="c0" height="115"></canvas></div>
+  <div class="note">T_A_loop=11.73µs · T_on=2.3µs · VPU track: green=Q_norm, teal=softmax+acc, yellow=out_norm</div>
+</div>
+
+<div class="card">
+  <h2>FUSED (has_qproj + has_kvproj) — model 499µs vs 545µs measured</h2>
+  <div class="scroll"><canvas id="c1" height="115"></canvas></div>
+  <div class="warn">△46µs gap = DMA wait for x_bkv (5.8µs×2) + pipeline stalls not modelled</div>
+  <div class="note">T_Q=24.9µs · T_KV=22.9µs · VPU always occupied: Q_norm → softmax+acc interleaved → out_norm</div>
+</div>
+
+<div class="card">
+  <h2>XLA EXTERNAL PROJECTIONS (before Pallas kernel, baseline path) — 160µs critical path</h2>
+  <div class="scroll"><canvas id="c2" height="115"></canvas></div>
+  <div class="note">x loaded once from HBM for Q, reused from VMEM for K and V · ~205µs/layer effective with cross-layer overlap</div>
+</div>
+
+<div class="legend" id="leg"></div>
+
+<script>
+const C={"Q": "#4e8ef0", "q": "#99c2ff", "K": "#e0723a", "k": "#f5b480", "A": "#2ebd7e", "a": "#82e8b4", "AV": "#0d9488", "av": "#5eead4", "N": "#a855f7", "n": "#d9a8ff", "O": "#f59e0b", "o": "#fde68a", "r": "#94a3b8", "DQ": "#3b82f6", "DKV": "#ef4444", "DKC": "#f97316", "DKW": "#dc2626", "DXQ": "#60a5fa", "DXK": "#f87171", "XQ": "#4e8ef0", "XK": "#e0723a", "XV": "#16a34a", "XQP": "#a855f7", "XKP": "#d97706", "XDMA": "#0891b2", "XDMV": "#059669", "XWQP": "#6b7280"};
+const L={"Q": "Q proj", "q": "Q proj", "K": "KV proj", "k": "KV proj", "A": "Attn QK+PV (MXU)", "a": "Attn QK+PV (MXU)", "AV": "Attn softmax+acc (VPU)", "av": "Attn softmax+acc (VPU)", "N": "Q norm+rope", "n": "Q/K norm+rope", "O": "out norm", "o": "out norm", "r": "rope_ts", "DQ": "q_hbm", "DKV": "kv_hbm", "DKC": "KVcache rd", "DKW": "KVcache wr", "DXQ": "x_bq", "DXK": "x_bkv", "XQ": "Q matmul", "XK": "K matmul", "XV": "V matmul", "XQP": "Q norm+rope", "XKP": "K norm+rope", "XDMA": "x+W_k DMA", "XDMV": "W_v DMA", "XWQP": "W_q (prev layer)"};
+const US_PER_PX=1.5;
+const SCALE=499.5;
+const DATA=[
+  {ops:[[0, 2.33, "DMA", "q_reads", "DQ", "q_hbm[bq=0]"], [0, 4.66, "DMA", "kv_reads", "DKV", "kv_hbm[bkv=0]"], [0, 2, "VPU", "vpu", "r", "rope_ts"], [0.0, 2.33, "DMA", "q_reads", "DQ", "q_hbm[1]"], [0.0, 4.66, "DMA", "kv_reads", "DKV", "kv_hbm[bq1,bkv0]"], [0.0, 11.73, "MXU", "mxu", "A", "Attn[0,0] QK+PV 256tk"], [0.0, 11.73, "VPU", "vpu", "AV", "Attn[0,0] softmax+acc 256tk"], [11.73, 14.03, "VPU", "vpu", "O", "out[0]"], [14.03, 16.36, "DMA", "q_reads", "DQ", "q_hbm[2]"], [14.03, 18.69, "DMA", "kv_reads", "DKV", "kv_hbm[bq2,bkv0]"], [14.03, 25.76, "MXU", "mxu", "a", "Attn[1,0] QK+PV 512tk"], [14.03, 25.76, "VPU", "vpu", "av", "Attn[1,0] softmax+acc 512tk"], [25.76, 28.06, "VPU", "vpu", "o", "out[1]"], [28.06, 30.39, "DMA", "q_reads", "DQ", "q_hbm[3]"], [28.06, 32.72, "DMA", "kv_reads", "DKV", "kv_hbm[bq3,bkv0]"], [28.06, 51.52, "MXU", "mxu", "a", "Attn[2,0] QK+PV 768tk"], [28.06, 51.52, "VPU", "vpu", "av", "Attn[2,0] softmax+acc 768tk"], [51.52, 53.82, "VPU", "vpu", "o", "out[2]"], [53.82, 56.15, "DMA", "q_reads", "DQ", "q_hbm[4]"], [53.82, 58.48, "DMA", "kv_reads", "DKV", "kv_hbm[bq4,bkv0]"], [53.82, 77.28, "MXU", "mxu", "a", "Attn[3,0] QK+PV 1024tk"], [53.82, 77.28, "VPU", "vpu", "av", "Attn[3,0] softmax+acc 1024tk"], [77.28, 79.58, "VPU", "vpu", "o", "out[3]"], [79.58, 81.91, "DMA", "q_reads", "DQ", "q_hbm[5]"], [79.58, 84.24, "DMA", "kv_reads", "DKV", "kv_hbm[bq4,bkv1]"], [79.58, 103.04, "MXU", "mxu", "a", "Attn[4,0] QK+PV 1024tk"], [79.58, 103.04, "VPU", "vpu", "av", "Attn[4,0] softmax+acc 1024tk"], [103.04, 107.7, "DMA", "kv_reads", "DKV", "kv_hbm[bq5,bkv0]"], [103.04, 114.77, "MXU", "mxu", "a", "Attn[4,1] QK+PV 256tk"], [103.04, 114.77, "VPU", "vpu", "av", "Attn[4,1] softmax+acc 256tk"], [114.77, 117.07, "VPU", "vpu", "o", "out[4]"], [117.07, 119.4, "DMA", "q_reads", "DQ", "q_hbm[6]"], [117.07, 121.73, "DMA", "kv_reads", "DKV", "kv_hbm[bq5,bkv1]"], [117.07, 140.53, "MXU", "mxu", "a", "Attn[5,0] QK+PV 1024tk"], [117.07, 140.53, "VPU", "vpu", "av", "Attn[5,0] softmax+acc 1024tk"], [140.53, 145.19, "DMA", "kv_reads", "DKV", "kv_hbm[bq6,bkv0]"], [140.53, 152.26, "MXU", "mxu", "a", "Attn[5,1] QK+PV 512tk"], [140.53, 152.26, "VPU", "vpu", "av", "Attn[5,1] softmax+acc 512tk"], [152.26, 154.56, "VPU", "vpu", "o", "out[5]"], [154.56, 156.89, "DMA", "q_reads", "DQ", "q_hbm[7]"], [154.56, 159.22, "DMA", "kv_reads", "DKV", "kv_hbm[bq6,bkv1]"], [154.56, 178.02, "MXU", "mxu", "a", "Attn[6,0] QK+PV 1024tk"], [154.56, 178.02, "VPU", "vpu", "av", "Attn[6,0] softmax+acc 1024tk"], [178.02, 182.68, "DMA", "kv_reads", "DKV", "kv_hbm[bq7,bkv0]"], [178.02, 201.48, "MXU", "mxu", "a", "Attn[6,1] QK+PV 768tk"], [178.02, 201.48, "VPU", "vpu", "av", "Attn[6,1] softmax+acc 768tk"], [201.48, 203.78, "VPU", "vpu", "o", "out[6]"], [203.78, 208.44, "DMA", "kv_reads", "DKV", "kv_hbm[bq7,bkv1]"], [203.78, 227.24, "MXU", "mxu", "a", "Attn[7,0] QK+PV 1024tk"], [203.78, 227.24, "VPU", "vpu", "av", "Attn[7,0] softmax+acc 1024tk"], [227.24, 250.7, "MXU", "mxu", "a", "Attn[7,1] QK+PV 1024tk"], [227.24, 250.7, "VPU", "vpu", "av", "Attn[7,1] softmax+acc 1024tk"], [250.7, 255.36, "DMA", "kv_writes", "DKW", "KVcache_wr[0]"], [250.7, 255.36, "DMA", "kv_writes", "DKW", "KVcache_wr[1]"], [250.7, 253.0, "VPU", "vpu", "o", "out[7]"]],tot:253.0,scale:SCALE},
+  {ops:[[0, 1.456, "DMA", "q_reads", "DXQ", "x_bq[0]"], [0, 5.825, "DMA", "kv_reads", "DXK", "x_bkv[0]"], [0, 2, "VPU", "vpu", "r", "rope_ts"], [1.456, 26.356, "MXU", "mxu", "Q", "Q_mat[0]"], [1.456, 26.356, "VPU", "vpu", "N", "Q_norm[0]"], [26.356, 27.813, "DMA", "q_reads", "DXQ", "x_bq[1]"], [26.356, 49.256, "MXU", "mxu", "K", "KV[0]"], [26.356, 49.256, "VPU", "vpu", "n", "K_norm[0]"], [49.256, 53.917, "DMA", "kv_writes", "DKW", "KVcache_wr[0]"], [49.256, 60.986, "MXU", "mxu", "A", "Attn[0,0] QK+PV 256tk"], [49.256, 60.986, "VPU", "vpu", "AV", "Attn[0,0] softmax+acc 256tk"], [60.986, 63.286, "VPU", "vpu", "O", "out[0]"], [63.286, 88.186, "MXU", "mxu", "q", "Q_mat[1]"], [63.286, 88.186, "VPU", "vpu", "n", "Q_norm[1]"], [88.186, 89.643, "DMA", "q_reads", "DXQ", "x_bq[2]"], [88.186, 92.847, "DMA", "kv_reads", "DKC", "KVcache_rd[1,0]"], [88.186, 99.916, "MXU", "mxu", "a", "Attn[1,0] QK+PV 512tk"], [88.186, 99.916, "VPU", "vpu", "av", "Attn[1,0] softmax+acc 512tk"], [99.916, 102.216, "VPU", "vpu", "o", "out[1]"], [102.216, 127.116, "MXU", "mxu", "q", "Q_mat[2]"], [102.216, 127.116, "VPU", "vpu", "n", "Q_norm[2]"], [127.116, 128.573, "DMA", "q_reads", "DXQ", "x_bq[3]"], [127.116, 131.777, "DMA", "kv_reads", "DKC", "KVcache_rd[2,0]"], [127.116, 150.576, "MXU", "mxu", "a", "Attn[2,0] QK+PV 768tk"], [127.116, 150.576, "VPU", "vpu", "av", "Attn[2,0] softmax+acc 768tk"], [150.576, 152.876, "VPU", "vpu", "o", "out[2]"], [152.876, 177.776, "MXU", "mxu", "q", "Q_mat[3]"], [152.876, 177.776, "VPU", "vpu", "n", "Q_norm[3]"], [177.776, 179.233, "DMA", "q_reads", "DXQ", "x_bq[4]"], [177.776, 182.437, "DMA", "kv_reads", "DKC", "KVcache_rd[3,0]"], [177.776, 201.236, "MXU", "mxu", "a", "Attn[3,0] QK+PV 1024tk"], [177.776, 201.236, "VPU", "vpu", "av", "Attn[3,0] softmax+acc 1024tk"], [201.236, 203.536, "VPU", "vpu", "o", "out[3]"], [203.536, 228.436, "MXU", "mxu", "q", "Q_mat[4]"], [203.536, 228.436, "VPU", "vpu", "n", "Q_norm[4]"], [228.436, 229.893, "DMA", "q_reads", "DXQ", "x_bq[5]"], [228.436, 233.097, "DMA", "kv_reads", "DKC", "KVcache_rd[4,0]"], [228.436, 251.896, "MXU", "mxu", "a", "Attn[4,0] QK+PV 1024tk"], [228.436, 251.896, "VPU", "vpu", "av", "Attn[4,0] softmax+acc 1024tk"], [251.896, 274.796, "MXU", "mxu", "k", "KV[1]"], [251.896, 274.796, "VPU", "vpu", "n", "K_norm[1]"], [274.796, 279.457, "DMA", "kv_writes", "DKW", "KVcache_wr[1]"], [274.796, 286.526, "MXU", "mxu", "a", "Attn[4,1] QK+PV 256tk"], [274.796, 286.526, "VPU", "vpu", "av", "Attn[4,1] softmax+acc 256tk"], [286.526, 288.826, "VPU", "vpu", "o", "out[4]"], [288.826, 313.726, "MXU", "mxu", "q", "Q_mat[5]"], [288.826, 313.726, "VPU", "vpu", "n", "Q_norm[5]"], [313.726, 315.183, "DMA", "q_reads", "DXQ", "x_bq[6]"], [313.726, 318.387, "DMA", "kv_reads", "DKC", "KVcache_rd[5,0]"], [313.726, 337.186, "MXU", "mxu", "a", "Attn[5,0] QK+PV 1024tk"], [313.726, 337.186, "VPU", "vpu", "av", "Attn[5,0] softmax+acc 1024tk"], [337.186, 341.847, "DMA", "kv_reads", "DKC", "KVcache_rd[5,1]"], [337.186, 348.916, "MXU", "mxu", "a", "Attn[5,1] QK+PV 512tk"], [337.186, 348.916, "VPU", "vpu", "av", "Attn[5,1] softmax+acc 512tk"], [348.916, 351.216, "VPU", "vpu", "o", "out[5]"], [351.216, 376.116, "MXU", "mxu", "q", "Q_mat[6]"], [351.216, 376.116, "VPU", "vpu", "n", "Q_norm[6]"], [376.116, 377.573, "DMA", "q_reads", "DXQ", "x_bq[7]"], [376.116, 380.777, "DMA", "kv_reads", "DKC", "KVcache_rd[6,0]"], [376.116, 399.576, "MXU", "mxu", "a", "Attn[6,0] QK+PV 1024tk"], [376.116, 399.576, "VPU", "vpu", "av", "Attn[6,0] softmax+acc 1024tk"], [399.576, 404.237, "DMA", "kv_reads", "DKC", "KVcache_rd[6,1]"], [399.576, 423.036, "MXU", "mxu", "a", "Attn[6,1] QK+PV 768tk"], [399.576, 423.036, "VPU", "vpu", "av", "Attn[6,1] softmax+acc 768tk"], [423.036, 425.336, "VPU", "vpu", "o", "out[6]"], [425.336, 450.236, "MXU", "mxu", "q", "Q_mat[7]"], [425.336, 450.236, "VPU", "vpu", "n", "Q_norm[7]"], [450.236, 454.897, "DMA", "kv_reads", "DKC", "KVcache_rd[7,0]"], [450.236, 473.696, "MXU", "mxu", "a", "Attn[7,0] QK+PV 1024tk"], [450.236, 473.696, "VPU", "vpu", "av", "Attn[7,0] softmax+acc 1024tk"], [473.696, 478.357, "DMA", "kv_reads", "DKC", "KVcache_rd[7,1]"], [473.696, 497.156, "MXU", "mxu", "a", "Attn[7,1] QK+PV 1024tk"], [473.696, 497.156, "VPU", "vpu", "av", "Attn[7,1] softmax+acc 1024tk"], [497.156, 499.456, "VPU", "vpu", "o", "out[7]"]],tot:499.46,scale:SCALE},
+  {ops:[[0, 5, "DMA", "free", "XWQP", "W_q from prev layer (free)"], [0, 30.0, "MXU", "mxu", "XQ", "Q matmul x@W_q"], [30.0, 45.0, "DMA", "dma_read", "XDMA", "x+W_k \u2192 VMEM"], [30.0, 125.0, "VPU", "vpu", "XQP", "Q norm+rope"], [125.0, 132.0, "MXU", "mxu", "XK", "K matmul x@W_k"], [132.0, 138.0, "DMA", "dma_read", "XDMV", "W_v \u2192 VMEM"], [132.0, 146.0, "VPU", "vpu", "XKP", "K norm+rope"], [146.0, 160.0, "MXU", "mxu", "XV", "V matmul x@W_v"]],tot:160.0,scale:160.0},
+];
+const DMA_SUBS={'q_reads':0,'kv_reads':1,'kv_writes':2,'dma_read':0,'free':2};
+const DS=16,DR=3,MH=30,VH=22,PAD_L=62,PAD_R=20,AH=20,MB=2;
+
+function getW(scale){return Math.round(scale*US_PER_PX)+PAD_L+PAD_R;}
+
+function draw(id,ops,tot,scale,zoom){
+  const cv=document.getElementById(id);if(!cv)return;
+  const END=zoom||scale;
+  const W=zoom?Math.min(cv.parentElement.clientWidth-20,360):getW(scale);
+  cv.width=W;cv.style.width=W+'px';
+  const PW=W-PAD_L-PAD_R,H=cv.height;
+  const ctx=cv.getContext('2d');
+  const px=t=>PAD_L+Math.max(0,Math.min(1,t/END))*PW;
+
+  ctx.fillStyle='#0d1117';ctx.fillRect(0,0,W,H);
+  for(let s=0;s<DR;s++){ctx.fillStyle=s%2?'#111827':'#0d1117';ctx.fillRect(0,AH+s*DS,W,DS);}
+  ctx.fillStyle='#0f172a';ctx.fillRect(0,AH+DR*DS,W,MH);
+  ctx.fillStyle='#0d1117';ctx.fillRect(0,AH+DR*DS+MH,W,VH);
+
+  [['q/dma',DS/2],['kv rds',DS*1.5],['writes',DS*2.5],['MXU',DR*DS+MH/2],['VPU',DR*DS+MH+VH/2]]
+    .forEach(([l,dy])=>{
+      ctx.fillStyle='#6e7681';ctx.font='bold 8px Consolas,monospace';
+      ctx.textAlign='right';ctx.textBaseline='middle';
+      ctx.fillText(l,PAD_L-4,AH+dy);
+    });
+
+  const ts=zoom?(END<=80?10:20):(scale<=300?50:100);
+  for(let t=0;t<=END+1;t+=ts){
+    const x=px(t);
+    ctx.strokeStyle='#21262d';ctx.lineWidth=1;
+    ctx.beginPath();ctx.moveTo(x,AH);ctx.lineTo(x,H);ctx.stroke();
+    ctx.fillStyle='#6e7681';ctx.font='8px Consolas,monospace';
+    ctx.textAlign='center';ctx.textBaseline='bottom';
+    ctx.fillText(Math.round(t)+'µs',x,AH-2);
+  }
+  if(!zoom){
+    const xE=px(tot);
+    ctx.strokeStyle='#58a6ff';ctx.lineWidth=1.5;ctx.setLineDash([3,3]);
+    ctx.beginPath();ctx.moveTo(xE,AH);ctx.lineTo(xE,H);ctx.stroke();
+    ctx.setLineDash([]);
+    ctx.fillStyle='#58a6ff';ctx.font='8px Consolas,monospace';
+    ctx.textAlign='left';ctx.textBaseline='bottom';
+    ctx.fillText(Math.round(tot)+'µs',xE+2,AH-2);
+  }
+  ctx.strokeStyle='#30363d';ctx.lineWidth=1;
+  ctx.beginPath();ctx.moveTo(PAD_L,AH);ctx.lineTo(W-PAD_R,AH);ctx.stroke();
+
+  ops.forEach(([t0,t1,track,sub,key])=>{
+    if(t0>=END)return;
+    const bw=Math.max(MB,px(Math.min(t1,END))-px(t0)),x0=px(t0);
+    let y,bh;
+    if(track==='DMA'){const si=DMA_SUBS[sub]??0;y=AH+si*DS+2;bh=DS-4;}
+    else if(track==='MXU'){y=AH+DR*DS+2;bh=MH-4;}
+    else{y=AH+DR*DS+MH+2;bh=VH-4;}
+    const col=C[key]||'#555',r=Math.min(2,bw/2,bh/2);
+    ctx.fillStyle=col;
+    ctx.beginPath();
+    ctx.moveTo(x0+r,y);ctx.lineTo(x0+bw-r,y);ctx.quadraticCurveTo(x0+bw,y,x0+bw,y+r);
+    ctx.lineTo(x0+bw,y+bh-r);ctx.quadraticCurveTo(x0+bw,y+bh,x0+bw-r,y+bh);
+    ctx.lineTo(x0+r,y+bh);ctx.quadraticCurveTo(x0,y+bh,x0,y+bh-r);
+    ctx.lineTo(x0,y+r);ctx.quadraticCurveTo(x0,y,x0+r,y);
+    ctx.closePath();ctx.fill();
+    ctx.strokeStyle='rgba(0,0,0,0.25)';ctx.lineWidth=0.5;ctx.stroke();
+    if(bw>28){
+      ctx.fillStyle='rgba(0,0,0,0.8)';
+      ctx.font=`${Math.min(8,bw/5)}px Consolas,monospace`;
+      ctx.textAlign='center';ctx.textBaseline='middle';
+      ctx.fillText((L[key]||key).substring(0,Math.floor(bw/5)),x0+bw/2,y+bh/2);
+    }
+  });
+}
+
+function init(){
+  draw('c0',DATA[0].ops,DATA[0].tot,DATA[0].scale,0);
+  draw('c1',DATA[1].ops,DATA[1].tot,DATA[1].scale,0);
+  draw('c2',DATA[2].ops,DATA[2].tot,DATA[2].scale,0);
+  draw('z0',DATA[0].ops,DATA[0].tot,DATA[0].scale,80);
+  draw('z1',DATA[1].ops,DATA[1].tot,DATA[1].scale,80);
+  draw('z2',DATA[2].ops,DATA[2].tot,DATA[2].scale,160.0);
+  const seen={},leg=document.getElementById('leg');
+  DATA.forEach(d=>d.ops.forEach(([,,,,key])=>{
+    if(seen[key])return;seen[key]=true;
+    leg.innerHTML+=`<div class="li"><div class="lb" style="background:${C[key]||'#555'}"></div><span>${L[key]||key}</span></div>`;
+  }));
+}
+window.addEventListener('load',init);
+</script>
+</body></html>

@@ -1,0 +1,1368 @@
+        raise RuntimeError(f"re-tracing function {jit_info.fun_sourceinfo} for "
+                           "`jit`, but 'no_tracing' is set")
+>     p, args_flat = _infer_params(fun, jit_info, args, kwargs)
+                     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+../vllm_env/lib/python3.12/site-packages/jax/_src/pjit.py:250: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+fun = <function ragged_paged_attention at 0x77c9b2fbd8a0>
+ji = PjitInfo(fun_sourceinfo='ragged_paged_attention at /home/tarading/tpu-inference/tpu_inference/kernels/ragged_paged_att...v_cache'), device=None, backend=None, keep_unused=False, inline=False, use_resource_env=False, compiler_options_kvs=())
+args = (Array([[[0, 0, 0, ..., 0, 0, 0],
+        [0, 0, 0, ..., 0, 0, 0],
+        [0, 0, 0, ..., 0, 0, 0],
+        ...,
+     ...  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,
+        0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0], dtype=int32), ...)
+kwargs = {'has_kvproj': True, 'has_qproj': True, 'kn_scale': Array([0.423828, 0.96875, 0.398438, 0.484375, 0.648438, 0.726562, ...5, 0.507812,
+       0.333984, 0.578125, 0.0512695, 0.53125], dtype=bfloat16), 'm_block_sizes': (64, 256, 32, 128), ...}
+
+    def _infer_params(
+        fun: Callable, ji: PjitInfo, args: tuple[Any, ...], kwargs: dict[str, Any]
+      ) -> tuple[PjitParams, list[core.Value]]:
+      ctx_mesh = get_ctx_mesh(ji.use_resource_env)
+      dbg_fn = lambda: debug_info(
+          'jit', fun, args, kwargs, static_argnums=ji.static_argnums,
+          static_argnames=ji.static_argnames, sourceinfo=ji.fun_sourceinfo,
+          signature=ji.fun_signature)
+      arg_signature, dynargs = jax_jit.parse_arguments(
+          args, tuple(kwargs.values()), tuple(kwargs.keys()), ji.static_argnums,
+          ji.static_argnames, tree_util.tracing_registry)
+      avals = _infer_input_type(fun, dbg_fn, dynargs)
+      entry = _infer_params_cached(fun, ji, arg_signature, avals, ctx_mesh)
+    
+      if entry.pjit_params is not None:
+        return entry.pjit_params, entry.pjit_params.consts + dynargs
+    
+>     p = _trace_for_jit(fun, ji, ctx_mesh, dbg_fn(), avals, args, kwargs)
+          ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+../vllm_env/lib/python3.12/site-packages/jax/_src/pjit.py:620: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+--
+        raise ValueError(
+            "pjit does not support kwargs when in_shardings is specified.")
+    
+      if not ctx_mesh.empty and (ji.backend or ji.device):
+        raise ValueError(
+            "Mesh context manager should not be used with jit when backend or "
+            "device is also specified as an argument to jit.")
+    
+      if (ji.donate_argnums or ji.donate_argnames) and not config.debug_nans.value:
+        donated_invars = donation_vector(ji.donate_argnums, ji.donate_argnames,
+                                         avals_ft.tree)
+      else:
+        donated_invars = (False,) * len(avals_ft)
+    
+      # If backend or device is set as an arg on jit, then resolve them to
+      # in_shardings and out_shardings as if user passed in in_shardings
+      # and out_shardings.
+      device_or_backend_set = bool(ji.backend or ji.device)
+      if device_or_backend_set:
+        sharding = _create_sharding_with_device_backend(ji.device, ji.backend)
+        leaves, treedef = tree_flatten(sharding)
+        in_shardings_leaves = out_shardings_leaves = tuple(leaves)
+        in_shardings_treedef = out_shardings_treedef = treedef
+      else:
+        api_name = 'pjit' if ji.use_resource_env else 'jit'
+        in_shardings_leaves = tuple(
+            _create_sharding_for_array(ctx_mesh, x, 'in_shardings', api_name)
+            for x in ji.in_shardings_leaves)
+        out_shardings_leaves = tuple(
+            _create_sharding_for_array(ctx_mesh, x, 'out_shardings', api_name)
+            for x in ji.out_shardings_leaves)
+        in_shardings_treedef = ji.in_shardings_treedef
+        out_shardings_treedef = ji.out_shardings_treedef
+    
+      assert None not in in_shardings_leaves
+      assert None not in out_shardings_leaves
+    
+      in_type = avals_ft.map2(
+        lambda a, x: core.AvalQDD(a, cur_qdd(x)) if a.has_qdd else a,
+        args_ft)
+      assert avals_ft is not None
+    
+      in_shardings_flat, in_layouts_flat = _process_in_axis_resources(
+          in_shardings_treedef, in_shardings_leaves,
+          ji.in_layouts_treedef, ji.in_layouts_leaves,
+          avals_ft, dbg, device_or_backend_set, has_kwargs)
+    
+      qdd_token = _qdd_cache_index(fun, in_type.vals)  # represents qdd state context
+    
+      elapsed_time_ctx = (
+          dispatch.log_elapsed_time(
+              "Finished tracing {fun_name} for jit in {elapsed_time:.9f} sec",
+              fun_name(fun), event=dispatch.JAXPR_TRACE_EVENT)
+          if core.trace_state_clean() else contextlib.nullcontext())
+      with elapsed_time_ctx:
+        if ji.use_resource_env:  # pjit
+          with (_internal_use_concrete_mesh(ctx_mesh),
+                mesh_lib.use_abstract_mesh(ctx_mesh.abstract_mesh)):
+            jaxpr, out_avals = pe.trace_to_jaxpr(fun, in_type, dbg, qdd_token)
+        else:
+>         jaxpr, out_avals = pe.trace_to_jaxpr(fun, in_type, dbg, qdd_token)
+                             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+../vllm_env/lib/python3.12/site-packages/jax/_src/pjit.py:522: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+fun = <function ragged_paged_attention at 0x77c9b2fbd8a0>
+in_avals = <jax._src.tree_util.FlatTree object at 0x77c9a6d50f50>
+debug_info = DebugInfo(traced_for='jit', func_src_info='ragged_paged_attention at /home/tarading/tpu-inference/tpu_inference/kernel...'qn_scale', 'w_k', 'w_q', 'w_v', 'x'), result_paths=<jax._src.linear_util.InitialResultPaths object at 0x77c9bb5a90a0>)
+fun_returns_flat_tree = False, requires_low = False, parent_trace = EvalTrace
+
+    @weakref_lru_cache(maxsize=None, explain=explain)
+    def trace_to_jaxpr(
+        fun: Callable,
+        in_avals: FlatTree,  # (args, kwargs) pair
+        debug_info: core.DebugInfo,
+        *context_for_cache_key,
+        fun_returns_flat_tree=False,
+        requires_low=False,
+    ) -> tuple[ClosedJaxpr, FlatTree]:
+      if config.no_tracing.value:
+        raise RuntimeError(f"re-tracing function {fun} for "
+                           "`jit`, but 'no_tracing' is set")
+      del context_for_cache_key  # read implicitly, e.g. qdd state
+      test_event("trace_to_jaxpr")
+      config.enable_checks.value and debug_info.assert_arg_names(len(in_avals))
+      parent_trace = core.trace_ctx.trace
+      trace = DynamicJaxprTrace(debug_info, parent_trace=parent_trace,
+                                lower=requires_low)
+      # Name stack and the traceback scope are reset because the metadata on jaxpr
+      # equations should be rooted at the enclosing jaxpr and not contain any
+      # context from the callsite. Otherwise metadata from one caller would bleed
+      # into metadata from a different caller if we, e.g., inline.
+      with (core.ensure_no_leaks(trace), source_info_util.reset_name_stack(),
+            TracebackScope()):
+        source_info = source_info_util.current()
+        if requires_low:
+          def new_arg(aval):
+            lo_tracers = [trace.new_arg(lo_aval, source_info=source_info) for lo_aval in aval.lo_ty()]  # noqa: F821
+            return aval.raise_val(*lo_tracers)
+          in_tracers = in_avals.map(new_arg)
+          debug_info = _lower_debug_info(debug_info, in_avals=in_avals)
+        else:
+          in_tracers = in_avals.map(partial(trace.new_arg, source_info=source_info))
+    
+        with core.set_current_trace(trace):
+          args, kwargs = in_tracers.unflatten()
+>         ans_pytree = fun(*args, **kwargs)
+                       ^^^^^^^^^^^^^^^^^^^^
+
+../vllm_env/lib/python3.12/site-packages/jax/_src/interpreters/partial_eval.py:2338: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+queries = JitTracer(bfloat16[512,32,128]), keys = JitTracer(bfloat16[512,8,128])
+values = JitTracer(bfloat16[512,8,128])
+kv_cache = JitTracer(bfloat16[200,16,8,2,128]), kv_lens = JitTracer(int32[8])
+page_indices = JitTracer(int32[96]), cu_q_lens = JitTracer(int32[9])
+distribution = JitTracer(int32[3])
+
+    @jax.jit(
+        static_argnames=(
+            "use_causal_mask",
+            "update_kv_cache",
+            "skip_kv_mask",
+            "sm_scale",
+            "sliding_window",
+--
+        assert num_page_indices % max_num_seqs == 0
+        pages_per_seq = num_page_indices // max_num_seqs
+        num_q_heads_per_kv_head = num_q_heads_per_kv_head_per_q_packing * q_packing
+    
+        # rope_timescale (computed once inside the kernel) is padded to a
+        # multiple of 128 for Mosaic VMEM tiling alignment.
+        actual_rope_dim = max(actual_head_dim // 2, 1)
+        padded_rope_dim = align_to(actual_rope_dim, 128)
+    
+        # (bq_sem_idx, bkv_sem_idx, bo_sem_idx)
+        init_sem_ids = jnp.zeros((4, ), jnp.int32)
+        # (bo_sem_0_seq_idx, bo_sem_1_seq_idx, bo_sem_0_bo_idx, bo_sem_1_bo_idx)
+        init_bo_ids = jnp.full((4, ), -1, jnp.int32)
+        # (bkv_sem_0_seq_idx, bkv_sem_1_seq_idx, bkv_sem_0_offset, bkv_sem_1_offset, bkv_sem_0_sz, bkv_sem_1_sz)
+        init_bkv_update_ids = jnp.full((6, ), -1, jnp.int32)
+    
+        def run_rpa_kernel(
+            q,
+            kv_cache,
+            *,
+            bq_sz,
+            bkv_sz,
+            bq_csz,
+            bkv_csz,
+            static_q_len=None,
+            case: RpaCase = RpaCase.MIXED,
+            has_qproj: bool = False,
+            has_kvproj: bool = False,
+            x=None,
+            w_q=None,
+            qn_scale=None,
+            w_k=None,
+            kn_scale=None,
+            w_v=None,
+        ):
+            any_proj = has_qproj or has_kvproj
+            if any_proj:
+                hidden_size = x.shape[1]
+                assert hidden_size % 128 == 0, (
+                    f"has_qproj/has_kvproj requires hidden_size % 128 == 0, got {hidden_size}")
+                x_padded = jnp.pad(
+                    x, ((0, max_num_tokens - x.shape[0]), (0, 0))
+                ) if x.shape[0] < max_num_tokens else x
+                x_input = x_padded.reshape(max_num_tokens, hidden_size // 128, 128)
+            else:
+                hidden_size = 0
+                x_input = jnp.zeros((1, 1, 128), dtype=q.dtype)
+    
+            def vmem_or_dummy(arr, dummy_shape):
+                return arr if arr is not None else jnp.zeros(dummy_shape, dtype=q.dtype)
+    
+            qn_scale_input = vmem_or_dummy(qn_scale, (128,))
+            kn_scale_input = vmem_or_dummy(kn_scale, (128,))
+            # Fuse W_q, W_k, W_v into one W_qkv = [W_q | W_k | W_v] so Mosaic sees
+            # a single VMEM input and one matmul total.
+            if has_qproj and has_kvproj:
+                w_qkv_input = jnp.concatenate([w_q, w_k, w_v], axis=1)  # [D, (N+2K)*H]
+            elif has_qproj:
+                w_qkv_input = w_q                                         # [D, N*H]
+            else:
+                w_qkv_input = jnp.zeros((1, 128), dtype=q.dtype)
+    
+            in_specs = [
+                pl.BlockSpec(memory_space=pltpu.HBM),
+                pl.BlockSpec(memory_space=pltpu.HBM),
+                pl.BlockSpec(memory_space=pltpu.HBM),
+                pl.BlockSpec(memory_space=pltpu.HBM),   # x or dummy
+                pl.BlockSpec(memory_space=pltpu.VMEM),  # w_qkv or dummy
+                pl.BlockSpec(memory_space=pltpu.VMEM),  # qn_scale or dummy
+                pl.BlockSpec(memory_space=pltpu.VMEM),  # kn_scale or dummy
+            ]
+    
+            if has_kvproj:
+                assert bkv_sz % bq_sz == 0, (
+                    f"has_kvproj=True requires bkv_sz divisible by bq_sz "
+                    f"(got bkv_sz={bkv_sz}, bq_sz={bq_sz})")
+    
+            out_specs = [
+                pl.BlockSpec(memory_space=pltpu.HBM),
+                pl.BlockSpec(memory_space=pltpu.HBM),
+            ]
+    
+            bkv_stride = num_kv_heads_x2_per_kv_packing
+            if has_bank_conflicts(bkv_stride):
+                bkv_stride += 1
+    
+            bkv_double_buf = pltpu.VMEM(
+                (2, bkv_sz, bkv_stride, *kv_cache.shape[3:]),
+                kv_cache.dtype,
+            )
+    
+            bq_double_buf = pltpu.VMEM(
+                (2, actual_num_kv_heads, bq_sz, *q.shape[2:]),
+                q.dtype,
+            )
+    
+            bo_double_buf = bq_double_buf
+    
+            l_scratch = pltpu.VMEM(
+                (actual_num_kv_heads, bq_sz * num_q_heads_per_kv_head, 128),
+                out_dtype,
+            )
+            m_scratch = l_scratch
+    
+            acc_scratch = pltpu.VMEM(
+                (actual_num_kv_heads, bq_sz * num_q_heads_per_kv_head, head_dim),
+                out_dtype,
+            )
+    
+            rope_timescale_scratch = pltpu.VMEM((1, padded_rope_dim), jnp.float32)
+    
+            if any_proj:
+                x_tile_scratch = pltpu.VMEM((2, bq_sz,  hidden_size // 128, 128), q.dtype)
+            else:
+--
+            assert hidden_size % 128 == 0, (
+                f"has_qproj/has_kvproj requires hidden_size % 128 == 0, got {hidden_size}")
+            x_padded = jnp.pad(
+                x, ((0, max_num_tokens - x.shape[0]), (0, 0))
+            ) if x.shape[0] < max_num_tokens else x
+            x_input = x_padded.reshape(max_num_tokens, hidden_size // 128, 128)
+        else:
+            hidden_size = 0
+            x_input = jnp.zeros((1, 1, 128), dtype=q.dtype)
+    
+        def vmem_or_dummy(arr, dummy_shape):
+            return arr if arr is not None else jnp.zeros(dummy_shape, dtype=q.dtype)
+    
+        qn_scale_input = vmem_or_dummy(qn_scale, (128,))
+        kn_scale_input = vmem_or_dummy(kn_scale, (128,))
+        # Fuse W_q, W_k, W_v into one W_qkv = [W_q | W_k | W_v] so Mosaic sees
+        # a single VMEM input and one matmul total.
+        if has_qproj and has_kvproj:
+            w_qkv_input = jnp.concatenate([w_q, w_k, w_v], axis=1)  # [D, (N+2K)*H]
+        elif has_qproj:
+            w_qkv_input = w_q                                         # [D, N*H]
+        else:
+            w_qkv_input = jnp.zeros((1, 128), dtype=q.dtype)
+    
+        in_specs = [
+            pl.BlockSpec(memory_space=pltpu.HBM),
+            pl.BlockSpec(memory_space=pltpu.HBM),
+            pl.BlockSpec(memory_space=pltpu.HBM),
+            pl.BlockSpec(memory_space=pltpu.HBM),   # x or dummy
+            pl.BlockSpec(memory_space=pltpu.VMEM),  # w_qkv or dummy
+            pl.BlockSpec(memory_space=pltpu.VMEM),  # qn_scale or dummy
+            pl.BlockSpec(memory_space=pltpu.VMEM),  # kn_scale or dummy
+        ]
+    
+        if has_kvproj:
+            assert bkv_sz % bq_sz == 0, (
+                f"has_kvproj=True requires bkv_sz divisible by bq_sz "
+                f"(got bkv_sz={bkv_sz}, bq_sz={bq_sz})")
+    
+        out_specs = [
+            pl.BlockSpec(memory_space=pltpu.HBM),
+            pl.BlockSpec(memory_space=pltpu.HBM),
+        ]
+    
+        bkv_stride = num_kv_heads_x2_per_kv_packing
+        if has_bank_conflicts(bkv_stride):
+            bkv_stride += 1
+    
+        bkv_double_buf = pltpu.VMEM(
+            (2, bkv_sz, bkv_stride, *kv_cache.shape[3:]),
+            kv_cache.dtype,
+        )
+    
+        bq_double_buf = pltpu.VMEM(
+            (2, actual_num_kv_heads, bq_sz, *q.shape[2:]),
+            q.dtype,
+        )
+    
+        bo_double_buf = bq_double_buf
+    
+        l_scratch = pltpu.VMEM(
+            (actual_num_kv_heads, bq_sz * num_q_heads_per_kv_head, 128),
+            out_dtype,
+        )
+        m_scratch = l_scratch
+    
+        acc_scratch = pltpu.VMEM(
+            (actual_num_kv_heads, bq_sz * num_q_heads_per_kv_head, head_dim),
+            out_dtype,
+        )
+    
+        rope_timescale_scratch = pltpu.VMEM((1, padded_rope_dim), jnp.float32)
+    
+        if any_proj:
+            x_tile_scratch = pltpu.VMEM((2, bq_sz,  hidden_size // 128, 128), q.dtype)
+        else:
+--
+        raise RuntimeError(f"re-tracing function {jit_info.fun_sourceinfo} for "
+                           "`jit`, but 'no_tracing' is set")
+>     p, args_flat = _infer_params(fun, jit_info, args, kwargs)
+                     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+../vllm_env/lib/python3.12/site-packages/jax/_src/pjit.py:250: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+fun = <function _pallas_call.<locals>.wrapped at 0x77c9a80a13a0>
+ji = PjitInfo(fun_sourceinfo='wrapped at /home/tarading/vllm_env/lib/python3.12/site-packages/jax/_src/pallas/pallas_call.p...rgnames=(), device=None, backend=None, keep_unused=False, inline=True, use_resource_env=False, compiler_options_kvs=())
+args = (JitTracer(int32[8]), JitTracer(int32[96]), JitTracer(int32[9]), JitTracer(int32[3]), JitTracer(int32[4]), JitTracer(int32[4]), ...)
+kwargs = {}
+
+    def _infer_params(
+        fun: Callable, ji: PjitInfo, args: tuple[Any, ...], kwargs: dict[str, Any]
+      ) -> tuple[PjitParams, list[core.Value]]:
+      ctx_mesh = get_ctx_mesh(ji.use_resource_env)
+      dbg_fn = lambda: debug_info(
+          'jit', fun, args, kwargs, static_argnums=ji.static_argnums,
+          static_argnames=ji.static_argnames, sourceinfo=ji.fun_sourceinfo,
+          signature=ji.fun_signature)
+      arg_signature, dynargs = jax_jit.parse_arguments(
+          args, tuple(kwargs.values()), tuple(kwargs.keys()), ji.static_argnums,
+          ji.static_argnames, tree_util.tracing_registry)
+      avals = _infer_input_type(fun, dbg_fn, dynargs)
+      entry = _infer_params_cached(fun, ji, arg_signature, avals, ctx_mesh)
+    
+      if entry.pjit_params is not None:
+        return entry.pjit_params, entry.pjit_params.consts + dynargs
+    
+>     p = _trace_for_jit(fun, ji, ctx_mesh, dbg_fn(), avals, args, kwargs)
+          ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+../vllm_env/lib/python3.12/site-packages/jax/_src/pjit.py:620: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+fun = <function _pallas_call.<locals>.wrapped at 0x77c9a80a13a0>
+ji = PjitInfo(fun_sourceinfo='wrapped at /home/tarading/vllm_env/lib/python3.12/site-packages/jax/_src/pallas/pallas_call.p...rgnames=(), device=None, backend=None, keep_unused=False, inline=True, use_resource_env=False, compiler_options_kvs=())
+ctx_mesh = Mesh(axis_sizes=(), axis_names=())
+dbg = DebugInfo(traced_for='jit', func_src_info='wrapped at /home/tarading/vllm_env/lib/python3.12/site-packages/jax/_src/pa..., 'args[11]', 'args[12]', 'args[13]'), result_paths=<jax._src.linear_util.InitialResultPaths object at 0x77c9bb5a90a0>)
+avals = (ShapedArray(int32[8]), ShapedArray(int32[96]), ShapedArray(int32[9]), ShapedArray(int32[3]), ShapedArray(int32[4]), ShapedArray(int32[4]), ...)
+--
+        raise ValueError(
+            "pjit does not support kwargs when in_shardings is specified.")
+    
+      if not ctx_mesh.empty and (ji.backend or ji.device):
+        raise ValueError(
+            "Mesh context manager should not be used with jit when backend or "
+            "device is also specified as an argument to jit.")
+    
+      if (ji.donate_argnums or ji.donate_argnames) and not config.debug_nans.value:
+        donated_invars = donation_vector(ji.donate_argnums, ji.donate_argnames,
+                                         avals_ft.tree)
+      else:
+        donated_invars = (False,) * len(avals_ft)
+    
+      # If backend or device is set as an arg on jit, then resolve them to
+      # in_shardings and out_shardings as if user passed in in_shardings
+      # and out_shardings.
+      device_or_backend_set = bool(ji.backend or ji.device)
+      if device_or_backend_set:
+        sharding = _create_sharding_with_device_backend(ji.device, ji.backend)
+        leaves, treedef = tree_flatten(sharding)
+        in_shardings_leaves = out_shardings_leaves = tuple(leaves)
+        in_shardings_treedef = out_shardings_treedef = treedef
+      else:
+        api_name = 'pjit' if ji.use_resource_env else 'jit'
+        in_shardings_leaves = tuple(
+            _create_sharding_for_array(ctx_mesh, x, 'in_shardings', api_name)
+            for x in ji.in_shardings_leaves)
+        out_shardings_leaves = tuple(
+            _create_sharding_for_array(ctx_mesh, x, 'out_shardings', api_name)
+            for x in ji.out_shardings_leaves)
+        in_shardings_treedef = ji.in_shardings_treedef
+        out_shardings_treedef = ji.out_shardings_treedef
+    
+      assert None not in in_shardings_leaves
+      assert None not in out_shardings_leaves
+    
+      in_type = avals_ft.map2(
+        lambda a, x: core.AvalQDD(a, cur_qdd(x)) if a.has_qdd else a,
+        args_ft)
+      assert avals_ft is not None
+    
+      in_shardings_flat, in_layouts_flat = _process_in_axis_resources(
+          in_shardings_treedef, in_shardings_leaves,
+          ji.in_layouts_treedef, ji.in_layouts_leaves,
+          avals_ft, dbg, device_or_backend_set, has_kwargs)
+    
+      qdd_token = _qdd_cache_index(fun, in_type.vals)  # represents qdd state context
+    
+      elapsed_time_ctx = (
+          dispatch.log_elapsed_time(
+              "Finished tracing {fun_name} for jit in {elapsed_time:.9f} sec",
+              fun_name(fun), event=dispatch.JAXPR_TRACE_EVENT)
+          if core.trace_state_clean() else contextlib.nullcontext())
+      with elapsed_time_ctx:
+        if ji.use_resource_env:  # pjit
+          with (_internal_use_concrete_mesh(ctx_mesh),
+                mesh_lib.use_abstract_mesh(ctx_mesh.abstract_mesh)):
+            jaxpr, out_avals = pe.trace_to_jaxpr(fun, in_type, dbg, qdd_token)
+        else:
+>         jaxpr, out_avals = pe.trace_to_jaxpr(fun, in_type, dbg, qdd_token)
+                             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+../vllm_env/lib/python3.12/site-packages/jax/_src/pjit.py:522: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+fun = <function _pallas_call.<locals>.wrapped at 0x77c9a80a13a0>
+in_avals = <jax._src.tree_util.FlatTree object at 0x77c9a6d6c770>
+debug_info = DebugInfo(traced_for='jit', func_src_info='wrapped at /home/tarading/vllm_env/lib/python3.12/site-packages/jax/_src/pa..., 'args[11]', 'args[12]', 'args[13]'), result_paths=<jax._src.linear_util.InitialResultPaths object at 0x77c9bb5a90a0>)
+fun_returns_flat_tree = False, requires_low = False
+parent_trace = DynamicJaxprTrace
+
+    @weakref_lru_cache(maxsize=None, explain=explain)
+    def trace_to_jaxpr(
+        fun: Callable,
+        in_avals: FlatTree,  # (args, kwargs) pair
+        debug_info: core.DebugInfo,
+        *context_for_cache_key,
+        fun_returns_flat_tree=False,
+        requires_low=False,
+    ) -> tuple[ClosedJaxpr, FlatTree]:
+--
+        raise RuntimeError(f"re-tracing function {fun} for "
+                           "`jit`, but 'no_tracing' is set")
+      del context_for_cache_key  # read implicitly, e.g. qdd state
+      test_event("trace_to_jaxpr")
+      config.enable_checks.value and debug_info.assert_arg_names(len(in_avals))
+      parent_trace = core.trace_ctx.trace
+      trace = DynamicJaxprTrace(debug_info, parent_trace=parent_trace,
+                                lower=requires_low)
+      # Name stack and the traceback scope are reset because the metadata on jaxpr
+      # equations should be rooted at the enclosing jaxpr and not contain any
+      # context from the callsite. Otherwise metadata from one caller would bleed
+      # into metadata from a different caller if we, e.g., inline.
+      with (core.ensure_no_leaks(trace), source_info_util.reset_name_stack(),
+            TracebackScope()):
+        source_info = source_info_util.current()
+        if requires_low:
+          def new_arg(aval):
+            lo_tracers = [trace.new_arg(lo_aval, source_info=source_info) for lo_aval in aval.lo_ty()]  # noqa: F821
+            return aval.raise_val(*lo_tracers)
+          in_tracers = in_avals.map(new_arg)
+          debug_info = _lower_debug_info(debug_info, in_avals=in_avals)
+        else:
+          in_tracers = in_avals.map(partial(trace.new_arg, source_info=source_info))
+    
+        with core.set_current_trace(trace):
+          args, kwargs = in_tracers.unflatten()
+>         ans_pytree = fun(*args, **kwargs)
+                       ^^^^^^^^^^^^^^^^^^^^
+
+../vllm_env/lib/python3.12/site-packages/jax/_src/interpreters/partial_eval.py:2338: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+args = (JitTracer(int32[8]), JitTracer(int32[96]), JitTracer(int32[9]), JitTracer(int32[3]), JitTracer(int32[4]), JitTracer(int32[4]), ...)
+flat_args_with_paths = [((SequenceKey(idx=0),), JitTracer(int32[8])), ((SequenceKey(idx=1),), JitTracer(int32[96])), ((SequenceKey(idx=2),), ... JitTracer(int32[3])), ((SequenceKey(idx=4),), JitTracer(int32[4])), ((SequenceKey(idx=5),), JitTracer(int32[4])), ...]
+in_tree = PyTreeDef((*, *, *, *, *, *, *, *, *, *, *, *, *, *))
+in_paths = ((SequenceKey(idx=0),), (SequenceKey(idx=1),), (SequenceKey(idx=2),), (SequenceKey(idx=3),), (SequenceKey(idx=4),), (SequenceKey(idx=5),), ...)
+
+    @api.jit(inline=True)
+    def wrapped(*args):
+      flat_args_with_paths, in_tree = tree_util.tree_flatten_with_path(args)
+      in_paths, flat_args = unzip2(flat_args_with_paths)
+      flat_in_avals = tuple(jax_core.typeof(a) for a in flat_args)
+    
+      flat_out_avals = tuple(
+          pallas_core._convert_out_shape_to_aval(v) for v in flat_out_shapes
+--
+      config.enable_checks.value and fun.debug_info.assert_arg_names(len(in_avals))
+      keep_inputs = [True] * len(in_avals) if keep_inputs is None else keep_inputs
+      parent_trace = core.trace_ctx.trace
+      trace = DynamicJaxprTrace(fun.debug_info, parent_trace=parent_trace,
+                                lower=lower, auto_dce=auto_dce)
+      # Name stack and the traceback scope are reset because the metadata on jaxpr
+      # equations should be rooted at the enclosing jaxpr and not contain any
+      # context from the callsite. Otherwise metadata from one caller would bleed
+      # into metadata from a different caller if we, e.g., inline.
+      with (core.ensure_no_leaks(trace), source_info_util.reset_name_stack(),
+            TracebackScope()):
+        source_info = source_info_util.current()
+        in_tracers = map(partial(trace.new_arg, source_info=source_info), in_avals)
+        in_tracers = [t for t, keep in zip(in_tracers, keep_inputs) if keep]
+        with core.set_current_trace(trace):
+>         ans = fun.call_wrapped(*in_tracers)
+                ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+../vllm_env/lib/python3.12/site-packages/jax/_src/interpreters/partial_eval.py:2389: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+self = Wrapped function:
+0   : wrap_with_transforms   <unnamed function>
+1   : flatten_fun   <unnamed function>
+Core: _ragged_paged_attention_kernel
+
+args = (JitTracer(Ref<smem>{int32[8]}), JitTracer(Ref<smem>{int32[96]}), JitTracer(Ref<smem>{int32[9]}), JitTracer(Ref<smem>{int32[3]}), JitTracer(Ref<smem>{int32[4]}), JitTracer(Ref<smem>{int32[4]}), ...)
+kwargs = {}
+
+    def call_wrapped(self, *args, **kwargs):
+      """Calls the transformed function"""
+>     return self.f_transformed(*args, **kwargs)
+             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+../vllm_env/lib/python3.12/site-packages/jax/_src/linear_util.py:212: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+f = functools.partial(<function flatten_fun at 0x77c9ba170e00>, functools.partial(<function _ragged_paged_attention_kernel...at 0x77c9a6d6c160>, PyTreeDef(([*, *, *, *, *, *, *, *, *, *, *, *, *, *, *, *, *, *, *, *, *, *, *, *, *, *, *], {})))
+transforms = ((), (), (), (), (), (), ...)
+args = (JitTracer(Ref<smem>{int32[8]}), JitTracer(Ref<smem>{int32[96]}), JitTracer(Ref<smem>{int32[9]}), JitTracer(Ref<smem>{int32[3]}), JitTracer(Ref<smem>{int32[4]}), JitTracer(Ref<smem>{int32[4]}), ...)
+new_args = (JitTracer(Ref<smem>{int32[8]}), JitTracer(Ref<smem>{int32[96]}), JitTracer(Ref<smem>{int32[9]}), JitTracer(Ref<smem>{int32[3]}), JitTracer(Ref<smem>{int32[4]}), JitTracer(Ref<smem>{int32[4]}), ...)
+--
+        raise TypeError("lax.fori_loop: body_fun argument should be callable.")
+    
+      # TODO(phawkins): perhaps do more type checking here, better error messages.
+      lower_dtype = lax.dtype(lower)
+      upper_dtype = lax.dtype(upper)
+      if lower_dtype == upper_dtype:
+        dtype = lower_dtype
+      else:
+        # As a special case: allow promotion of weak integers (e.g., Python scalars)
+        # This improves the ergonomics if one but not both of the loop bounds is a
+        # scalar.
+        dtype = None
+        if (np.issubdtype(lower_dtype, np.signedinteger) and
+            np.issubdtype(upper_dtype, np.signedinteger)):
+          lower_weak = dtypes.is_weakly_typed(lower)
+          upper_weak = dtypes.is_weakly_typed(upper)
+          if lower_weak and not upper_weak:
+            dtype = upper_dtype
+          elif not lower_weak and upper_weak:
+            dtype = lower_dtype
+    
+        if dtype is None:
+          raise TypeError("lower and upper arguments to fori_loop must have equal "
+                          f"types, got {lower_dtype.name} and {upper_dtype.name}")
+    
+      # If we can specialize on the trip count, call scan instead of a while_loop
+      # to enable efficient reverse-mode differentiation.
+      lower_ = upper_ = 0
+      if core.is_concrete(lower) and core.is_concrete(upper):
+        try:
+          lower_ = int(lower)
+          upper_ = int(upper)
+        except (TypeError, core.InconclusiveDimensionOperation):
+          use_scan = False
+        else:
+          use_scan = True
+      else:
+        use_scan = False
+    
+      body_fun_dbg = api_util.debug_info("fori_loop", body_fun,
+                                         (0, init_val), {})
+    
+      if use_scan:
+        if unroll is None:
+          unroll = False
+        length = max(upper_ - lower_, 0)
+        if config.disable_jit.value and length == 0:
+          # non-jit implementation of scan does not support length=0
+          return init_val
+        scan_body = _fori_scan_body_fun(body_fun, body_fun_dbg)
+        (_, result), _ = scan(
+            scan_body,
+            (lower_, init_val),
+            None,
+            length=length,
+            unroll=unroll,
+        )
+        return result
+      if unroll is not None and unroll is not False and unroll != 1:
+        raise ValueError("Can only use `unroll` in `fori_loop` if the loop bounds "
+                         "are statically known.")
+    
+      if lower_dtype != dtype:
+        lower = lax.convert_element_type(lower, dtype)
+      if upper_dtype != dtype:
+        upper = lax.convert_element_type(upper, dtype)
+      while_body_fun = _fori_body_fun(body_fun, body_fun_dbg)
+>     _, _, result = while_loop(_fori_cond_fun, while_body_fun,
+                                (lower, upper, init_val))
+
+../vllm_env/lib/python3.12/site-packages/jax/_src/lax/control_flow/loops.py:2658: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+cond_fun = <function _fori_cond_fun at 0x77c9b5b5e480>
+body_fun = <function _fori_body_fun.<locals>.while_body_fun at 0x77c9a80a2160>
+
+    @partial(api_boundary, repro_api_name="jax.lax.while_loop")
+    def while_loop(cond_fun: Callable[[T], BooleanNumeric],
+                   body_fun: Callable[[T], T],
+                   init_val: T) -> T:
+      """Call ``body_fun`` repeatedly in a loop while ``cond_fun`` is True.
+    
+      The `Haskell-like type signature`_ in brief is
+    
+      .. code-block:: haskell
+    
+        while_loop :: (a -> Bool) -> (a -> a) -> a -> a
+    
+      The semantics of ``while_loop`` are given by this Python implementation::
+    
+        def while_loop(cond_fun, body_fun, init_val):
+          val = init_val
+          while cond_fun(val):
+            val = body_fun(val)
+          return val
+    
+      Unlike that Python version, ``while_loop`` is a JAX primitive and is lowered
+      to a single WhileOp. That makes it useful for reducing compilation times
+      for jit-compiled functions, since native Python loop constructs in an ``@jit``
+      function are unrolled, leading to large XLA computations.
+--
+        raise TypeError("lax.while_loop: body_fun and cond_fun arguments should be callable.")
+      if config.disable_jit.value:
+        try:
+          val = tree_map(lax.asarray, init_val)
+          while cond_fun(val):
+            val = tree_map(lax.asarray, body_fun(val))
+          return val
+        except core.ConcretizationTypeError:
+          # Can't run this while_loop in Python (e.g. because there's a vmap
+          # transformation on it), so we fall back to the primitive version.
+          pass
+    
+      def _create_jaxpr(init_avals):
+        args_avals = FlatTree.pack(((init_avals,), {}))
+        cond_jaxpr, cond_out_avals = pe.trace_to_jaxpr(cond_fun, args_avals, cond_dbg)
+        body_jaxpr, body_out_avals = pe.trace_to_jaxpr(body_fun, args_avals, body_dbg)
+        if not treedef_is_leaf(cond_out_avals.tree) or len(cond_jaxpr.out_avals) != 1:
+          msg = "cond_fun must return a boolean scalar, but got pytree {}."
+          raise TypeError(msg.format(cond_out_avals.tree))
+    
+        pred_aval = cond_jaxpr.out_avals[0]
+        if (not isinstance(pred_aval, ShapedArray)
+            or ShapedArray(pred_aval.shape, pred_aval.dtype) != ShapedArray((), np.bool_)):
+          msg = "cond_fun must return a boolean scalar, but got output type(s) {}."
+          raise TypeError(msg.format(cond_jaxpr.out_avals))
+    
+        return cond_jaxpr, body_jaxpr, body_out_avals
+    
+      cond_dbg = api_util.debug_info("while_cond", cond_fun, (init_val,), {})
+      body_dbg = api_util.debug_info("while_body", body_fun, (init_val,), {})
+      init_val_flat = FlatTree.flatten(init_val)
+      check_no_transformed_refs_args(lambda: body_dbg, init_val_flat.vals)
+      del init_val
+      init_aval = init_val_flat.map(core.typeof)
+    
+      # The body input and output avals must match exactly. However, we want to account for
+      # the case when init contains weakly-typed values (e.g. Python scalars), with avals that
+      # may not match the output despite being compatible by virtue of their weak type.
+      # To do this, we compute the jaxpr in two passes: first with the raw inputs, and if
+      # necessary, a second time with modified init values.
+>     cond_jaxpr, body_jaxpr, body_out_avals = _create_jaxpr(init_aval)
+                                               ^^^^^^^^^^^^^^^^^^^^^^^^
+
+../vllm_env/lib/python3.12/site-packages/jax/_src/lax/control_flow/loops.py:1698: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+init_avals = <jax._src.tree_util.FlatTree object at 0x77c9a71d93d0>
+
+    def _create_jaxpr(init_avals):
+      args_avals = FlatTree.pack(((init_avals,), {}))
+      cond_jaxpr, cond_out_avals = pe.trace_to_jaxpr(cond_fun, args_avals, cond_dbg)
+>     body_jaxpr, body_out_avals = pe.trace_to_jaxpr(body_fun, args_avals, body_dbg)
+                                   ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+../vllm_env/lib/python3.12/site-packages/jax/_src/lax/control_flow/loops.py:1673: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+fun = <function _fori_body_fun.<locals>.while_body_fun at 0x77c9a80a2160>
+in_avals = <jax._src.tree_util.FlatTree object at 0x77c9a71d8680>
+debug_info = DebugInfo(traced_for='fori_loop', func_src_info='<lambda> at /home/tarading/vllm_env/lib/python3.12/site-packages/jax/...elpers.py:142', arg_names=('idx', ''), result_paths=<jax._src.linear_util.InitialResultPaths object at 0x77c9bb5a90a0>)
+fun_returns_flat_tree = False, requires_low = False
+parent_trace = DynamicJaxprTrace
+
+    @weakref_lru_cache(maxsize=None, explain=explain)
+    def trace_to_jaxpr(
+--
+        raise RuntimeError(f"re-tracing function {fun} for "
+                           "`jit`, but 'no_tracing' is set")
+      del context_for_cache_key  # read implicitly, e.g. qdd state
+      test_event("trace_to_jaxpr")
+      config.enable_checks.value and debug_info.assert_arg_names(len(in_avals))
+      parent_trace = core.trace_ctx.trace
+      trace = DynamicJaxprTrace(debug_info, parent_trace=parent_trace,
+                                lower=requires_low)
+      # Name stack and the traceback scope are reset because the metadata on jaxpr
+      # equations should be rooted at the enclosing jaxpr and not contain any
+      # context from the callsite. Otherwise metadata from one caller would bleed
+      # into metadata from a different caller if we, e.g., inline.
+      with (core.ensure_no_leaks(trace), source_info_util.reset_name_stack(),
+            TracebackScope()):
+        source_info = source_info_util.current()
+        if requires_low:
+          def new_arg(aval):
+            lo_tracers = [trace.new_arg(lo_aval, source_info=source_info) for lo_aval in aval.lo_ty()]  # noqa: F821
+            return aval.raise_val(*lo_tracers)
+          in_tracers = in_avals.map(new_arg)
+          debug_info = _lower_debug_info(debug_info, in_avals=in_avals)
+        else:
+          in_tracers = in_avals.map(partial(trace.new_arg, source_info=source_info))
+    
+        with core.set_current_trace(trace):
+          args, kwargs = in_tracers.unflatten()
+>         ans_pytree = fun(*args, **kwargs)
+                       ^^^^^^^^^^^^^^^^^^^^
+
+../vllm_env/lib/python3.12/site-packages/jax/_src/interpreters/partial_eval.py:2338: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+loop_carry = (JitTracer(int32[]), JitTracer(int32[]), None)
+
+    def while_body_fun(loop_carry):
+      i, upper, x = loop_carry
+      body_fun = body_fun_ref()
+      assert body_fun is not None
+>     return lax.add(i, lax._const(i, 1)), upper, body_fun(i, x)
+                                                  ^^^^^^^^^^^^^^
+
+../vllm_env/lib/python3.12/site-packages/jax/_src/lax/control_flow/loops.py:2507: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+idx = JitTracer(int32[]), _ = None
+
+>   body_fn = lambda idx, _: body(lower + idx * step)
+                             ^^^^^^^^^^^^^^^^^^^^^^^^
+
+../vllm_env/lib/python3.12/site-packages/jax/_src/pallas/helpers.py:142: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+seq_idx = JitTracer(int32[])
+
+    @pl.loop(start_seq_idx, end_seq_idx)
+    def _(seq_idx):
+>       return _ragged_paged_attention_kernel_loop(
+            seq_idx,
+            *args,
+            **kwargs,
+        )
+
+tpu_inference/kernels/ragged_paged_attention/v3/kernel.py:301: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+seq_idx = JitTracer(int32[]), kv_lens_ref = JitTracer(Ref<smem>{int32[8]})
+page_indices_ref = JitTracer(Ref<smem>{int32[96]})
+cu_q_lens_ref = JitTracer(Ref<smem>{int32[9]})
+distribution_ref = JitTracer(Ref<smem>{int32[3]})
+sem_ids_ref = JitTracer(Ref<smem>{int32[4]})
+bo_ids_ref = JitTracer(Ref<smem>{int32[4]})
+bkv_update_ids_ref = JitTracer(Ref<smem>{int32[6]})
+q_hbm_ref = JitTracer(Ref<hbm>{bfloat16[8,512,2,2,128]})
+kv_hbm_ref = JitTracer(Ref<hbm>{bfloat16[512,8,2,128]})
+kv_cache_hbm_ref = JitTracer(Ref<hbm>{bfloat16[200,16,8,2,128]})
+x_hbm_ref = JitTracer(Ref<hbm>{bfloat16[512,4,128]})
+w_qkv_vmem_ref = JitTracer(Ref<vmem>{bfloat16[512,6144]})
+qn_scale_vmem_ref = JitTracer(Ref<vmem>{bfloat16[128]})
+--
+        assert q_hbm_ref.shape == o_hbm_ref.shape
+        assert q_hbm_ref.shape[-1] == kv_cache_hbm_ref.shape[-1]
+    
+        if case == RpaCase.DECODE:
+            use_causal_mask = False
+    
+        out_dtype = acc_ref.dtype
+        (
+            actual_num_kv_heads,
+            max_num_tokens,
+            num_q_heads_per_kv_head_per_packing,
+            q_packing,
+            head_dim,
+        ) = q_hbm_ref.shape
+        (
+            total_num_pages,
+            page_size,
+            num_kv_heads_x2_per_kv_packing,
+            kv_packing,
+            _,
+        ) = kv_cache_hbm_ref.shape
+        bkv_stride = bkv_x2_ref.shape[2]
+        assert bkv_stride in (
+            num_kv_heads_x2_per_kv_packing,
+            num_kv_heads_x2_per_kv_packing + 1,
+        )
+        max_num_seqs = kv_lens_ref.shape[0]
+        num_page_indices = page_indices_ref.shape[0]
+        assert num_page_indices % max_num_seqs == 0
+        pages_per_seq = num_page_indices // max_num_seqs
+        # num_kv_heads_x2 = num_kv_heads_x2_per_kv_packing * kv_packing
+        num_q_heads_per_kv_head = num_q_heads_per_kv_head_per_packing * q_packing
+        q_dtype = q_hbm_ref.dtype
+        kv_dtype = kv_cache_hbm_ref.dtype
+        assert o_hbm_ref.dtype == q_dtype
+        assert get_dtype_packing(q_dtype) == q_packing
+        assert get_dtype_packing(kv_dtype) == kv_packing
+        assert head_dim % 128 == 0
+        assert bkv_sz % page_size == 0
+        bkv_p = bkv_sz // page_size
+        start_seq_idx, end_seq_idx = case.get_range(distribution_ref)
+        num_seqs = end_seq_idx - start_seq_idx
+    
+        q_start = cu_q_lens_ref[seq_idx]
+        q_end = cu_q_lens_ref[seq_idx + 1]
+        q_len = q_end - q_start
+        kv_len = kv_lens_ref[seq_idx]
+        kv_q_gap = kv_len - q_len
+        cur_seq_start_bkv_idx = 0
+        next_seq_start_bkv_idx = 0
+    
+        if sliding_window is not None:
+            # TODO(jevinjiang): can skip by page_size instead of bkv_sz.
+            cur_seq_start_bkv_idx = jnp.maximum(kv_q_gap - sliding_window,
+                                                0) // bkv_sz
+            next_seq_idx = jnp.minimum(seq_idx + 1, end_seq_idx - 1)
+            next_q_start = cu_q_lens_ref[next_seq_idx]
+            next_q_end = cu_q_lens_ref[next_seq_idx + 1]
+            next_q_len = next_q_end - next_q_start
+            next_kv_len = kv_lens_ref[next_seq_idx]
+            next_kv_q_gap = next_kv_len - next_q_len
+            next_seq_start_bkv_idx = (
+                jnp.maximum(next_kv_q_gap - sliding_window, 0) // bkv_sz)
+    
+        def debug_print(msg, *args):
+            if debug_mode:
+                pl.debug_print(msg, *args)
+    
+        debug_print("[RPA debug] ======= In loop seq_idx={}", seq_idx)
+        debug_print("[RPA debug] start_seq_idx={}", start_seq_idx)
+        debug_print("[RPA debug] end_seq_idx={}", end_seq_idx)
+        debug_print("[RPA debug] num_seqs={}", num_seqs)
+        debug_print("[RPA debug] bkv_p={}", bkv_p)
+        debug_print("[RPA debug] page_size={}", page_size)
+        debug_print("[RPA debug] pages_per_seq={}", pages_per_seq)
+        debug_print("[RPA debug] bkv_sz={}", bkv_sz)
+        debug_print("[RPA debug] bq_sz={}", bq_sz)
+        debug_print(f"[RPA debug] static_q_len={static_q_len}")
+        debug_print("[RPA debug] q_start={}", q_start)
+--
+            assert len(q.shape) == 2
+            assert q.shape[0] % num_q_heads_per_kv_head == 0
+            assert q.shape[1] == head_dim
+            actual_bq_csz = q.shape[0] // num_q_heads_per_kv_head
+            assert k.shape == (bkv_csz, head_dim)
+            assert v.shape == (bkv_csz, head_dim)
+            assert l_ref.shape == (actual_bq_csz * num_q_heads_per_kv_head, 128)
+            assert m_ref.shape == (actual_bq_csz * num_q_heads_per_kv_head, 128)
+            assert k.dtype == v.dtype
+    
+            # Follow FlashAttention-2 forward pass.
+            if q_scale is not None:
+                q = q / q_scale
+                if jnp.issubdtype(k.dtype, jnp.floating):
+                    dtype_info = jnp.finfo(k.dtype)
+                    minval = float(dtype_info.min)
+                    maxval = float(dtype_info.max)
+                    q = jnp.clip(q, min=minval, max=maxval)
+                q = q.astype(k.dtype)
+    
+            s = jnp.matmul(q, k.T, preferred_element_type=jnp.float32)
+    
+            s_scale = sm_scale
+            if k_scale is not None:
+                s_scale *= k_scale
+            if q_scale is not None:
+                s_scale *= q_scale
+    
+            s *= s_scale
+    
+            if soft_cap is not None:
+                s = soft_cap * jnp.tanh(s / soft_cap)
+    
+            int_ty = jnp.int32
+            if get_dtype_packing(q_dtype) != 1 and get_tpu_version() >= 6:
+                int_ty = jnp.int16
+            processed_q_len_int = processed_q_len.astype(int_ty)
+            processed_kv_len_int = processed_kv_len.astype(int_ty)
+            effective_kv_len_int = effective_kv_len.astype(int_ty)
+            q_span = processed_q_len_int + (lax.broadcasted_iota(
+                jnp.int32, s.shape, 0) // num_q_heads_per_kv_head).astype(int_ty)
+            k_span = processed_kv_len_int + lax.broadcasted_iota(
+                int_ty, s.shape, 1)
+            v_span = processed_kv_len_int + lax.broadcasted_iota(
+                int_ty, v.shape, 0)
+    
+            mask = None
+            if use_causal_mask:
+                assert not skip_kv_mask
+                mask = mask_and(mask, q_span >= k_span)
+    
+            if not skip_kv_mask:
+                mask = mask_and(mask, k_span < effective_kv_len_int)
+                v = jnp.where(v_span < effective_kv_len_int, v, 0.0)
+    
+            if sliding_window is not None:
+                mask = mask_and(mask, q_span < k_span + sliding_window)
+    
+            if mask is not None:
+                s = jnp.where(mask, s, mask_value)
+    
+            s_rowmax = jnp.max(s, axis=1, keepdims=True)
+    
+            # if converting the type too early, there will be accuracy issue.
+            s_rowmax = s_rowmax.astype(out_dtype)
+            m_prev = m_ref[...]
+            m_curr = jnp.maximum(m_prev, s_rowmax)
+            m_ref[...] = m_curr
+            p = jnp.exp(s - broadcast_minor(m_curr, s.shape))
+    
+            p_rowsum = jnp.sum(p, axis=1, keepdims=True, dtype=out_dtype)
+            exp_m_diff = jnp.exp(m_prev - m_curr)
+            l_prev = l_ref[...]
+            l_ref[...] = exp_m_diff * l_prev + p_rowsum
+    
+            return p, v, exp_m_diff
+    
+        def flash_attention_step2_pv(
+                p,  # [actual_bq_csz * num_q_heads_per_kv_head, bkv_csz]
+                v,  # [bkv_csz, head_dim]
+                exp_m_diff,  # [actual_bq_csz * num_q_heads_per_kv_head, 128]
+                o_ref,  # [actual_bq_csz * num_q_heads_per_kv_head, head_dim]
+        ):
+            assert len(p.shape) == 2
+            assert p.shape[0] % num_q_heads_per_kv_head == 0
+            assert p.shape[1] == bkv_csz
+            actual_bq_csz = p.shape[0] // num_q_heads_per_kv_head
+            assert v.shape == (bkv_csz, head_dim)
+            assert exp_m_diff.shape == (actual_bq_csz * num_q_heads_per_kv_head,
+                                        128)
+            assert o_ref.shape == (actual_bq_csz * num_q_heads_per_kv_head,
+                                   head_dim)
+            pv = jnp.matmul(p, v, preferred_element_type=jnp.float32)
+    
+            if v_scale is not None:
+                pv *= v_scale
+            # if converting the type too early, there will be accuracy issue.
+            pv = pv.astype(out_dtype)
+            o_prev = o_ref[...]
+            o_ref[...] = broadcast_minor(exp_m_diff, o_prev.shape) * o_prev + pv
+    
+        def _async_copy(src, dst, sem, wait):
+            if debug_mode:
+                # Skip DMA if debug mode is enabled.
+                return
+            cp = pltpu.make_async_copy(src, dst, sem)
+            if wait:
+                cp.wait()
+            else:
+                cp.start()
+    
+        def _fetch_bkv(seq_idx, bkv_idx, bkv_sem_idx, x_bkv_sem_idx=0, bq_idx=0, *, wait=False):
+            sem = sems.at[0, bkv_sem_idx]
+            vmem_ref = bkv_x2_ref.at[
+                bkv_sem_idx, :, :num_kv_heads_x2_per_kv_packing]
+    
+            cache_hbm_shape = kv_cache_hbm_ref.shape
+            cache_hbm_ref = kv_cache_hbm_ref.reshape(
+                cache_hbm_shape[0] * cache_hbm_shape[1], *cache_hbm_shape[2:])
+            kv_len = kv_lens_ref[seq_idx]
+            kv_len_start = bkv_idx * bkv_sz
+            kv_p_start = bkv_idx * bkv_p
+            q_start = cu_q_lens_ref[seq_idx]
+            q_end = cu_q_lens_ref[seq_idx + 1]
+            q_len = q_end - q_start
+    
+            kv_left = kv_len - kv_len_start
+            if update_kv_cache:
+                if has_kvproj:
+                    # With has_kvproj we write to cache eagerly (at every bq tile that
+                    # first computes a bkv tile). A bkv tile whose tokens all precede
+--
+            assert get_dtype_packing(ref.dtype) == 1
+            assert len(ref.shape) == 2
+            r, l = ref.shape  # noqa
+            assert l % 128 == 0
+            folds = l // 128
+            ref = ref.reshape(r * folds, 128)
+            start *= folds
+            sz *= folds
+            step *= folds
+            assert sz % step == 0
+            vec = jnp.concat(
+                [ref[pl.ds(start + i, sz // step, step)] for i in range(folds)],
+                axis=1)
+            if dtype is not None:
+                vec = pltpu.bitcast(vec, dtype)
+            return vec
+    
+        def strided_store(ref, start, sz, step, val):
+            assert get_dtype_packing(ref.dtype) == 1
+            assert ref.dtype == val.dtype
+            assert len(ref.shape) == 2
+            r, l = ref.shape  # noqa
+            assert l % 128 == 0
+            folds = l // 128
+            assert sz % step == 0
+            assert val.shape == (sz // step, l)
+            ref = ref.reshape(r * folds, 128)
+            start *= folds
+            sz *= folds
+            step *= folds
+            for i in range(folds):
+                ref[pl.ds(start + i, sz // step,
+                          step)] = val[:, i * 128:(i + 1) * 128]
+    
+        def load_rope_sincos(positions, dtype, broadcast=False):
+            """Compute rope sin/cos for a tile of token positions.
+    
+            `positions` is an int32 array of shape [sz, 1] holding the global
+            token position of each row, computed on the fly via iota + a
+            per-tile scalar offset (no DMA from HBM). Cached k rows pass
+            position 0, giving sin=0/cos=1, i.e. an identity rotation for
+            already-rotated cached k.
+    
+            Independent of kv_head_idx, so callers compute this once per tile
+            and reuse it across the kv_head_idx loop, instead of recomputing it
+            per kv head.
+            """
+            if not has_qproj:
+                return None, None
+            rope_dim = actual_rope_dim
+            timescale = rope_timescale_ref[:, :][:, :rope_dim]  # [1, rope_dim]
+            sinusoid_inp = positions.astype(jnp.float32) * timescale
+            sin = jnp.sin(sinusoid_inp).astype(dtype)
+            cos = jnp.cos(sinusoid_inp).astype(dtype)
+            if broadcast:
+                sin = sin[:, jnp.newaxis, :]  # [sz, 1, rope_dim]
+                cos = cos[:, jnp.newaxis, :]
+            return sin, cos
+    
+        def load_bq(bq_sem_idx, kv_head_idx, start, sz):
+            q_ref = (bq_x2_ref.bitcast(
+                jnp.uint32).at[bq_sem_idx, kv_head_idx].reshape(
+                    bq_sz * num_q_heads_per_kv_head_per_packing, head_dim))
+            load_start = start * num_q_heads_per_kv_head_per_packing
+            load_sz = sz * num_q_heads_per_kv_head_per_packing
+            q_flat = strided_load(q_ref, load_start, load_sz, 1, dtype=q_dtype)
+--
+            assert src.shape[:-1] == shape[:-1]
+            assert src.shape[-1] % 128 == 0
+            target_minor = align_to(shape[-1], src.shape[-1])
+            # no-op concatenation.
+            return jnp.concatenate(
+                [src for _ in range(target_minor // src.shape[-1])],
+                axis=-1)[..., :shape[-1]]
+    
+        def mask_and(mask, new_mask):
+            if mask is None:
+                return new_mask
+            return jnp.logical_and(mask, new_mask)
+    
+        def process(static_q_len=None):
+            if static_q_len is None:
+                actual_bq_sz = bq_sz
+                num_bq = cdiv(q_len, actual_bq_sz)
+            else:
+                actual_bq_sz = min(bq_sz, static_q_len)
+                num_bq = cdiv(static_q_len, actual_bq_sz)
+    
+            actual_bq_csz = min(bq_csz, actual_bq_sz)
+    
+            def get_next_bq_ids(seq_idx, bq_idx, bq_sem_idx):
+                next_bq_idx = bq_idx + 1
+                is_last_bq = next_bq_idx == num_bq
+                next_bq_idx = lax.select(is_last_bq, 0, next_bq_idx)
+                next_seq_idx = lax.select(is_last_bq, seq_idx + 1, seq_idx)
+                next_bq_sem_idx = lax.select(bq_sem_idx == 0, 1, 0)
+                return next_seq_idx, next_bq_idx, next_bq_sem_idx
+    
+            def get_next_bkv_ids(seq_idx, bq_idx, bkv_idx, bkv_sem_idx, *,
+                                 num_bkv):
+                next_bkv_idx = bkv_idx + 1
+                is_last_bkv = next_bkv_idx == num_bkv
+                next_bq_idx = lax.select(is_last_bkv, bq_idx + 1, bq_idx)
+                is_last_bq = next_bq_idx == num_bq
+                next_bq_idx = lax.select(is_last_bq, 0, next_bq_idx)
+                next_seq_idx = lax.select(is_last_bq, seq_idx + 1, seq_idx)
+                next_bkv_sem_idx = lax.select(bkv_sem_idx == 0, 1, 0)
+    
+                next_bq_start_bkv_idx = 0
+--
+                    assert bkv_sz % kv_packing == 0
+    
+                    # Get next bkv ids.
+                    bkv_sem_idx = sem_ids_ref[1]
+                    next_seq_idx, _, next_bkv_idx, next_bkv_sem_idx = get_next_bkv_ids(
+                        seq_idx, bq_idx, bkv_idx, bkv_sem_idx, num_bkv=end_bkv_idx)
+                    processed_kv_len = bkv_idx * bkv_sz
+    
+                    # Prefetch next bkv (cache pages + x_bkv tile when has_kvproj).
+                    # Both are started together inside start_fetch_bkv.
+                    x_bkv_sem_idx = sem_ids_ref[3]
+                    @pl.when(next_seq_idx < end_seq_idx)
+                    def prefetch_next_bkv():
+                        sem_ids_ref[1] = next_bkv_sem_idx
+                        if has_kvproj:
+                            next_x_bkv_sem_idx = lax.select(x_bkv_sem_idx == 0, 1, 0)
+                            sem_ids_ref[3] = next_x_bkv_sem_idx
+                        else:
+                            next_x_bkv_sem_idx = x_bkv_sem_idx  # unused; keep type stable
+                        start_fetch_bkv(next_seq_idx, next_bkv_idx,
+                                        next_bkv_sem_idx, next_x_bkv_sem_idx,
+                                        next_bq_idx)
+    
+                    # Wait for cur bq (non-qproj path only; qproj computed above).
+                    if not has_qproj:
+                        @pl.when(bkv_idx == start_bkv_idx)
+                        def wait_cur_bq():
+                            wait_fetch_bq(seq_idx, bq_idx, bq_sem_idx)
+    
+                    # Wait for cur bkv (cache pages + x_bkv when has_kvproj).
+                    offset, update_sz = wait_fetch_bkv(seq_idx, bkv_idx,
+                                                       bkv_sem_idx, x_bkv_sem_idx,
+                                                       bq_idx)
+    
+                    # Compute K/V from x for new tokens — same trigger as the original
+                    # kv_hbm DMA: fires whenever there are new (non-cached) tokens.
+                    # bkv_sz_frm_cache = offset - bkv_idx * bkv_sz (position in vmem tile).
+                    if has_kvproj:
+                        @pl.when(update_sz > 0)
+                        def compute_kv():
+                            bkv_sz_frm_cache = offset - bkv_idx * bkv_sz
+--
+                        assert prev_lm_slice is not None
+                        flash_attention_step2_pv(
+                            prev_p,
+                            prev_v,
+                            prev_exp_m_diff,
+                            acc_ref.at[*prev_lm_slice],
+                        )
+    
+                # Load acc and calculate final output.
+                acc = acc_ref[...]
+                l = broadcast_minor(l_ref[...], acc.shape)  # noqa
+                out = (acc * pl.reciprocal(l, approx=True) if
+                       (l.dtype == jnp.float32 and out_dtype != jnp.float32) else
+                       lax.div(acc, l)).astype(out_dtype)
+    
+                # Wait for previous bo to be fully sent before storing new bo.
+                bo_sem_idx = sem_ids_ref[2]
+                sem_ids_ref[2] = lax.select(bo_sem_idx == 0, 1, 0)
+                wait_send_bo(bo_sem_idx)
+    
+                # Store output from acc to bo.
+                out_ref = (bo_x2_ref.at[bo_sem_idx].bitcast(jnp.int32).reshape(
+                    actual_num_kv_heads * bq_sz *
+                    num_q_heads_per_kv_head_per_packing,
+                    head_dim,
+                ))
+                out = pltpu.bitcast(out, out_ref.dtype).reshape(out_ref.shape)
+                strided_store(out_ref, 0, out_ref.shape[0], 1, out)
+    
+                # Send cur bo
+                start_send_bo(seq_idx, bq_idx, bo_sem_idx)
+    
+    
+        ### ------- Kernel start ------- ###
+    
+>       @pl.when(seq_idx == start_seq_idx)
+         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+tpu_inference/kernels/ragged_paged_attention/v3/kernel.py:1367: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+--
+          raise TypeError("lax.cond: true_fun and false_fun arguments should be callable.")
+      if operand is not _no_operand_sentinel:
+        if operands:
+          raise TypeError("if 'operand' keyword is passed then no positional "
+                          f"operands can be passed, got {operand=} "
+                          f"and positional operands {operands}")
+        operands = (operand,)
+      del operand
+    
+      if pred is None:
+        raise TypeError("cond predicate is None")
+      if isinstance(pred, Sequence) or np.ndim(pred) != 0:
+        raise TypeError(
+            f"Pred must be a scalar, got {pred} of " +
+            (f"type {type(pred)}" if isinstance(pred, Sequence)
+             else f"shape {np.shape(pred)}."))
+    
+      try:
+        pred_dtype = dtypes.result_type(pred)
+      except TypeError as err:
+        msg = ("Pred type must be either boolean or number, got {}.")
+        raise TypeError(msg.format(pred)) from err
+    
+      if pred_dtype.kind != 'b':
+        if pred_dtype.kind in 'iuf':
+          pred = pred != 0
+        else:
+          msg = ("Pred type must be either boolean or number, got {}.")
+          raise TypeError(msg.format(pred_dtype))
+    
+      if config.disable_jit.value and core.is_concrete(pred):
+        if pred:
+          return true_fun(*operands)
+        else:
+          return false_fun(*operands)
+    
+      args = FlatTree.flatten((operands, {}))
+      dbg_true = api_util.debug_info("cond", true_fun, operands, {})
+      api_util.check_no_transformed_refs_args(lambda: dbg_true, args.vals)
+      avals = args.map(core.typeof)
+      avals = avals.map2(
+          lambda a, x: core.AvalQDD(a, cur_qdd(x)) if a.has_qdd else a,
+          list(args))
+      if config.mutable_array_checks.value:
+        api_util.check_no_aliased_ref_args(lambda: dbg_true, list(avals), list(args))
+      dbg_false = api_util.debug_info("cond", false_fun, operands, {})
+    
+>     true_jaxpr_, out_avals = pe.trace_to_jaxpr(true_fun, avals, dbg_true)
+                               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+../vllm_env/lib/python3.12/site-packages/jax/_src/lax/control_flow/conditionals.py:279: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+fun = <function _ragged_paged_attention_kernel_loop.<locals>.prologue at 0x77c9a80eefc0>
+in_avals = <jax._src.tree_util.FlatTree object at 0x77c9a6d90a70>
+debug_info = DebugInfo(traced_for='cond', func_src_info='prologue at /home/tarading/tpu-inference/tpu_inference/kernels/ragged_page...tion/v3/kernel.py:1367', arg_names=(), result_paths=<jax._src.linear_util.InitialResultPaths object at 0x77c9bb5a90a0>)
+fun_returns_flat_tree = False, requires_low = False
+parent_trace = DynamicJaxprTrace
+
+    @weakref_lru_cache(maxsize=None, explain=explain)
+    def trace_to_jaxpr(
+        fun: Callable,
+        in_avals: FlatTree,  # (args, kwargs) pair
+        debug_info: core.DebugInfo,
+        *context_for_cache_key,
+        fun_returns_flat_tree=False,
+        requires_low=False,
+    ) -> tuple[ClosedJaxpr, FlatTree]:
+      if config.no_tracing.value:
+        raise RuntimeError(f"re-tracing function {fun} for "
+                           "`jit`, but 'no_tracing' is set")
+      del context_for_cache_key  # read implicitly, e.g. qdd state
+      test_event("trace_to_jaxpr")
+      config.enable_checks.value and debug_info.assert_arg_names(len(in_avals))
+      parent_trace = core.trace_ctx.trace
+      trace = DynamicJaxprTrace(debug_info, parent_trace=parent_trace,
+                                lower=requires_low)
+      # Name stack and the traceback scope are reset because the metadata on jaxpr
+      # equations should be rooted at the enclosing jaxpr and not contain any
+      # context from the callsite. Otherwise metadata from one caller would bleed
+      # into metadata from a different caller if we, e.g., inline.
+      with (core.ensure_no_leaks(trace), source_info_util.reset_name_stack(),
+            TracebackScope()):
+        source_info = source_info_util.current()
+        if requires_low:
+          def new_arg(aval):
+            lo_tracers = [trace.new_arg(lo_aval, source_info=source_info) for lo_aval in aval.lo_ty()]  # noqa: F821
+            return aval.raise_val(*lo_tracers)
+          in_tracers = in_avals.map(new_arg)
+          debug_info = _lower_debug_info(debug_info, in_avals=in_avals)
+        else:
+          in_tracers = in_avals.map(partial(trace.new_arg, source_info=source_info))
+    
+        with core.set_current_trace(trace):
+          args, kwargs = in_tracers.unflatten()
+>         ans_pytree = fun(*args, **kwargs)
+                       ^^^^^^^^^^^^^^^^^^^^
+
+../vllm_env/lib/python3.12/site-packages/jax/_src/interpreters/partial_eval.py:2338: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+    @pl.when(seq_idx == start_seq_idx)
+    def prologue():
+        if has_qproj:
+            # Start x[0]; also start x[next] so iter 0's q_proj(t+1) doesn't stall.
+            start_fetch_x(seq_idx=start_seq_idx, bq_idx=0, bq_sem_idx=0)
+            # Compute next-tile ids for bq=0, sem=0 (same logic as get_next_bq_ids).
+            _num_bq_init = cdiv(q_len, bq_sz)
+            _next_bq_is_last = _num_bq_init == 1
+            _next_bq_idx = lax.select(_next_bq_is_last, 0, 1)
+            _next_seq_idx = lax.select(_next_bq_is_last, start_seq_idx + 1,
+                                       start_seq_idx)
+            @pl.when(_next_seq_idx < end_seq_idx)
+            def start_x_next():
+--
+E       ValueError: math domain error
+
+tpu_inference/kernels/ragged_paged_attention/v3/kernel.py:289: ValueError
+=============================== warnings summary ===============================
+../vllm_env/lib/python3.12/site-packages/tpu_info/device.py:33
+  /home/tarading/vllm_env/lib/python3.12/site-packages/tpu_info/device.py:33: DeprecationWarning: In 3.13 classes created inside an enum will not become a member.  Use the `member` decorator to keep the current behavior.
+    class Info(typing.NamedTuple):
+
+<frozen importlib._bootstrap>:488
+  <frozen importlib._bootstrap>:488: DeprecationWarning: builtin type SwigPyPacked has no __module__ attribute
+
+<frozen importlib._bootstrap>:488
+  <frozen importlib._bootstrap>:488: DeprecationWarning: builtin type SwigPyObject has no __module__ attribute
+
+../vllm_env/lib/python3.12/site-packages/flax/nnx/variablelib.py:324
+  /home/tarading/vllm_env/lib/python3.12/site-packages/flax/nnx/variablelib.py:324: DeprecationWarning: jax.core.Effect is deprecated. Use jax.extend.core.Effect.
+    class VariableEffect(jax.core.Effect): ...
+
+tests/kernels/ragged_paged_attention_kernel_v3_test.py::RaggedPagedAttentionKernelTest::test_ragged_paged_attention_qkvproj_fusion0
+  /home/tarading/vllm_env/lib/python3.12/site-packages/jax/_src/interpreters/mlir.py:1313: UserWarning: Some donated buffers were not usable: bfloat16[512,8,128], bfloat16[512,8,128].
+  See an explanation at https://docs.jax.dev/en/latest/faq.html#buffer-donation.
+    warnings.warn("Some donated buffers were not usable:"
+
+-- Docs: https://docs.pytest.org/en/stable/how-to/capture-warnings.html
+=========================== short test summary info ============================
+FAILED tests/kernels/ragged_paged_attention_kernel_v3_test.py::RaggedPagedAttentionKernelTest::test_ragged_paged_attention_qkvproj_fusion0
+1 failed, 5 warnings in 21.67s
+sys:1: DeprecationWarning: builtin type swigvarlink has no __module__ attribute

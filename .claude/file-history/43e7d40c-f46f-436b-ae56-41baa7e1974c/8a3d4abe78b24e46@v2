@@ -1,0 +1,92 @@
+import gzip, json, re
+from collections import defaultdict
+
+FALSE_TRACE = "/tmp/tpu_profiler_repro_false/plugins/profile/2026_06_12_22_07_21/t1v-n-df792003-w-0.trace.json.gz"
+TRUE_TRACE = "/tmp/tpu_profiler_repro_true/plugins/profile/2026_06_12_22_10_09/t1v-n-df792003-w-0.trace.json.gz"
+
+def load_events(path):
+    with gzip.open(path, 'rt') as f:
+        data = json.load(f)
+    return data['traceEvents']
+
+def find_jit_run_model_pid(events):
+    for e in events:
+        if e.get('name', '').startswith('jit_run_model('):
+            return e['pid']
+    return None
+
+def normalize(s):
+    s = re.sub(r'\.\d+', '', s)
+    s = re.sub(r'_\d+_', '_', s)
+    return s
+
+LINE_NAMES = {96: 'gate_proj', 97: 'up_proj', 99: 'down_proj'}
+
+def get_unquant_events(path):
+    events = load_events(path)
+    pid = find_jit_run_model_pid(events)
+    out = defaultdict(list)
+    for e in events:
+        if e.get('pid') != pid:
+            continue
+        if e.get('name') is None:
+            continue
+        if not re.match(r'^fusion(\.\d+)?$', e['name']):
+            continue
+        args = e.get('args', {})
+        source = args.get('source', '')
+        if not source.endswith('unquantized.py:53'):
+            continue
+        source_stack = args.get('source_stack', '')
+        line_match = None
+        for line in source_stack.split('\n'):
+            m = re.search(r'qwen2\.py:(\d+)', line)
+            if m:
+                line_match = int(m.group(1))
+                break
+        if line_match not in LINE_NAMES:
+            continue
+        out[LINE_NAMES[line_match]].append({
+            'ts': e['ts'],
+            'dur': e['dur'],
+            'long_name': normalize(args.get('long_name', '')),
+            'model_flops': args.get('model_flops'),
+        })
+    for k in out:
+        out[k].sort(key=lambda x: x['ts'])
+    return out
+
+false_events = get_unquant_events(FALSE_TRACE)
+true_events = get_unquant_events(TRUE_TRACE)
+
+for opname in ['gate_proj', 'up_proj', 'down_proj']:
+    f_list = false_events[opname]
+    t_list = true_events[opname]
+    print(f"=== {opname} ===")
+    print(f"false count={len(f_list)}, true count={len(t_list)}")
+
+    # group by (long_name, model_flops) to find structurally identical groups
+    f_by_key = defaultdict(list)
+    for x in f_list:
+        f_by_key[(x['long_name'], x['model_flops'])].append(x)
+    t_by_key = defaultdict(list)
+    for x in t_list:
+        t_by_key[(x['long_name'], x['model_flops'])].append(x)
+
+    common_keys = set(f_by_key.keys()) & set(t_by_key.keys())
+    diffs = []
+    for key in common_keys:
+        fl = f_by_key[key]
+        tl = t_by_key[key]
+        n = min(len(fl), len(tl))
+        for i in range(n):
+            diffs.append(tl[i]['dur'] - fl[i]['dur'])
+    if diffs:
+        avg_diff = sum(diffs)/len(diffs)
+        print(f"  matched structurally-identical instances: {len(diffs)}")
+        print(f"  avg true-false diff: {avg_diff:.2f}us")
+        print(f"  total true-false diff: {sum(diffs):.2f}us")
+        print(f"  min/max diff: {min(diffs):.2f} / {max(diffs):.2f}")
+    else:
+        print("  no matched keys")
+    print()

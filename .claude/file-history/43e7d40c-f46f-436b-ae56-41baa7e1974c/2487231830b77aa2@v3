@@ -1,0 +1,507 @@
+<title>TPU Profile: mega_kernel vs baseline</title>
+<style>
+  :root {
+    --bg:          #f5f7fa;
+    --surface:     #ffffff;
+    --surface2:    #f0f2f5;
+    --border:      #dde1e7;
+    --border-faint:#eaecf0;
+    --text:        #1a1d23;
+    --text-2:      #5c6370;
+    --text-3:      #8b919e;
+
+    --mega:        #e8570a;
+    --base:        #1a7f37;
+    --yellow:      #b07d00;
+
+    --c-rpa-pre:   #3b82f6;
+    --c-qkv-ext:   #ef4444;   /* red — external QKV proj in baseline */
+    --c-ffn:       #8b5cf6;   /* purple — FFN + O_proj (same in both) */
+    --c-copy:      #f59e0b;
+    --c-rpa-dec:   #22c55e;
+    --c-other:     #94a3b8;
+
+    --mono: 'SF Mono', 'Fira Code', 'Cascadia Code', 'Consolas', monospace;
+    --sans: 'Inter', 'SF Pro Text', system-ui, -apple-system, sans-serif;
+    --r: 6px;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root {
+      --bg: #0d1117; --surface: #161b22; --surface2: #1c2128;
+      --border: #30363d; --border-faint: #21262d;
+      --text: #e6edf3; --text-2: #8b949e; --text-3: #58636e;
+      --mega: #f0883e; --base: #3fb950; --yellow: #e3b341;
+      --c-rpa-pre: #4493f8; --c-qkv-ext: #f85149; --c-ffn: #a371f7;
+      --c-copy: #e3b341; --c-rpa-dec: #3fb950; --c-other: #58636e;
+    }
+  }
+  :root[data-theme="light"] {
+    --bg: #f5f7fa; --surface: #ffffff; --surface2: #f0f2f5;
+    --border: #dde1e7; --border-faint: #eaecf0;
+    --text: #1a1d23; --text-2: #5c6370; --text-3: #8b919e;
+    --mega: #e8570a; --base: #1a7f37; --yellow: #b07d00;
+    --c-rpa-pre: #3b82f6; --c-qkv-ext: #ef4444; --c-ffn: #8b5cf6;
+    --c-copy: #f59e0b; --c-rpa-dec: #22c55e; --c-other: #94a3b8;
+  }
+  :root[data-theme="dark"] {
+    --bg: #0d1117; --surface: #161b22; --surface2: #1c2128;
+    --border: #30363d; --border-faint: #21262d;
+    --text: #e6edf3; --text-2: #8b949e; --text-3: #58636e;
+    --mega: #f0883e; --base: #3fb950; --yellow: #e3b341;
+    --c-rpa-pre: #4493f8; --c-qkv-ext: #f85149; --c-ffn: #a371f7;
+    --c-copy: #e3b341; --c-rpa-dec: #3fb950; --c-other: #58636e;
+  }
+
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+  body {
+    background: var(--bg);
+    color: var(--text);
+    font-family: var(--sans);
+    font-size: 13px;
+    line-height: 1.6;
+    padding: 28px 24px 64px;
+    max-width: 900px;
+    margin: 0 auto;
+  }
+
+  /* ── Header ── */
+  .page-header {
+    display: flex;
+    align-items: flex-start;
+    justify-content: space-between;
+    gap: 16px;
+    padding-bottom: 18px;
+    border-bottom: 1px solid var(--border);
+    margin-bottom: 24px;
+  }
+  .page-header h1 { font-size: 17px; font-weight: 600; letter-spacing: -0.3px; }
+  .page-header .meta { font-size: 11.5px; color: var(--text-2); margin-top: 3px; font-family: var(--mono); }
+  .badge {
+    display: inline-block; font-size: 11px; font-family: var(--mono);
+    font-weight: 500; padding: 3px 8px; border-radius: 20px; white-space: nowrap;
+  }
+  .badge-mega { background: color-mix(in srgb, var(--mega) 14%, transparent); color: var(--mega); }
+  .badge-base { background: color-mix(in srgb, var(--base) 14%, transparent); color: var(--base); }
+
+  .section-label {
+    font-size: 10px; font-weight: 600; text-transform: uppercase;
+    letter-spacing: 0.08em; color: var(--text-3); margin-bottom: 10px;
+  }
+
+  /* ── Top KPIs ── */
+  .kpi-row {
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    gap: 8px;
+    margin-bottom: 24px;
+  }
+  @media (max-width: 580px) { .kpi-row { grid-template-columns: 1fr 1fr; } }
+  .kpi {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: var(--r);
+    padding: 12px 14px;
+  }
+  .kpi-label { font-size: 11px; color: var(--text-2); margin-bottom: 5px; }
+  .kpi-val {
+    font-family: var(--mono); font-size: 20px; font-weight: 700;
+    font-variant-numeric: tabular-nums; line-height: 1.1;
+  }
+  .kpi-sub { font-size: 10.5px; color: var(--text-2); margin-top: 2px; font-family: var(--mono); }
+  .bad  { color: var(--mega); }
+  .good { color: var(--base); }
+  .neu  { color: var(--text-2); }
+
+  /* ── Stacked bar ── */
+  .bar-section {
+    background: var(--surface); border: 1px solid var(--border);
+    border-radius: var(--r); padding: 16px 18px 14px; margin-bottom: 20px;
+  }
+  .bar-row { display: flex; align-items: center; gap: 10px; margin-bottom: 8px; }
+  .bar-row:last-of-type { margin-bottom: 0; }
+  .bar-run-label {
+    font-family: var(--mono); font-size: 10.5px; color: var(--text-2);
+    width: 80px; flex-shrink: 0; text-align: right; white-space: nowrap;
+  }
+  .run-dot {
+    display: inline-block; width: 7px; height: 7px; border-radius: 50%;
+    margin-right: 4px; vertical-align: middle; position: relative; top: -1px;
+  }
+  .bar-track {
+    flex: 1; height: 26px; background: var(--surface2);
+    border-radius: 3px; overflow: hidden; display: flex;
+  }
+  .bar-seg {
+    height: 100%; flex-shrink: 0;
+    transition: filter 0.12s;
+    cursor: default;
+  }
+  .bar-seg:hover { filter: brightness(1.12); }
+  .bar-ms {
+    font-family: var(--mono); font-size: 12px; font-weight: 600;
+    font-variant-numeric: tabular-nums; width: 60px; flex-shrink: 0;
+  }
+  .bar-legend {
+    display: flex; flex-wrap: wrap; gap: 5px 14px;
+    margin-top: 12px; padding-top: 11px; border-top: 1px solid var(--border-faint);
+  }
+  .legend-item { display: flex; align-items: center; gap: 5px; font-size: 11px; color: var(--text-2); }
+  .legend-dot { width: 9px; height: 9px; border-radius: 2px; flex-shrink: 0; }
+
+  /* ── Tables ── */
+  .table-wrap { overflow-x: auto; border-radius: var(--r); border: 1px solid var(--border); margin-bottom: 20px; }
+  table { width: 100%; border-collapse: collapse; background: var(--surface); font-size: 12.5px; }
+  thead th {
+    text-align: left; padding: 8px 13px;
+    font-size: 10.5px; font-weight: 600; text-transform: uppercase;
+    letter-spacing: 0.06em; color: var(--text-3);
+    border-bottom: 1px solid var(--border); background: var(--surface2);
+    white-space: nowrap;
+  }
+  thead th.r { text-align: right; }
+  tbody td {
+    padding: 8px 13px; border-bottom: 1px solid var(--border-faint);
+    font-family: var(--mono); font-variant-numeric: tabular-nums;
+    white-space: nowrap; vertical-align: middle;
+  }
+  tbody td.name { font-family: var(--sans); font-size: 12px; }
+  tbody td.r { text-align: right; }
+  tbody tr:last-child td { border-bottom: none; }
+  tbody tr:hover td { background: color-mix(in srgb, var(--text) 3%, transparent); }
+  .chip {
+    display: inline-block; font-family: var(--mono); font-size: 11px;
+    font-weight: 600; padding: 2px 7px; border-radius: 20px;
+  }
+  .chip-bad  { background: color-mix(in srgb, var(--mega) 15%, transparent); color: var(--mega); }
+  .chip-good { background: color-mix(in srgb, var(--base) 15%, transparent); color: var(--base); }
+  .chip-neu  { background: var(--surface2); color: var(--text-2); }
+  .dot-swatch {
+    display: inline-block; width: 8px; height: 8px; border-radius: 2px;
+    margin-right: 6px; vertical-align: middle; position: relative; top: -1px;
+  }
+  tr.total-row td {
+    font-weight: 700; border-top: 2px solid var(--border);
+    background: color-mix(in srgb, var(--text) 3.5%, transparent);
+  }
+  .fused-label {
+    font-family: var(--sans); font-size: 11px;
+    color: var(--text-3); font-style: italic;
+  }
+
+  /* delta bar inline */
+  .delta-wrap { display: flex; align-items: center; gap: 6px; }
+  .delta-bar-pos { height: 3px; border-radius: 2px; background: var(--mega); display: inline-block; }
+  .delta-bar-neg { height: 3px; border-radius: 2px; background: var(--base); display: inline-block; }
+
+  /* ── Insight box ── */
+  .insight {
+    background: var(--surface); border: 1px solid var(--border);
+    border-radius: var(--r); padding: 16px 18px; margin-bottom: 20px;
+  }
+  .insight h3 { font-size: 12.5px; font-weight: 600; margin-bottom: 10px; color: var(--text); }
+  .insight-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; }
+  @media (max-width: 580px) { .insight-grid { grid-template-columns: 1fr; } }
+  .insight-item .il { font-size: 11px; font-weight: 600; color: var(--text-2); margin-bottom: 3px; }
+  .insight-item p { font-size: 12px; color: var(--text-2); line-height: 1.55; }
+  .insight-item strong { color: var(--text); font-weight: 600; }
+  .insight-item code {
+    font-family: var(--mono); font-size: 11px;
+    background: var(--surface2); border: 1px solid var(--border);
+    border-radius: 3px; padding: 1px 4px;
+  }
+
+  /* transfer arrow for QKV row */
+  .arrow-cell { color: var(--text-3); font-family: var(--mono); font-size: 11px; }
+</style>
+
+<!-- ── Header ── -->
+<div class="page-header">
+  <div>
+    <h1>TPU Kernel Profiler — mega_kernel vs baseline</h1>
+    <div class="meta">Qwen/Qwen3-4B · input-len=1000 · output-len=1 · batch=16 · 2026-07-07</div>
+  </div>
+  <div style="display:flex;gap:6px;flex-shrink:0;margin-top:2px;">
+    <span class="badge badge-mega">04:16 mega_kernel</span>
+    <span class="badge badge-base">04:19 baseline</span>
+  </div>
+</div>
+
+<!-- ── KPIs ── -->
+<div class="kpi-row">
+  <div class="kpi">
+    <div class="kpi-label">mega total</div>
+    <div class="kpi-val bad">67.84<span style="font-size:13px;font-weight:400;color:var(--text-2)">ms</span></div>
+    <div class="kpi-sub">main forward pass</div>
+  </div>
+  <div class="kpi">
+    <div class="kpi-label">baseline total</div>
+    <div class="kpi-val good">39.87<span style="font-size:13px;font-weight:400;color:var(--text-2)">ms</span></div>
+    <div class="kpi-sub">main forward pass</div>
+  </div>
+  <div class="kpi">
+    <div class="kpi-label">overall regression</div>
+    <div class="kpi-val bad">1.70×</div>
+    <div class="kpi-sub">+27.97ms</div>
+  </div>
+  <div class="kpi">
+    <div class="kpi-label">RPA kernel regression</div>
+    <div class="kpi-val bad">3.77×</div>
+    <div class="kpi-sub">1.211ms vs 0.321ms</div>
+  </div>
+</div>
+
+<!-- ── Stacked bars ── -->
+<div class="bar-section">
+  <div class="section-label" style="margin-bottom:13px">Time breakdown — main forward pass (same scale, hover for details)</div>
+
+  <!-- mega: total=67.84ms = scale 100%
+    RPA-pre: 43.60→64.27%  |  QKV-ext: 0 (fused into RPA)  |  FFN: 19.36→28.54%  |  copy: 2.74→4.04%  |  misc: 1.80→2.65%  |  rpa-dec: 0.25→0.37% -->
+  <div class="bar-row">
+    <div class="bar-run-label"><span class="run-dot" style="background:var(--mega)"></span>mega</div>
+    <div class="bar-track">
+      <div class="bar-seg" style="width:64.27%;background:var(--c-rpa-pre)" title="RPA prefill: 43.60ms — includes fused QKV proj+QKNorm+RoPE (36 calls × 1.211ms)"></div>
+      <div class="bar-seg" style="width:28.54%;background:var(--c-ffn)"     title="XLA fusions: 19.36ms — FFN gate/up/down + O_proj + element-wise (183 ops)"></div>
+      <div class="bar-seg" style="width:4.04%; background:var(--c-copy)"    title="copy + copy_bitcast: 2.74ms"></div>
+      <div class="bar-seg" style="width:2.65%; background:var(--c-other)"   title="pad_maximum + broadcast.clone: 1.80ms"></div>
+      <div class="bar-seg" style="width:0.37%; background:var(--c-rpa-dec)" title="RPA decode: 0.25ms"></div>
+    </div>
+    <div class="bar-ms bad">67.84ms</div>
+  </div>
+
+  <!-- baseline: total=39.87ms → 58.77% of scale
+    RPA-pre: 11.54→17.01%  |  QKV-ext: 6.39→9.42%  |  FFN: 19.36→28.54%  |  copy: 2.06→3.04%  |  misc: 0.21→0.31%  |  rpa-dec: 0.25→0.37% -->
+  <div class="bar-row">
+    <div class="bar-run-label"><span class="run-dot" style="background:var(--base)"></span>baseline</div>
+    <div class="bar-track">
+      <div class="bar-seg" style="width:17.01%;background:var(--c-rpa-pre)" title="RPA prefill: 11.54ms — attention only, no projection (36 calls × 0.321ms)"></div>
+      <div class="bar-seg" style="width:9.42%; background:var(--c-qkv-ext)" title="XLA external QKV proj + QKNorm + RoPE: 6.39ms (removed in mega kernel)"></div>
+      <div class="bar-seg" style="width:28.54%;background:var(--c-ffn)"     title="XLA fusions: 19.36ms — FFN gate/up/down + O_proj + element-wise (identical to mega)"></div>
+      <div class="bar-seg" style="width:3.04%; background:var(--c-copy)"    title="copy: 2.06ms"></div>
+      <div class="bar-seg" style="width:0.31%; background:var(--c-other)"   title="misc: 0.21ms"></div>
+      <div class="bar-seg" style="width:0.37%; background:var(--c-rpa-dec)" title="RPA decode: 0.25ms"></div>
+    </div>
+    <div class="bar-ms good">39.87ms</div>
+  </div>
+
+  <div class="bar-legend">
+    <div class="legend-item"><span class="legend-dot" style="background:var(--c-rpa-pre)"></span>RPA prefill (RPAm bq_256)</div>
+    <div class="legend-item"><span class="legend-dot" style="background:var(--c-qkv-ext)"></span>XLA external QKV proj + QKNorm + RoPE</div>
+    <div class="legend-item"><span class="legend-dot" style="background:var(--c-ffn)"></span>XLA fusions: FFN + O_proj + element-wise</div>
+    <div class="legend-item"><span class="legend-dot" style="background:var(--c-copy)"></span>copy / bitcast</div>
+    <div class="legend-item"><span class="legend-dot" style="background:var(--c-other)"></span>misc (pad / broadcast)</div>
+    <div class="legend-item"><span class="legend-dot" style="background:var(--c-rpa-dec)"></span>RPA decode</div>
+  </div>
+</div>
+
+<!-- ── Main comparison table ── -->
+<div class="section-label">Component breakdown — main forward pass (36 layers + decode, second jit_run_model)</div>
+<div class="table-wrap">
+  <table>
+    <thead>
+      <tr>
+        <th style="min-width:240px">Component</th>
+        <th class="r">Mega (ms)</th>
+        <th class="r">Baseline (ms)</th>
+        <th class="r">Δ (ms)</th>
+        <th class="r">Ratio</th>
+        <th class="r" style="min-width:80px">Calls (m/b)</th>
+      </tr>
+    </thead>
+    <tbody>
+      <!-- RPA prefill -->
+      <tr>
+        <td class="name">
+          <span class="dot-swatch" style="background:var(--c-rpa-pre)"></span>
+          RPA prefill kernel (RPAm bq_256)
+        </td>
+        <td class="r bad">43.60</td>
+        <td class="r good">11.54</td>
+        <td class="r">
+          <div class="delta-wrap" style="justify-content:flex-end">
+            <span class="bad">+32.06</span>
+            <span class="delta-bar-pos" style="width:32px"></span>
+          </div>
+        </td>
+        <td class="r"><span class="chip chip-bad">3.77×</span></td>
+        <td class="r neu">36 / 36</td>
+      </tr>
+      <!-- QKV external -->
+      <tr>
+        <td class="name">
+          <span class="dot-swatch" style="background:var(--c-qkv-ext)"></span>
+          XLA external: QKV proj + QKNorm + RoPE
+        </td>
+        <td class="r"><span class="fused-label">— (fused in RPA)</span></td>
+        <td class="r" style="color:var(--c-qkv-ext)">6.39</td>
+        <td class="r">
+          <div class="delta-wrap" style="justify-content:flex-end">
+            <span class="good">−6.39</span>
+            <span class="delta-bar-neg" style="width:6px"></span>
+          </div>
+        </td>
+        <td class="r"><span class="chip chip-good">saved</span></td>
+        <td class="r neu">— / ~217</td>
+      </tr>
+      <!-- FFN + O_proj -->
+      <tr>
+        <td class="name">
+          <span class="dot-swatch" style="background:var(--c-ffn)"></span>
+          XLA fusions: FFN + O_proj + element-wise
+        </td>
+        <td class="r">19.36</td>
+        <td class="r">19.36</td>
+        <td class="r neu">0.00</td>
+        <td class="r"><span class="chip chip-neu">1.00×</span></td>
+        <td class="r neu">183 / 183</td>
+      </tr>
+      <!-- copy -->
+      <tr>
+        <td class="name">
+          <span class="dot-swatch" style="background:var(--c-copy)"></span>
+          copy + copy_bitcast_fusion
+        </td>
+        <td class="r">2.74</td>
+        <td class="r">2.06</td>
+        <td class="r bad">+0.68</td>
+        <td class="r"><span class="chip chip-bad">1.33×</span></td>
+        <td class="r neu">180 / 108</td>
+      </tr>
+      <!-- pad/misc -->
+      <tr>
+        <td class="name">
+          <span class="dot-swatch" style="background:var(--c-other)"></span>
+          pad_maximum + broadcast.clone + misc
+        </td>
+        <td class="r">1.80</td>
+        <td class="r">0.21</td>
+        <td class="r bad">+1.59</td>
+        <td class="r"><span class="chip chip-bad">8.6×</span></td>
+        <td class="r neu">73 / 1</td>
+      </tr>
+      <!-- RPA decode -->
+      <tr>
+        <td class="name">
+          <span class="dot-swatch" style="background:var(--c-rpa-dec)"></span>
+          RPA decode (RPAd bq_1_1)
+        </td>
+        <td class="r">0.25</td>
+        <td class="r">0.25</td>
+        <td class="r neu">0.00</td>
+        <td class="r"><span class="chip chip-neu">1.0×</span></td>
+        <td class="r neu">36 / 36</td>
+      </tr>
+      <!-- Total -->
+      <tr class="total-row">
+        <td class="name" style="color:var(--text)">Total</td>
+        <td class="r bad">67.84</td>
+        <td class="r good">39.87</td>
+        <td class="r bad">+27.97</td>
+        <td class="r"><span class="chip chip-bad" style="font-size:12px">1.70×</span></td>
+        <td class="r neu">—</td>
+      </tr>
+    </tbody>
+  </table>
+</div>
+
+<!-- ── RPA per-call breakdown ── -->
+<div class="section-label">RPA kernel stats</div>
+<div class="table-wrap">
+  <table>
+    <thead>
+      <tr>
+        <th>Kernel variant</th>
+        <th class="r">Calls</th>
+        <th class="r">Mega avg</th>
+        <th class="r">Baseline avg</th>
+        <th class="r">Ratio</th>
+        <th class="r">Mega total</th>
+        <th class="r">Base total</th>
+      </tr>
+    </thead>
+    <tbody>
+      <tr>
+        <td class="name">RPAm bq_256_128 (main prefill)</td>
+        <td class="r neu">36</td>
+        <td class="r bad">1.211ms</td>
+        <td class="r good">0.321ms</td>
+        <td class="r"><span class="chip chip-bad">3.77×</span></td>
+        <td class="r bad">43.60ms</td>
+        <td class="r good">11.54ms</td>
+      </tr>
+      <tr>
+        <td class="name">RPAm bq_64_128 (small tiles)</td>
+        <td class="r neu">36</td>
+        <td class="r bad">0.112ms</td>
+        <td class="r good">0.023ms</td>
+        <td class="r"><span class="chip chip-bad">4.87×</span></td>
+        <td class="r bad">4.04ms</td>
+        <td class="r good">0.84ms</td>
+      </tr>
+      <tr>
+        <td class="name">RPAd bq_1_1 (decode)</td>
+        <td class="r neu">72</td>
+        <td class="r">0.008ms</td>
+        <td class="r">0.007ms</td>
+        <td class="r"><span class="chip chip-neu">1.14×</span></td>
+        <td class="r">0.61ms</td>
+        <td class="r">0.49ms</td>
+      </tr>
+    </tbody>
+  </table>
+</div>
+
+<!-- ── Insight ── -->
+<div class="insight">
+  <h3>Why the regression</h3>
+  <div class="insight-grid">
+    <div class="insight-item">
+      <div class="il">QKV projection cost explodes when tiled</div>
+      <p>
+        Mega kernel eliminated the <strong>6.39ms</strong> external QKV projection block by fusing it into the RPA kernel.
+        But doing QKV projection per <code>bq_tile</code> (128 tokens) means <strong>125 tiny matmuls</strong>
+        of shape <code>[128×2560]×[2560×6144]</code> instead of one large
+        <code>[16000×2560]×[2560×6144]</code>. The tiled path takes <strong>32.06ms</strong> for the same work —
+        a 5× penalty from MXU underutilization and per-tile dispatch overhead.
+      </p>
+    </div>
+    <div class="insight-item">
+      <div class="il">FFN cost is unchanged — a clean control</div>
+      <p>
+        Both runs show <strong>exactly 19.36ms</strong> for non-QKV fusions (FFN gate/up/down + O_proj + element-wise).
+        This confirms the profiler numbers are consistent and the regression is isolated to the fused QKV path.
+        The mega kernel did not affect FFN or output projection at all.
+      </p>
+    </div>
+    <div class="insight-item">
+      <div class="il">Decode is unaffected</div>
+      <p>
+        <code>RPAd</code> shows <strong>≈1.0×</strong> in both runs (0.008ms vs 0.007ms).
+        With 1 token per sequence, there's no prefill tiling — QKV projection is trivially small regardless of approach.
+        The mega kernel advantage (if any) would only appear at <em>very small</em> prefill batch sizes.
+      </p>
+    </div>
+    <div class="insight-item">
+      <div class="il">Net accounting</div>
+      <p>
+        Mega saves <strong>6.39ms</strong> in external projections but adds <strong>+32.06ms</strong> to the RPA kernel,
+        for a net regression of <strong>+25.67ms</strong> on the main pass. The 1.80ms increase in pad/broadcast ops
+        is a secondary cost from per-tile x-staging inside the kernel.
+      </p>
+    </div>
+  </div>
+</div>
+
+<!-- ── Config strip ── -->
+<div style="background:var(--surface);border:1px solid var(--border);border-radius:var(--r);padding:12px 16px;">
+  <div class="section-label" style="margin-bottom:8px">Run configuration</div>
+  <div style="display:flex;flex-wrap:wrap;gap:5px;font-family:var(--mono);font-size:11px;color:var(--text-2);">
+    <span style="background:var(--surface2);border:1px solid var(--border);border-radius:3px;padding:2px 7px">page_size=128</span>
+    <span style="background:var(--surface2);border:1px solid var(--border);border-radius:3px;padding:2px 7px">bq_csz=256 bq_sz=128</span>
+    <span style="background:var(--surface2);border:1px solid var(--border);border-radius:3px;padding:2px 7px">bkv_csz=1024 bkv_sz=512</span>
+    <span style="background:var(--surface2);border:1px solid var(--border);border-radius:3px;padding:2px 7px">RPAm MIXED</span>
+    <span style="background:var(--surface2);border:1px solid var(--border);border-radius:3px;padding:2px 7px">36 layers → 36 RPA calls/pass</span>
+    <span style="background:var(--surface2);border:1px solid var(--border);border-radius:3px;padding:2px 7px">H=2560 · 32h/8kvh · d=128</span>
+    <span style="background:var(--surface2);border:1px solid var(--border);border-radius:3px;padding:2px 7px">16 seqs × 1000 tok = 16k tokens</span>
+    <span style="background:var(--surface2);border:1px solid var(--border);border-radius:3px;padding:2px 7px">125 bq_tiles per RPA call</span>
+  </div>
+</div>

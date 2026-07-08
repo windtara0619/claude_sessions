@@ -1,0 +1,84 @@
+import gzip, json, re
+from collections import defaultdict
+
+FALSE_TRACE = "/tmp/tpu_profiler_false/plugins/profile/2026_06_13_21_34_08/t1v-n-df792003-w-0.trace.json.gz"
+TRUE_TRACE = "/tmp/tpu_profiler_true/plugins/profile/2026_06_13_21_38_06/t1v-n-df792003-w-0.trace.json.gz"
+
+rms_pat = re.compile(r'= \(f32\[2048\]\{[^}]*\}, bf16\[2048,2560\]')
+mlp_pat = re.compile(r'= bf16\[2048,9728\]')
+fusion_name_re = re.compile(r'^fusion(\.\d+)?$')
+
+def normalize(s):
+    s = re.sub(r'\.\d+', '', s)
+    s = re.sub(r'_\d+_', '_', s)
+    return s
+
+def find_pid(events):
+    for e in events:
+        if e.get('name','').startswith('jit_run_model('):
+            return e['pid']
+    return None
+
+def load(path):
+    with gzip.open(path) as f:
+        data = json.load(f)
+    events = data['traceEvents']
+    pid = find_pid(events)
+    fusions = [e for e in events if e.get('pid')==pid and fusion_name_re.match(e.get('name',''))]
+    fusions.sort(key=lambda e: e['ts'])
+    out = []
+    for e in fusions:
+        ln = e.get('args',{}).get('long_name','')
+        ss = e.get('args',{}).get('source_stack','')
+        if rms_pat.search(ln):
+            kind = 'RMS'
+        elif mlp_pat.search(ln):
+            kind = 'MLP'
+        else:
+            continue
+        qlines = [l.strip() for l in ss.splitlines() if 'qwen' in l.lower()]
+        loc = qlines[0] if qlines else ''
+        out.append((kind, loc, normalize(ln), e['dur'], e['ts']))
+    return out
+
+false_events = load(FALSE_TRACE)
+true_events = load(TRUE_TRACE)
+
+print(f"false: {len(false_events)} RMS/MLP fusion events")
+print(f"true:  {len(true_events)} RMS/MLP fusion events")
+
+# group by (kind, loc, normalized long_name) to match structurally identical instances
+def group(events):
+    g = defaultdict(list)
+    for kind, loc, nln, dur, ts in events:
+        g[(kind, loc, nln)].append((dur, ts))
+    return g
+
+gf = group(false_events)
+gt = group(true_events)
+
+common_keys = set(gf.keys()) & set(gt.keys())
+print(f"common structural keys: {len(common_keys)} / false-only: {len(set(gf)-set(gt))} / true-only: {len(set(gt)-set(gf))}")
+
+# aggregate by (kind, loc) ignoring full normalized name, sum durations, compare totals
+agg_false = defaultdict(lambda: [0.0,0])
+agg_true = defaultdict(lambda: [0.0,0])
+for kind, loc, nln, dur, ts in false_events:
+    agg_false[(kind,loc)][0] += dur
+    agg_false[(kind,loc)][1] += 1
+for kind, loc, nln, dur, ts in true_events:
+    agg_true[(kind,loc)][0] += dur
+    agg_true[(kind,loc)][1] += 1
+
+print()
+print(f"{'kind':5} {'loc':45} {'false_n':>8} {'false_tot':>10} {'false_avg':>10} {'true_n':>8} {'true_tot':>10} {'true_avg':>10} {'diff_avg':>10}")
+keys = sorted(set(agg_false) | set(agg_true), key=lambda k: agg_false.get(k,[0,0])[0], reverse=True)
+for k in keys:
+    fn, ft_ = agg_false.get(k,[0,0])
+    tn, tt_ = agg_true.get(k,[0,0])
+    favg = fn/ft_ if ft_ else 0
+    tavg = tn/tt_ if tn else 0
+    tavg = (fn if False else 0)
+    favg2 = agg_false.get(k,[0,0])[0]/agg_false.get(k,[0,1])[1] if agg_false.get(k,[0,0])[1] else 0
+    tavg2 = agg_true.get(k,[0,0])[0]/agg_true.get(k,[0,1])[1] if agg_true.get(k,[0,0])[1] else 0
+    print(f"{k[0]:5} {k[1]:45} {agg_false.get(k,[0,0])[1]:>8} {agg_false.get(k,[0,0])[0]:>10.2f} {favg2:>10.4f} {agg_true.get(k,[0,0])[1]:>8} {agg_true.get(k,[0,0])[0]:>10.2f} {tavg2:>10.4f} {tavg2-favg2:>10.4f}")

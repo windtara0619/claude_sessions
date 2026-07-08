@@ -1,0 +1,88 @@
+(EngineCore pid=44935) ERROR 06-18 06:50:54 [core.py:1195] EngineCore failed to start.
+(EngineCore pid=44935) ERROR 06-18 06:50:54 [core.py:1195] Traceback (most recent call last):
+(EngineCore pid=44935) ERROR 06-18 06:50:54 [core.py:1195]   File "/home/tarading/vllm/vllm/v1/engine/core.py", line 1164, in run_engine_core
+(EngineCore pid=44935) ERROR 06-18 06:50:54 [core.py:1195]     engine_core = EngineCoreProc(*args, engine_index=dp_rank, **kwargs)
+(EngineCore pid=44935) ERROR 06-18 06:50:54 [core.py:1195]                   ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+(EngineCore pid=44935) ERROR 06-18 06:50:54 [core.py:1195]   File "/home/tarading/vllm/vllm/tracing/otel.py", line 178, in sync_wrapper
+(EngineCore pid=44935) ERROR 06-18 06:50:54 [core.py:1195]     return func(*args, **kwargs)
+(EngineCore pid=44935) ERROR 06-18 06:50:54 [core.py:1195]            ^^^^^^^^^^^^^^^^^^^^^
+(EngineCore pid=44935) ERROR 06-18 06:50:54 [core.py:1195]   File "/home/tarading/vllm/vllm/v1/engine/core.py", line 930, in __init__
+(EngineCore pid=44935) ERROR 06-18 06:50:54 [core.py:1195]     super().__init__(
+(EngineCore pid=44935) ERROR 06-18 06:50:54 [core.py:1195]   File "/home/tarading/vllm/vllm/v1/engine/core.py", line 132, in __init__
+(EngineCore pid=44935) ERROR 06-18 06:50:54 [core.py:1195]     kv_cache_config = self._initialize_kv_caches(vllm_config)
+(EngineCore pid=44935) ERROR 06-18 06:50:54 [core.py:1195]                       ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+(EngineCore pid=44935) ERROR 06-18 06:50:54 [core.py:1195]   File "/home/tarading/vllm/vllm/tracing/otel.py", line 178, in sync_wrapper
+(EngineCore pid=44935) ERROR 06-18 06:50:54 [core.py:1195]     return func(*args, **kwargs)
+(EngineCore pid=44935) ERROR 06-18 06:50:54 [core.py:1195]            ^^^^^^^^^^^^^^^^^^^^^
+(EngineCore pid=44935) ERROR 06-18 06:50:54 [core.py:1195]   File "/home/tarading/vllm/vllm/v1/engine/core.py", line 290, in _initialize_kv_caches
+(EngineCore pid=44935) ERROR 06-18 06:50:54 [core.py:1195]     self.model_executor.initialize_from_config(kv_cache_configs)
+(EngineCore pid=44935) ERROR 06-18 06:50:54 [core.py:1195]   File "/home/tarading/vllm/vllm/v1/executor/abstract.py", line 124, in initialize_from_config
+(EngineCore pid=44935) ERROR 06-18 06:50:54 [core.py:1195]     compilation_times: list[CompilationTimes] = self.collective_rpc(
+(EngineCore pid=44935) ERROR 06-18 06:50:54 [core.py:1195]                                                 ^^^^^^^^^^^^^^^^^^^^
+(EngineCore pid=44935) ERROR 06-18 06:50:54 [core.py:1195]   File "/home/tarading/vllm/vllm/v1/executor/uniproc_executor.py", line 92, in collective_rpc
+(EngineCore pid=44935) ERROR 06-18 06:50:54 [core.py:1195]     result = run_method(self.driver_worker, method, args, kwargs)
+(EngineCore pid=44935) ERROR 06-18 06:50:54 [core.py:1195]              ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+(EngineCore pid=44935) ERROR 06-18 06:50:54 [core.py:1195]   File "/home/tarading/vllm/vllm/v1/serial_utils.py", line 510, in run_method
+(EngineCore pid=44935) ERROR 06-18 06:50:54 [core.py:1195]     return func(*args, **kwargs)
+(EngineCore pid=44935) ERROR 06-18 06:50:54 [core.py:1195]            ^^^^^^^^^^^^^^^^^^^^^
+(EngineCore pid=44935) ERROR 06-18 06:50:54 [core.py:1195]   File "/home/tarading/tpu-inference/tpu_inference/worker/tpu_worker.py", line 530, in compile_or_warm_up_model
+(EngineCore pid=44935) ERROR 06-18 06:50:54 [core.py:1195]     self.model_runner.capture_model()
+(EngineCore pid=44935) ERROR 06-18 06:50:54 [core.py:1195]   File "/home/tarading/tpu-inference/tpu_inference/runner/tpu_runner.py", line 928, in capture_model
+(EngineCore pid=44935) ERROR 06-18 06:50:54 [core.py:1195]     self.compilation_manager.capture_model()
+(EngineCore pid=44935) ERROR 06-18 06:50:54 [core.py:1195]   File "/home/tarading/tpu-inference/tpu_inference/utils.py", line 404, in wrapper
+(EngineCore pid=44935) ERROR 06-18 06:50:54 [core.py:1195]     result = func(*args, **kwargs)
+(EngineCore pid=44935) ERROR 06-18 06:50:54 [core.py:1195]              ^^^^^^^^^^^^^^^^^^^^^
+(EngineCore pid=44935) ERROR 06-18 06:50:54 [core.py:1195]   File "/home/tarading/tpu-inference/tpu_inference/runner/compilation_manager.py", line 220, in capture_model
+(EngineCore pid=44935) ERROR 06-18 06:50:54 [core.py:1195]     self._flush_compilations()
+(EngineCore pid=44935) ERROR 06-18 06:50:54 [core.py:1195]   File "/home/tarading/tpu-inference/tpu_inference/runner/compilation_manager.py", line 199, in _flush_compilations
+(EngineCore pid=44935) ERROR 06-18 06:50:54 [core.py:1195]     out = warmup_handler(fn, args, call_kwargs)
+(EngineCore pid=44935) ERROR 06-18 06:50:54 [core.py:1195]           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+(EngineCore pid=44935) ERROR 06-18 06:50:54 [core.py:1195]   File "/home/tarading/tpu-inference/tpu_inference/runner/compilation_manager.py", line 421, in model_fn_warmup
+(EngineCore pid=44935) ERROR 06-18 06:50:54 [core.py:1195]     out = self.runner.model_fn(
+(EngineCore pid=44935) ERROR 06-18 06:50:54 [core.py:1195]           ^^^^^^^^^^^^^^^^^^^^^
+(EngineCore pid=44935) ERROR 06-18 06:50:54 [core.py:1195]   File "/home/tarading/tpu-inference/tpu_inference/models/common/model_loader.py", line 462, in wrapped_model_fn
+(EngineCore pid=44935) ERROR 06-18 06:50:54 [core.py:1195]     return jitted_model_fn(*args, **kwargs)
+(EngineCore pid=44935) ERROR 06-18 06:50:54 [core.py:1195]            ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+(EngineCore pid=44935) ERROR 06-18 06:50:54 [core.py:1195]   File "/home/tarading/tpu-inference/tpu_inference/models/common/model_loader.py", line 383, in run_model
+(EngineCore pid=44935) ERROR 06-18 06:50:54 [core.py:1195]     return model(*args)
+(EngineCore pid=44935) ERROR 06-18 06:50:54 [core.py:1195]            ^^^^^^^^^^^^
+(EngineCore pid=44935) ERROR 06-18 06:50:54 [core.py:1195]   File "/home/tarading/tpu-inference/tpu_inference/models/jax/qwen3.py", line 408, in __call__
+(EngineCore pid=44935) ERROR 06-18 06:50:54 [core.py:1195]     kv_caches, x = self.model(
+(EngineCore pid=44935) ERROR 06-18 06:50:54 [core.py:1195]                    ^^^^^^^^^^^
+(EngineCore pid=44935) ERROR 06-18 06:50:54 [core.py:1195]   File "/home/tarading/tpu-inference/tpu_inference/models/jax/qwen2.py", line 369, in __call__
+(EngineCore pid=44935) ERROR 06-18 06:50:54 [core.py:1195]     kv_cache, x = layer(
+(EngineCore pid=44935) ERROR 06-18 06:50:54 [core.py:1195]                   ^^^^^^
+(EngineCore pid=44935) ERROR 06-18 06:50:54 [core.py:1195]   File "/home/tarading/tpu-inference/tpu_inference/models/jax/qwen2.py", line 281, in __call__
+(EngineCore pid=44935) ERROR 06-18 06:50:54 [core.py:1195]     kv_cache, attn_output = self.self_attn(
+(EngineCore pid=44935) ERROR 06-18 06:50:54 [core.py:1195]                             ^^^^^^^^^^^^^^^
+(EngineCore pid=44935) ERROR 06-18 06:50:54 [core.py:1195]   File "/home/tarading/tpu-inference/tpu_inference/models/jax/qwen3.py", line 229, in __call__
+(EngineCore pid=44935) ERROR 06-18 06:50:54 [core.py:1195]     new_kv_cache, outputs = attention(
+(EngineCore pid=44935) ERROR 06-18 06:50:54 [core.py:1195]                             ^^^^^^^^^^
+(EngineCore pid=44935) ERROR 06-18 06:50:54 [core.py:1195]   File "/home/tarading/tpu-inference/tpu_inference/layers/common/attention_interface.py", line 506, in attention
+(EngineCore pid=44935) ERROR 06-18 06:50:54 [core.py:1195]     output, kv_cache = sharded_ragged_paged_attention(
+(EngineCore pid=44935) ERROR 06-18 06:50:54 [core.py:1195]                        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+(EngineCore pid=44935) ERROR 06-18 06:50:54 [core.py:1195]   File "/home/tarading/tpu-inference/tpu_inference/layers/common/attention_interface.py", line 451, in sharded_ragged_paged_attention
+(EngineCore pid=44935) ERROR 06-18 06:50:54 [core.py:1195]     return jax.shard_map(
+(EngineCore pid=44935) ERROR 06-18 06:50:54 [core.py:1195]            ^^^^^^^^^^^^^^
+(EngineCore pid=44935) ERROR 06-18 06:50:54 [core.py:1195]   File "/home/tarading/tpu-inference/tpu_inference/layers/common/attention_interface.py", line 449, in _ragged_paged_attention
+(EngineCore pid=44935) ERROR 06-18 06:50:54 [core.py:1195]     return func(*core_args, **kwargs)
+(EngineCore pid=44935) ERROR 06-18 06:50:54 [core.py:1195]            ^^^^^^^^^^^^^^^^^^^^^^^^^^
+(EngineCore pid=44935) ERROR 06-18 06:50:54 [core.py:1195]   File "/home/tarading/tpu-inference/tpu_inference/kernels/ragged_paged_attention/v3/kernel.py", line 2368, in ragged_paged_attention
+(EngineCore pid=44935) ERROR 06-18 06:50:54 [core.py:1195]     q, kv_cache = run_rpa_kernel(
+(EngineCore pid=44935) ERROR 06-18 06:50:54 [core.py:1195]                   ^^^^^^^^^^^^^^^
+(EngineCore pid=44935) ERROR 06-18 06:50:54 [core.py:1195]   File "/home/tarading/tpu-inference/tpu_inference/kernels/ragged_paged_attention/v3/kernel.py", line 2321, in run_rpa_kernel
+(EngineCore pid=44935) ERROR 06-18 06:50:54 [core.py:1195]     return run(scalar_prefetches, q, kv, kv_cache,
+(EngineCore pid=44935) ERROR 06-18 06:50:54 [core.py:1195]            ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+(EngineCore pid=44935) ERROR 06-18 06:50:54 [core.py:1195]   File "/home/tarading/tpu-inference/tpu_inference/kernels/ragged_paged_attention/v3/kernel.py", line 2318, in run
+(EngineCore pid=44935) ERROR 06-18 06:50:54 [core.py:1195]     return kernel(*scalar_prefetches, q, kv, kv_cache,
+(EngineCore pid=44935) ERROR 06-18 06:50:54 [core.py:1195]            ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+(EngineCore pid=44935) ERROR 06-18 06:50:54 [core.py:1195]   File "/home/tarading/vllm_env/lib/python3.12/site-packages/jax/_src/pallas/pallas_call.py", line 1263, in wrapped
+(EngineCore pid=44935) ERROR 06-18 06:50:54 [core.py:1195]     kernel_args, grid_mapping = pallas_core.get_grid_mapping(
+(EngineCore pid=44935) ERROR 06-18 06:50:54 [core.py:1195]                                 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+(EngineCore pid=44935) ERROR 06-18 06:50:54 [core.py:1195]   File "/home/tarading/vllm_env/lib/python3.12/site-packages/jax/_src/pallas/core.py", line 1313, in get_grid_mapping
+(EngineCore pid=44935) ERROR 06-18 06:50:54 [core.py:1195]     raise ValueError(
+(EngineCore pid=44935) ERROR 06-18 06:50:54 [core.py:1195] ValueError: Pytree for `in_specs` and `inputs` do not match. There are 2 mismatches, including:
+(EngineCore pid=44935) ERROR 06-18 06:50:54 [core.py:1195]     * at [5], `in_specs` is a pytree leaf but `inputs` is a <class 'flax.nnx.variablelib.Param'>, so their Python types differ
+(EngineCore pid=44935) ERROR 06-18 06:50:54 [core.py:1195]     * at [6], `in_specs` is a pytree leaf but `inputs` is a <class 'flax.nnx.variablelib.Param'>, so their Python types differ
+(EngineCore pid=44935) ERROR 06-18 06:50:54 [core.py:1195] --------------------
+(EngineCore pid=44935) ERROR 06-18 06:50:54 [core.py:1195] For simplicity, JAX has removed its internal frames from the traceback of the following exception. Set JAX_TRACEBACK_FILTERING=off to include these.

@@ -1,0 +1,702 @@
+<title>TPU Profile: mega_kernel vs baseline</title>
+<style>
+  /* ── Token system ── */
+  :root {
+    --bg:          #f5f7fa;
+    --surface:     #ffffff;
+    --surface2:    #f0f2f5;
+    --border:      #dde1e7;
+    --border-faint:#eaecf0;
+    --text:        #1a1d23;
+    --text-2:      #5c6370;
+    --text-3:      #8b919e;
+
+    --mega:        #e8570a;   /* orange — the slower run */
+    --base:        #1a7f37;   /* green — the faster run  */
+    --blue:        #0057cc;
+    --purple:      #6e4cbe;
+    --yellow:      #b07d00;
+    --slate:       #5c6370;
+
+    /* op-type strip colours */
+    --c-rpa-pre:   #3b82f6;
+    --c-fusion:    #8b5cf6;
+    --c-copy:      #f59e0b;
+    --c-rpa-dec:   #22c55e;
+    --c-other:     #94a3b8;
+
+    --mono: 'SF Mono', 'Fira Code', 'Cascadia Code', 'Consolas', monospace;
+    --sans: 'Inter', 'SF Pro Text', system-ui, -apple-system, sans-serif;
+
+    --r: 6px;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root {
+      --bg:          #0d1117;
+      --surface:     #161b22;
+      --surface2:    #1c2128;
+      --border:      #30363d;
+      --border-faint:#21262d;
+      --text:        #e6edf3;
+      --text-2:      #8b949e;
+      --text-3:      #58636e;
+
+      --mega:        #f0883e;
+      --base:        #3fb950;
+      --blue:        #79c0ff;
+      --purple:      #bc8cff;
+      --yellow:      #e3b341;
+      --slate:       #8b949e;
+
+      --c-rpa-pre:   #4493f8;
+      --c-fusion:    #a371f7;
+      --c-copy:      #e3b341;
+      --c-rpa-dec:   #3fb950;
+      --c-other:     #58636e;
+    }
+  }
+  :root[data-theme="light"] {
+    --bg: #f5f7fa; --surface: #ffffff; --surface2: #f0f2f5;
+    --border: #dde1e7; --border-faint: #eaecf0;
+    --text: #1a1d23; --text-2: #5c6370; --text-3: #8b919e;
+    --mega: #e8570a; --base: #1a7f37; --blue: #0057cc;
+    --purple: #6e4cbe; --yellow: #b07d00; --slate: #5c6370;
+    --c-rpa-pre: #3b82f6; --c-fusion: #8b5cf6; --c-copy: #f59e0b;
+    --c-rpa-dec: #22c55e; --c-other: #94a3b8;
+  }
+  :root[data-theme="dark"] {
+    --bg: #0d1117; --surface: #161b22; --surface2: #1c2128;
+    --border: #30363d; --border-faint: #21262d;
+    --text: #e6edf3; --text-2: #8b949e; --text-3: #58636e;
+    --mega: #f0883e; --base: #3fb950; --blue: #79c0ff;
+    --purple: #bc8cff; --yellow: #e3b341; --slate: #8b949e;
+    --c-rpa-pre: #4493f8; --c-fusion: #a371f7; --c-copy: #e3b341;
+    --c-rpa-dec: #3fb950; --c-other: #58636e;
+  }
+
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+  body {
+    background: var(--bg);
+    color: var(--text);
+    font-family: var(--sans);
+    font-size: 13px;
+    line-height: 1.6;
+    padding: 28px 24px 64px;
+    max-width: 920px;
+    margin: 0 auto;
+  }
+
+  /* ── Header ── */
+  .page-header {
+    display: flex;
+    align-items: flex-start;
+    justify-content: space-between;
+    gap: 16px;
+    padding-bottom: 20px;
+    border-bottom: 1px solid var(--border);
+    margin-bottom: 28px;
+  }
+  .page-header h1 {
+    font-size: 18px;
+    font-weight: 600;
+    letter-spacing: -0.3px;
+    line-height: 1.3;
+  }
+  .page-header .meta {
+    font-size: 12px;
+    color: var(--text-2);
+    margin-top: 4px;
+    font-family: var(--mono);
+  }
+  .badge {
+    display: inline-block;
+    font-size: 11px;
+    font-family: var(--mono);
+    font-weight: 500;
+    padding: 3px 8px;
+    border-radius: 20px;
+    white-space: nowrap;
+  }
+  .badge-mega { background: color-mix(in srgb, var(--mega) 14%, transparent); color: var(--mega); }
+  .badge-base { background: color-mix(in srgb, var(--base) 14%, transparent); color: var(--base); }
+
+  /* ── Section titles ── */
+  .section-label {
+    font-size: 10px;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+    color: var(--text-3);
+    margin-bottom: 10px;
+  }
+
+  /* ── Summary cards ── */
+  .summary-grid {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 10px;
+    margin-bottom: 28px;
+  }
+  @media (max-width: 580px) { .summary-grid { grid-template-columns: 1fr 1fr; } }
+  .card {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: var(--r);
+    padding: 14px 16px;
+  }
+  .card-label {
+    font-size: 11px;
+    color: var(--text-2);
+    margin-bottom: 6px;
+    font-weight: 500;
+  }
+  .card-value {
+    font-family: var(--mono);
+    font-size: 22px;
+    font-weight: 600;
+    font-variant-numeric: tabular-nums;
+    line-height: 1.1;
+  }
+  .card-sub {
+    font-size: 11px;
+    color: var(--text-2);
+    margin-top: 3px;
+    font-family: var(--mono);
+  }
+  .val-bad  { color: var(--mega); }
+  .val-good { color: var(--base); }
+  .val-warn { color: var(--yellow); }
+
+  /* ── Bar chart ── */
+  .bar-section {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: var(--r);
+    padding: 18px 20px 16px;
+    margin-bottom: 20px;
+  }
+  .bar-row {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    margin-bottom: 10px;
+  }
+  .bar-row:last-of-type { margin-bottom: 0; }
+  .bar-label {
+    font-family: var(--mono);
+    font-size: 10.5px;
+    color: var(--text-2);
+    width: 88px;
+    flex-shrink: 0;
+    text-align: right;
+    white-space: nowrap;
+  }
+  .bar-label .run-dot {
+    display: inline-block;
+    width: 7px; height: 7px;
+    border-radius: 50%;
+    margin-right: 5px;
+    vertical-align: middle;
+    position: relative;
+    top: -1px;
+  }
+  .bar-track {
+    flex: 1;
+    height: 28px;
+    background: var(--surface2);
+    border-radius: 3px;
+    overflow: hidden;
+    display: flex;
+    position: relative;
+  }
+  .bar-seg {
+    height: 100%;
+    flex-shrink: 0;
+    transition: opacity 0.15s;
+    position: relative;
+  }
+  .bar-seg:hover { opacity: 0.85; }
+  .bar-seg[title] { cursor: default; }
+  .bar-total {
+    font-family: var(--mono);
+    font-size: 12px;
+    font-variant-numeric: tabular-nums;
+    color: var(--text);
+    font-weight: 600;
+    width: 64px;
+    flex-shrink: 0;
+    text-align: left;
+  }
+
+  /* Legend */
+  .bar-legend {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 6px 16px;
+    margin-top: 14px;
+    padding-top: 12px;
+    border-top: 1px solid var(--border-faint);
+  }
+  .legend-item {
+    display: flex;
+    align-items: center;
+    gap: 5px;
+    font-size: 11px;
+    color: var(--text-2);
+  }
+  .legend-dot {
+    width: 9px; height: 9px;
+    border-radius: 2px;
+    flex-shrink: 0;
+  }
+
+  /* ── Comparison table ── */
+  .table-wrap {
+    overflow-x: auto;
+    margin-bottom: 20px;
+    border-radius: var(--r);
+    border: 1px solid var(--border);
+  }
+  table {
+    width: 100%;
+    border-collapse: collapse;
+    background: var(--surface);
+    font-size: 12.5px;
+  }
+  thead th {
+    text-align: left;
+    padding: 9px 14px;
+    font-size: 10.5px;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.06em;
+    color: var(--text-3);
+    border-bottom: 1px solid var(--border);
+    background: var(--surface2);
+    white-space: nowrap;
+  }
+  thead th.right { text-align: right; }
+  tbody td {
+    padding: 9px 14px;
+    border-bottom: 1px solid var(--border-faint);
+    vertical-align: middle;
+    font-family: var(--mono);
+    font-variant-numeric: tabular-nums;
+    white-space: nowrap;
+  }
+  tbody td.name-cell {
+    font-family: var(--sans);
+    font-size: 12px;
+  }
+  tbody td.right { text-align: right; }
+  tbody tr:last-child td { border-bottom: none; }
+  tbody tr:hover td { background: color-mix(in srgb, var(--text) 3%, transparent); }
+  .ratio-chip {
+    display: inline-block;
+    font-family: var(--mono);
+    font-size: 11px;
+    font-weight: 600;
+    padding: 2px 7px;
+    border-radius: 20px;
+  }
+  .chip-bad  { background: color-mix(in srgb, var(--mega) 15%, transparent); color: var(--mega); }
+  .chip-good { background: color-mix(in srgb, var(--base) 15%, transparent); color: var(--base); }
+  .chip-neutral { background: var(--surface2); color: var(--text-2); }
+
+  /* Inline mini-bar */
+  .minibar-wrap { display: flex; align-items: center; gap: 6px; }
+  .minibar {
+    height: 4px; border-radius: 2px;
+    display: inline-block;
+    vertical-align: middle;
+  }
+
+  /* ── Analysis box ── */
+  .analysis {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: var(--r);
+    padding: 18px 20px;
+    margin-bottom: 20px;
+  }
+  .analysis h3 {
+    font-size: 13px;
+    font-weight: 600;
+    margin-bottom: 12px;
+  }
+  .analysis-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 16px;
+  }
+  @media (max-width: 600px) { .analysis-grid { grid-template-columns: 1fr; } }
+  .analysis-item {}
+  .analysis-item .ai-label {
+    font-size: 11px;
+    font-weight: 600;
+    color: var(--text-2);
+    margin-bottom: 4px;
+  }
+  .analysis-item p {
+    font-size: 12px;
+    color: var(--text-2);
+    line-height: 1.55;
+  }
+  .analysis-item strong { color: var(--text); font-weight: 600; }
+  .analysis-item code {
+    font-family: var(--mono);
+    font-size: 11px;
+    background: var(--surface2);
+    border: 1px solid var(--border);
+    border-radius: 3px;
+    padding: 1px 4px;
+  }
+
+  /* ── Run info row ── */
+  .run-info {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 10px;
+    margin-bottom: 28px;
+  }
+  .run-card {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: var(--r);
+    padding: 13px 16px;
+    border-top: 3px solid;
+  }
+  .run-card.mega { border-top-color: var(--mega); }
+  .run-card.base { border-top-color: var(--base); }
+  .run-card .rc-title {
+    font-size: 11px;
+    font-weight: 600;
+    color: var(--text-2);
+    text-transform: uppercase;
+    letter-spacing: 0.06em;
+    margin-bottom: 4px;
+  }
+  .run-card .rc-id {
+    font-family: var(--mono);
+    font-size: 12px;
+    color: var(--text);
+    margin-bottom: 6px;
+  }
+  .run-card .rc-tags {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 5px;
+  }
+  .rc-tag {
+    font-family: var(--mono);
+    font-size: 10.5px;
+    padding: 2px 6px;
+    background: var(--surface2);
+    border: 1px solid var(--border);
+    border-radius: 3px;
+    color: var(--text-2);
+  }
+</style>
+
+<div class="page-header">
+  <div>
+    <h1>TPU Kernel Profiler — Comparison Report</h1>
+    <div class="meta">Qwen/Qwen3-4B · input-len=1000 · output-len=1 · batch-size=16 · 2026-07-07</div>
+  </div>
+  <div style="display:flex;gap:6px;flex-shrink:0;margin-top:2px;">
+    <span class="badge badge-mega">mega_kernel</span>
+    <span class="badge badge-base">baseline</span>
+  </div>
+</div>
+
+<!-- Run metadata cards -->
+<div class="run-info">
+  <div class="run-card mega">
+    <div class="rc-title">Mega Kernel</div>
+    <div class="rc-id">2026_07_07_04_16_04</div>
+    <div class="rc-tags">
+      <span class="rc-tag">mega_kernel=True</span>
+      <span class="rc-tag">fused QKV proj</span>
+      <span class="rc-tag">2 516 TPU events</span>
+    </div>
+  </div>
+  <div class="run-card base">
+    <div class="rc-title">Baseline</div>
+    <div class="rc-id">2026_07_07_04_19_06</div>
+    <div class="rc-tags">
+      <span class="rc-tag">mega_kernel=False</span>
+      <span class="rc-tag">separate QKV proj</span>
+      <span class="rc-tag">3 993 TPU events</span>
+    </div>
+  </div>
+</div>
+
+<!-- Summary cards -->
+<div class="section-label">Forward pass wall time (main jit_run_model, 36 layers)</div>
+<div class="summary-grid">
+  <div class="card">
+    <div class="card-label">mega_kernel total</div>
+    <div class="card-value val-bad">67.84<span style="font-size:14px;font-weight:400;color:var(--text-2)">ms</span></div>
+    <div class="card-sub">36× RPA + 183 fusions</div>
+  </div>
+  <div class="card">
+    <div class="card-label">baseline total</div>
+    <div class="card-value val-good">39.87<span style="font-size:14px;font-weight:400;color:var(--text-2)">ms</span></div>
+    <div class="card-sub">36× RPA + 400 fusions</div>
+  </div>
+  <div class="card">
+    <div class="card-label">regression</div>
+    <div class="card-value val-bad">1.70×</div>
+    <div class="card-sub">+27.97ms overhead</div>
+  </div>
+  <div class="card">
+    <div class="card-label">RPA kernel (per call)</div>
+    <div class="card-value val-bad">3.77×</div>
+    <div class="card-sub">1.211ms vs 0.321ms</div>
+  </div>
+  <div class="card">
+    <div class="card-label">total RPA time</div>
+    <div class="card-value val-bad">+32.1<span style="font-size:14px;font-weight:400;color:var(--text-2)">ms</span></div>
+    <div class="card-sub">43.60ms vs 11.54ms</div>
+  </div>
+  <div class="card">
+    <div class="card-label">non-RPA saved</div>
+    <div class="card-value val-good">−6.4<span style="font-size:14px;font-weight:400;color:var(--text-2)">ms</span></div>
+    <div class="card-sub">fewer external fusions</div>
+  </div>
+</div>
+
+<!-- Stacked bar -->
+<div class="bar-section">
+  <div class="section-label" style="margin-bottom:14px">Time breakdown — main forward pass (same wall-time scale)</div>
+
+  <div class="bar-row">
+    <div class="bar-label">
+      <span class="run-dot" style="background:var(--mega)"></span>mega
+    </div>
+    <div class="bar-track">
+      <!-- Mega: total=67.84ms = 100%
+           RPA-pre:43.60 → 64.27%  fusion:19.36 → 28.54%  copy:2.74 → 4.04%  pad+misc:1.80 → 2.65%  rpa-dec:0.25 → 0.37% -->
+      <div class="bar-seg" style="width:64.27%;background:var(--c-rpa-pre)" title="RPA prefill: 43.60ms (36 calls × 1.211ms avg)"></div>
+      <div class="bar-seg" style="width:28.54%;background:var(--c-fusion)" title="XLA fusions: 19.36ms (183 ops, mostly FFN matmuls)"></div>
+      <div class="bar-seg" style="width:4.04%;background:var(--c-copy)" title="copy + copy_bitcast: 2.74ms"></div>
+      <div class="bar-seg" style="width:2.65%;background:var(--c-other)" title="pad_max + broadcast.clone: 1.80ms"></div>
+      <div class="bar-seg" style="width:0.37%;background:var(--c-rpa-dec)" title="RPA decode: 0.25ms"></div>
+    </div>
+    <div class="bar-total" style="color:var(--mega)">67.84ms</div>
+  </div>
+
+  <div class="bar-row">
+    <div class="bar-label">
+      <span class="run-dot" style="background:var(--base)"></span>baseline
+    </div>
+    <div class="bar-track">
+      <!-- Baseline: total=39.87ms → 58.76% of 67.84ms scale
+           RPA-pre:11.54→17.01%  fusion:25.75→37.96%  copy:2.06→3.04%  misc:0.21→0.31%  rpa-dec:0.25→0.37% -->
+      <div class="bar-seg" style="width:17.01%;background:var(--c-rpa-pre)" title="RPA prefill: 11.54ms (36 calls × 0.321ms avg)"></div>
+      <div class="bar-seg" style="width:37.96%;background:var(--c-fusion)" title="XLA fusions: 25.75ms (400 ops — includes QKV projection matmuls)"></div>
+      <div class="bar-seg" style="width:3.04%;background:var(--c-copy)" title="copy: 2.06ms"></div>
+      <div class="bar-seg" style="width:0.31%;background:var(--c-other)" title="pad_max + misc: 0.21ms"></div>
+      <div class="bar-seg" style="width:0.37%;background:var(--c-rpa-dec)" title="RPA decode: 0.25ms"></div>
+    </div>
+    <div class="bar-total" style="color:var(--base)">39.87ms</div>
+  </div>
+
+  <div class="bar-legend">
+    <div class="legend-item"><span class="legend-dot" style="background:var(--c-rpa-pre)"></span>RPA prefill (RPAm bq_256)</div>
+    <div class="legend-item"><span class="legend-dot" style="background:var(--c-fusion)"></span>XLA fusions (matmuls + element-wise)</div>
+    <div class="legend-item"><span class="legend-dot" style="background:var(--c-copy)"></span>copy / bitcast</div>
+    <div class="legend-item"><span class="legend-dot" style="background:var(--c-other)"></span>pad / broadcast / misc</div>
+    <div class="legend-item"><span class="legend-dot" style="background:var(--c-rpa-dec)"></span>RPA decode (RPAd)</div>
+  </div>
+</div>
+
+<!-- Detailed op table -->
+<div class="section-label">Per-op breakdown — main forward pass</div>
+<div class="table-wrap" style="margin-bottom:28px">
+  <table>
+    <thead>
+      <tr>
+        <th>Op</th>
+        <th class="right">Calls</th>
+        <th class="right">Mega total</th>
+        <th class="right">Base total</th>
+        <th class="right">Mega avg</th>
+        <th class="right">Base avg</th>
+        <th class="right">Ratio</th>
+      </tr>
+    </thead>
+    <tbody>
+      <tr>
+        <td class="name-cell">
+          <span style="display:inline-block;width:8px;height:8px;border-radius:2px;background:var(--c-rpa-pre);margin-right:6px;vertical-align:middle"></span>
+          RPAm prefill (bq_256_128)
+        </td>
+        <td class="right">36</td>
+        <td class="right" style="color:var(--mega)">43.60ms</td>
+        <td class="right" style="color:var(--base)">11.54ms</td>
+        <td class="right" style="color:var(--mega)">1.211ms</td>
+        <td class="right" style="color:var(--base)">0.321ms</td>
+        <td class="right"><span class="ratio-chip chip-bad">3.77×</span></td>
+      </tr>
+      <tr>
+        <td class="name-cell">
+          <span style="display:inline-block;width:8px;height:8px;border-radius:2px;background:var(--c-fusion);margin-right:6px;vertical-align:middle"></span>
+          XLA fusion (all)
+        </td>
+        <td class="right">183 / 400</td>
+        <td class="right">19.36ms</td>
+        <td class="right">25.75ms</td>
+        <td class="right">0.106ms</td>
+        <td class="right">0.064ms</td>
+        <td class="right"><span class="ratio-chip chip-good">0.75×</span></td>
+      </tr>
+      <tr>
+        <td class="name-cell">
+          <span style="display:inline-block;width:8px;height:8px;border-radius:2px;background:var(--c-copy);margin-right:6px;vertical-align:middle"></span>
+          copy + copy_bitcast
+        </td>
+        <td class="right">180 / 108</td>
+        <td class="right">2.74ms</td>
+        <td class="right">2.06ms</td>
+        <td class="right">—</td>
+        <td class="right">—</td>
+        <td class="right"><span class="ratio-chip chip-bad">1.33×</span></td>
+      </tr>
+      <tr>
+        <td class="name-cell">
+          <span style="display:inline-block;width:8px;height:8px;border-radius:2px;background:var(--c-other);margin-right:6px;vertical-align:middle"></span>
+          pad_maximum + broadcast.clone
+        </td>
+        <td class="right">73 / 1</td>
+        <td class="right">1.80ms</td>
+        <td class="right">0.14ms</td>
+        <td class="right">—</td>
+        <td class="right">—</td>
+        <td class="right"><span class="ratio-chip chip-bad">12.9×</span></td>
+      </tr>
+      <tr>
+        <td class="name-cell">
+          <span style="display:inline-block;width:8px;height:8px;border-radius:2px;background:var(--c-rpa-dec);margin-right:6px;vertical-align:middle"></span>
+          RPAd decode (bq_1_1)
+        </td>
+        <td class="right">36</td>
+        <td class="right">0.25ms</td>
+        <td class="right">0.25ms</td>
+        <td class="right">0.007ms</td>
+        <td class="right">0.007ms</td>
+        <td class="right"><span class="ratio-chip chip-neutral">≈1.0×</span></td>
+      </tr>
+      <tr style="background:color-mix(in srgb, var(--text) 3%, transparent)">
+        <td class="name-cell" style="font-weight:600;color:var(--text)">Total</td>
+        <td class="right" style="color:var(--text-2)">—</td>
+        <td class="right" style="font-weight:700;color:var(--mega)">67.84ms</td>
+        <td class="right" style="font-weight:700;color:var(--base)">39.87ms</td>
+        <td class="right" style="color:var(--text-2)">—</td>
+        <td class="right" style="color:var(--text-2)">—</td>
+        <td class="right"><span class="ratio-chip chip-bad" style="font-size:12px">1.70×</span></td>
+      </tr>
+    </tbody>
+  </table>
+</div>
+
+<!-- Decode-only pass -->
+<div class="section-label">Decode-only pass (first jit_run_model, RPAm bq_64 variant)</div>
+<div class="table-wrap" style="margin-bottom:28px">
+  <table>
+    <thead>
+      <tr>
+        <th>Op</th>
+        <th class="right">Calls</th>
+        <th class="right">Mega total</th>
+        <th class="right">Base total</th>
+        <th class="right">Ratio</th>
+      </tr>
+    </thead>
+    <tbody>
+      <tr>
+        <td class="name-cell">
+          <span style="display:inline-block;width:8px;height:8px;border-radius:2px;background:var(--c-rpa-pre);margin-right:6px;vertical-align:middle"></span>
+          RPAm small tiles (bq_64_128)
+        </td>
+        <td class="right">36</td>
+        <td class="right" style="color:var(--mega)">4.04ms</td>
+        <td class="right" style="color:var(--base)">0.84ms</td>
+        <td class="right"><span class="ratio-chip chip-bad">4.81×</span></td>
+      </tr>
+      <tr>
+        <td class="name-cell">
+          <span style="display:inline-block;width:8px;height:8px;border-radius:2px;background:var(--c-fusion);margin-right:6px;vertical-align:middle"></span>
+          XLA fusion
+        </td>
+        <td class="right">144 / 361</td>
+        <td class="right">3.84ms</td>
+        <td class="right">5.16ms</td>
+        <td class="right"><span class="ratio-chip chip-good">0.74×</span></td>
+      </tr>
+      <tr>
+        <td class="name-cell">
+          <span style="display:inline-block;width:8px;height:8px;border-radius:2px;background:var(--c-rpa-dec);margin-right:6px;vertical-align:middle"></span>
+          RPAd decode
+        </td>
+        <td class="right">36</td>
+        <td class="right">0.36ms</td>
+        <td class="right">0.25ms</td>
+        <td class="right"><span class="ratio-chip chip-neutral">1.44×</span></td>
+      </tr>
+      <tr style="background:color-mix(in srgb, var(--text) 3%, transparent)">
+        <td class="name-cell" style="font-weight:600;color:var(--text)">Total</td>
+        <td class="right" style="color:var(--text-2)">—</td>
+        <td class="right" style="font-weight:700;color:var(--mega)">11.33ms</td>
+        <td class="right" style="font-weight:700;color:var(--base)">7.26ms</td>
+        <td class="right"><span class="ratio-chip chip-bad">1.56×</span></td>
+      </tr>
+    </tbody>
+  </table>
+</div>
+
+<!-- Analysis -->
+<div class="analysis">
+  <h3>Analysis — why the regression</h3>
+  <div class="analysis-grid">
+    <div class="analysis-item">
+      <div class="ai-label">Tiled vs batched matmul</div>
+      <p>
+        The mega kernel performs QKV projection one <code>bq_tile</code> at a time (128 tokens per tile, 125 tiles for 16k tokens). Each tile is a <strong>[128 × 2560] × [2560 × 6144]</strong> matmul. The baseline issues a single <strong>[16000 × 2560] × [2560 × 6144]</strong> matmul — 125× larger, far better MXU utilization. Small-tile matmuls pay per-tile dispatch overhead and leave the MXU underutilized.
+      </p>
+    </div>
+    <div class="analysis-item">
+      <div class="ai-label">The trade-off doesn't hold at prefill scale</div>
+      <p>
+        Mega kernel saves <strong>~6.4ms</strong> in external fusion ops (QKV projections no longer sit outside the RPA kernel), but adds <strong>+32.1ms</strong> to the RPA kernel itself. At 16k-token prefill the full-batch matmul wins by a wide margin. The decode path is unaffected (<code>RPAd ≈ 1.0×</code>), consistent with there being only 1 token per sequence — tiling is not the bottleneck at decode time.
+      </p>
+    </div>
+    <div class="analysis-item">
+      <div class="ai-label">Extra overhead ops</div>
+      <p>
+        Mega kernel introduces <code>copy_bitcast_fusion</code> (72 calls, 1.34ms) and more <code>pad_maximum_fusion</code> (37 calls vs 1 call, 0.97ms) — these are likely the <code>x</code> HBM→VMEM DMA staging and padding checks per bq tile. Not a primary cost but contributes ~2ms per forward pass.
+      </p>
+    </div>
+    <div class="analysis-item">
+      <div class="ai-label">Decode is neutral</div>
+      <p>
+        Both runs show <code>RPAd ≈ 0.007ms/call</code>. With only 1 token per decode step, the QKV projection is trivially small in both paths — no advantage or disadvantage there. The mega_kernel benefit would be most visible at <strong>very small prefill batch sizes</strong> or when the projection weight load from HBM dominates.
+      </p>
+    </div>
+  </div>
+</div>
+
+<!-- Config summary -->
+<div style="background:var(--surface);border:1px solid var(--border);border-radius:var(--r);padding:14px 20px;">
+  <div class="section-label" style="margin-bottom:10px">Kernel parameters observed</div>
+  <div style="display:flex;flex-wrap:wrap;gap:6px;">
+    <span class="rc-tag">page_size = 128</span>
+    <span class="rc-tag">bq_sz = 128 (csz=256)</span>
+    <span class="rc-tag">bkv_sz = 512 (csz=1024)</span>
+    <span class="rc-tag">RPA MIXED case (RPAm)</span>
+    <span class="rc-tag">36 layers = 36 RPA calls/pass</span>
+    <span class="rc-tag">Qwen3-4B: H=2560, 32h/8kvh, d=128</span>
+    <span class="rc-tag">16 seqs × 1000 tokens = 16k tokens</span>
+  </div>
+</div>

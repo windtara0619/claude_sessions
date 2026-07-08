@@ -1,0 +1,27 @@
+==================================================================
+Running scenario=prefill_heavy run_tag=rope_false
+  input_len=1000 output_len=1 num_prompts=1000 max_concurrency=16
+==================================================================
+Warning: You are sending unauthenticated requests to the HF Hub. Please set a HF_TOKEN to enable higher rate limits and faster downloads.
+Namespace(backend='vllm', base_url=None, host='127.0.0.1', port=8000, endpoint='/v1/completions', dataset_name='random', dataset_path=None, max_concurrency=16, model='Qwen/Qwen3-8B', tokenizer=None, use_beam_search=False, num_prompts=1000, logprobs=None, request_rate=inf, burstiness=1.0, seed=0, trust_remote_code=False, disable_tqdm=False, profile=False, ignore_eos=False, percentile_metrics='ttft,tpot,itl', metric_percentiles='99', goodput=None, request_id_prefix='benchmark-serving', chat_template_system_prompt='Reasoning effort: high', mmlu_input_len=None, mmlu_output_len=None, mmlu_num_shots=1, mmlu_method='HELM', mmlu_use_chat_template=False, mlperf_input_len=None, mlperf_output_len=None, gpqa_output_len=2048, gpqa_use_chat_template=False, mmmu_pro_subset='vision', mmmu_pro_output_len=16, sonnet_input_len=550, sonnet_output_len=150, sonnet_prefix_len=200, random_input_len=1000, random_output_len=1, random_range_ratio=0.0, random_prefix_len=0, top_p=None, top_k=None, min_p=None, temperature=None, tokenizer_mode='auto', served_model_name=None, run_eval=False, warmup_mode='sampled', debug=False)
+Using sampling parameters: {'temperature': 0.0}
+Warmup (mode: sampled) is starting.
+  0%|          | 0/2 [00:00<?, ?it/s]
+Traceback (most recent call last):
+  File "/home/tarading/tpu-inference/scripts/vllm/benchmarking/benchmark_serving.py", line 1036, in <module>
+    main(args)
+  File "/home/tarading/tpu-inference/scripts/vllm/benchmarking/benchmark_serving.py", line 629, in main
+    _, request_outputs = asyncio.run(
+                         ^^^^^^^^^^^^
+  File "/home/tarading/.local/share/uv/python/cpython-3.12.13-linux-x86_64-gnu/lib/python3.12/asyncio/runners.py", line 195, in run
+    return runner.run(main)
+           ^^^^^^^^^^^^^^^^
+  File "/home/tarading/.local/share/uv/python/cpython-3.12.13-linux-x86_64-gnu/lib/python3.12/asyncio/runners.py", line 118, in run
+    return self._loop.run_until_complete(task)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/tarading/.local/share/uv/python/cpython-3.12.13-linux-x86_64-gnu/lib/python3.12/asyncio/base_events.py", line 691, in run_until_complete
+    return future.result()
+           ^^^^^^^^^^^^^^^
+  File "/home/tarading/tpu-inference/scripts/vllm/benchmarking/benchmark_serving.py", line 303, in benchmark
+    raise ValueError(
+ValueError: Warmup failed - Please make sure benchmark arguments are correctly specified. Error: Not Found

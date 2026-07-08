@@ -1,0 +1,126 @@
+#!/bin/bash
+# SPDX-License-Identifier: Apache-2.0
+#
+# Sweep benchmark_serving across FUSE_ROPE_INTO_ATTN_KERNEL=true/false for a
+# prefill-heavy and a decode-heavy workload, to see whether the RoPE-fusion
+# regression found in the prefill RPAm kernel shows up end-to-end.
+#
+# Usage:
+#   MODEL=Qwen/Qwen3-8B bash scripts/vllm/benchmarking/rope_fusion_sweep.sh
+#
+# Required environment variables:
+#   MODEL  - HF model id or local path to serve
+#
+# Optional environment variables:
+#   MAX_MODEL_LEN          (default: 4096)
+#   MAX_NUM_SEQS           (default: 64)
+#   MAX_NUM_BATCHED_TOKENS (default: 4096)
+#   NUM_PROMPTS            (default: 16)
+#   MAX_CONCURRENCY        (default: 16)
+#   SEED                   (default: 0)
+#   RESULT_DIR             (default: /tmp/rope_fusion_sweep)
+#   PORT                   (default: 8000)
+
+set -euo pipefail
+
+if [ -z "${MODEL:-}" ]; then
+    echo "ERROR: MODEL environment variable must be set (e.g. MODEL=Qwen/Qwen3-8B)." >&2
+    exit 1
+fi
+
+MAX_MODEL_LEN="${MAX_MODEL_LEN:-4096}"
+MAX_NUM_SEQS="${MAX_NUM_SEQS:-64}"
+MAX_NUM_BATCHED_TOKENS="${MAX_NUM_BATCHED_TOKENS:-4096}"
+NUM_PROMPTS="${NUM_PROMPTS:-16}"
+MAX_CONCURRENCY="${MAX_CONCURRENCY:-16}"
+SEED="${SEED:-0}"
+RESULT_DIR="${RESULT_DIR:-/tmp/rope_fusion_sweep}"
+PORT="${PORT:-8000}"
+
+READY_MESSAGE="Application startup complete."
+TIMEOUT_SECONDS=3600
+
+mkdir -p "$RESULT_DIR"
+
+# shellcheck disable=SC1091
+source "$(dirname "$0")/../../../tests/e2e/benchmarking/bench_utils.sh"
+
+# Scenarios: name, random-input-len, random-output-len
+# - prefill_heavy: large prompt, short generation -> dominated by RPAm (prefill)
+# - decode_heavy:  short prompt, long generation  -> dominated by RPAd (decode)
+# - single_prefill: matches the offline profiling setup (1 request, 2048-token prefill)
+SCENARIOS=(
+    "prefill_heavy 2048 16"
+    "decode_heavy 128 1024"
+    "single_prefill 2048 1"
+)
+
+run_one() {
+    local rope_fuse="$1"
+    local scenario_name="$2"
+    local input_len="$3"
+    local output_len="$4"
+
+    local tag="${scenario_name}_rope_fuse_${rope_fuse}"
+    local log_file="${RESULT_DIR}/server_${tag}.log"
+    local bench_log="${RESULT_DIR}/bench_${tag}.log"
+    local result_json="${RESULT_DIR}/result_${tag}.json"
+
+    local num_prompts="$NUM_PROMPTS"
+    local max_concurrency="$MAX_CONCURRENCY"
+    if [ "$scenario_name" = "single_prefill" ]; then
+        num_prompts=1
+        max_concurrency=1
+    fi
+
+    echo "=================================================================="
+    echo "Running scenario=${scenario_name} FUSE_ROPE_INTO_ATTN_KERNEL=${rope_fuse}"
+    echo "  input_len=${input_len} output_len=${output_len} num_prompts=${num_prompts} max_concurrency=${max_concurrency}"
+    echo "=================================================================="
+
+    : > "$log_file"
+
+    LOG_FILE="$log_file" \
+    FUSE_ROPE_INTO_ATTN_KERNEL="$rope_fuse" \
+    vllm serve "$MODEL" \
+        --port "$PORT" \
+        --max-model-len "$MAX_MODEL_LEN" \
+        --max-num-seqs "$MAX_NUM_SEQS" \
+        --max-num-batched-tokens "$MAX_NUM_BATCHED_TOKENS" \
+        --seed "$SEED" \
+        2>&1 | tee -a "$log_file" &
+
+    local server_pid=$!
+
+    LOG_FILE="$log_file" TIMEOUT_SECONDS="$TIMEOUT_SECONDS" READY_MESSAGE="$READY_MESSAGE" waitForServerReady
+
+    python3 -m vllm.entrypoints.cli.main bench serve \
+        --backend vllm \
+        --model "$MODEL" \
+        --port "$PORT" \
+        --dataset-name random \
+        --random-input-len "$input_len" \
+        --random-output-len "$output_len" \
+        --num-prompts "$num_prompts" \
+        --max-concurrency "$max_concurrency" \
+        --seed "$SEED" \
+        --save-result \
+        --result-filename "$result_json" \
+        2>&1 | tee "$bench_log"
+
+    echo "Stopping server (pid=$server_pid)..."
+    kill "$server_pid" 2>/dev/null || true
+    pgrep -f -i "vllm serve $MODEL" | xargs -r kill -9 2>/dev/null || true
+    wait "$server_pid" 2>/dev/null || true
+}
+
+for scenario in "${SCENARIOS[@]}"; do
+    read -r scenario_name input_len output_len <<< "$scenario"
+    for rope_fuse in true false; do
+        run_one "$rope_fuse" "$scenario_name" "$input_len" "$output_len"
+    done
+done
+
+echo "=================================================================="
+echo "All runs complete. Results in: $RESULT_DIR"
+echo "=================================================================="
