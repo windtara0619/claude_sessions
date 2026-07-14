@@ -1,0 +1,15 @@
+INFO 07-14 19:23:00 [__init__.py:59] TPU info: node_name=tpu-node-20260710 | tpu_type=v6e-1 | worker_id=0 | num_chips=1 | num_cores_per_chip=1
+Building inputs: 1 seq × 2048 tokens = 2048 total, heads=(32,8), head_dim=128, page_size=128, dtype=bfloat16
+Compiling...
+Traceback (most recent call last):
+  File "/home/tarading/tpu-inference/scripts/kernel_eval/kernel_bench.py", line 367, in <module>
+    main()
+  File "/home/tarading/tpu-inference/scripts/kernel_eval/kernel_bench.py", line 336, in main
+    jax.block_until_ready(fn(*fn_args))
+                          ^^^^^^^^^^^^
+  File "/home/tarading/tpu-inference/scripts/kernel_eval/kernel_bench.py", line 308, in fn
+    return ragged_paged_attention(q, k, v, kv_cache, kv_lens, page_indices,
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+TypeError: ragged_paged_attention() got an unexpected keyword argument 'w_k'
+--------------------
+For simplicity, JAX has removed its internal frames from the traceback of the following exception. Set JAX_TRACEBACK_FILTERING=off to include these.

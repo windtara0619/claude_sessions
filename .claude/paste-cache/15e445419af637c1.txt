@@ -1,0 +1,85 @@
+(EngineCore pid=12100) 
+(EngineCore pid=12100) ERROR 07-14 04:48:02 [core.py:1195] EngineCore failed to start.
+(EngineCore pid=12100) ERROR 07-14 04:48:02 [core.py:1195] Traceback (most recent call last):
+(EngineCore pid=12100) ERROR 07-14 04:48:02 [core.py:1195]   File "/home/tarading/vllm/vllm/v1/engine/core.py", line 1164, in run_engine_core
+(EngineCore pid=12100) ERROR 07-14 04:48:02 [core.py:1195]     engine_core = EngineCoreProc(*args, engine_index=dp_rank, **kwargs)
+(EngineCore pid=12100) ERROR 07-14 04:48:02 [core.py:1195]                   ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+(EngineCore pid=12100) ERROR 07-14 04:48:02 [core.py:1195]   File "/home/tarading/vllm/vllm/tracing/otel.py", line 178, in sync_wrapper
+(EngineCore pid=12100) ERROR 07-14 04:48:02 [core.py:1195]     return func(*args, **kwargs)
+(EngineCore pid=12100) ERROR 07-14 04:48:02 [core.py:1195]            ^^^^^^^^^^^^^^^^^^^^^
+(EngineCore pid=12100) ERROR 07-14 04:48:02 [core.py:1195]   File "/home/tarading/vllm/vllm/v1/engine/core.py", line 930, in __init__
+(EngineCore pid=12100) ERROR 07-14 04:48:02 [core.py:1195]     super().__init__(
+(EngineCore pid=12100) ERROR 07-14 04:48:02 [core.py:1195]   File "/home/tarading/vllm/vllm/v1/engine/core.py", line 122, in __init__
+(EngineCore pid=12100) ERROR 07-14 04:48:02 [core.py:1195]     self.model_executor = executor_class(vllm_config)
+(EngineCore pid=12100) ERROR 07-14 04:48:02 [core.py:1195]                           ^^^^^^^^^^^^^^^^^^^^^^^^^^^
+(EngineCore pid=12100) ERROR 07-14 04:48:02 [core.py:1195]   File "/home/tarading/vllm/vllm/tracing/otel.py", line 178, in sync_wrapper
+(EngineCore pid=12100) ERROR 07-14 04:48:02 [core.py:1195]     return func(*args, **kwargs)
+(EngineCore pid=12100) ERROR 07-14 04:48:02 [core.py:1195]            ^^^^^^^^^^^^^^^^^^^^^
+(EngineCore pid=12100) ERROR 07-14 04:48:02 [core.py:1195]   File "/home/tarading/vllm/vllm/v1/executor/abstract.py", line 109, in __init__
+(EngineCore pid=12100) ERROR 07-14 04:48:02 [core.py:1195]     self._init_executor()
+(EngineCore pid=12100) ERROR 07-14 04:48:02 [core.py:1195]   File "/home/tarading/vllm/vllm/v1/executor/uniproc_executor.py", line 68, in _init_executor
+(EngineCore pid=12100) ERROR 07-14 04:48:02 [core.py:1195]     self.driver_worker.load_model()
+(EngineCore pid=12100) ERROR 07-14 04:48:02 [core.py:1195]   File "/home/tarading/tpu-inference/tpu_inference/worker/tpu_worker.py", line 527, in load_model
+(EngineCore pid=12100) ERROR 07-14 04:48:02 [core.py:1195]     self.model_runner.load_model()
+(EngineCore pid=12100) ERROR 07-14 04:48:02 [core.py:1195]   File "/home/tarading/tpu-inference/tpu_inference/runner/tpu_runner.py", line 782, in load_model
+(EngineCore pid=12100) ERROR 07-14 04:48:02 [core.py:1195]     model = get_model(
+(EngineCore pid=12100) ERROR 07-14 04:48:02 [core.py:1195]             ^^^^^^^^^^
+(EngineCore pid=12100) ERROR 07-14 04:48:02 [core.py:1195]   File "/home/tarading/tpu-inference/tpu_inference/models/common/model_loader.py", line 614, in get_model
+(EngineCore pid=12100) ERROR 07-14 04:48:02 [core.py:1195]     return get_flax_model(vllm_config, rng, mesh,
+(EngineCore pid=12100) ERROR 07-14 04:48:02 [core.py:1195]            ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+(EngineCore pid=12100) ERROR 07-14 04:48:02 [core.py:1195]   File "/home/tarading/tpu-inference/tpu_inference/models/common/model_loader.py", line 341, in get_flax_model
+(EngineCore pid=12100) ERROR 07-14 04:48:02 [core.py:1195]     jit_model = _get_nnx_model(model_class,
+(EngineCore pid=12100) ERROR 07-14 04:48:02 [core.py:1195]                 ^^^^^^^^^^^^^^^^^^^^^^^^^^^
+(EngineCore pid=12100) ERROR 07-14 04:48:02 [core.py:1195]   File "/home/tarading/tpu-inference/tpu_inference/models/common/model_loader.py", line 278, in _get_nnx_model
+(EngineCore pid=12100) ERROR 07-14 04:48:02 [core.py:1195]     loader.load_weights(model, model_config)
+(EngineCore pid=12100) ERROR 07-14 04:48:02 [core.py:1195]   File "/home/tarading/vllm/vllm/tracing/otel.py", line 178, in sync_wrapper
+(EngineCore pid=12100) ERROR 07-14 04:48:02 [core.py:1195]     return func(*args, **kwargs)
+(EngineCore pid=12100) ERROR 07-14 04:48:02 [core.py:1195]            ^^^^^^^^^^^^^^^^^^^^^
+(EngineCore pid=12100) ERROR 07-14 04:48:02 [core.py:1195]   File "/home/tarading/vllm/vllm/model_executor/model_loader/default_loader.py", line 394, in load_weights
+(EngineCore pid=12100) ERROR 07-14 04:48:02 [core.py:1195]     loaded_weights = model.load_weights(self.get_all_weights(model_config, model))
+(EngineCore pid=12100) ERROR 07-14 04:48:02 [core.py:1195]                      ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+(EngineCore pid=12100) ERROR 07-14 04:48:02 [core.py:1195]   File "/home/tarading/tpu-inference/tpu_inference/models/jax/utils/weight_utils.py", line 1073, in load_weights
+(EngineCore pid=12100) ERROR 07-14 04:48:02 [core.py:1195]     fuse_qkv_weights_for_mega_kernel(self)
+(EngineCore pid=12100) ERROR 07-14 04:48:02 [core.py:1195]   File "/home/tarading/tpu-inference/tpu_inference/models/jax/utils/weight_utils.py", line 655, in fuse_qkv_weights_for_mega_kernel
+(EngineCore pid=12100) ERROR 07-14 04:48:02 [core.py:1195]     _walk(model)
+(EngineCore pid=12100) ERROR 07-14 04:48:02 [core.py:1195]   File "/home/tarading/tpu-inference/tpu_inference/models/jax/utils/weight_utils.py", line 653, in _walk
+(EngineCore pid=12100) ERROR 07-14 04:48:02 [core.py:1195]     _walk(sub)
+(EngineCore pid=12100) ERROR 07-14 04:48:02 [core.py:1195]   File "/home/tarading/tpu-inference/tpu_inference/models/jax/utils/weight_utils.py", line 653, in _walk
+(EngineCore pid=12100) ERROR 07-14 04:48:02 [core.py:1195]     _walk(sub)
+(EngineCore pid=12100) ERROR 07-14 04:48:02 [core.py:1195]   File "/home/tarading/tpu-inference/tpu_inference/models/jax/utils/weight_utils.py", line 636, in _walk
+(EngineCore pid=12100) ERROR 07-14 04:48:02 [core.py:1195]     _walk(sub)
+(EngineCore pid=12100) ERROR 07-14 04:48:02 [core.py:1195]   File "/home/tarading/tpu-inference/tpu_inference/models/jax/utils/weight_utils.py", line 653, in _walk
+(EngineCore pid=12100) ERROR 07-14 04:48:02 [core.py:1195]     _walk(sub)
+(EngineCore pid=12100) ERROR 07-14 04:48:02 [core.py:1195]   File "/home/tarading/tpu-inference/tpu_inference/models/jax/utils/weight_utils.py", line 649, in _walk
+(EngineCore pid=12100) ERROR 07-14 04:48:02 [core.py:1195]     module.w_qkv = nnx.Param(fuse(w_q, w_k, w_v),
+(EngineCore pid=12100) ERROR 07-14 04:48:02 [core.py:1195]                    ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+(EngineCore pid=12100) ERROR 07-14 04:48:02 [core.py:1195]   File "/home/tarading/vllm_env/lib/python3.12/site-packages/flax/nnx/variablelib.py", line 1204, in __call__
+(EngineCore pid=12100) ERROR 07-14 04:48:02 [core.py:1195]     return cls._variable_meta_call(*args, **kwargs)
+(EngineCore pid=12100) ERROR 07-14 04:48:02 [core.py:1195]            ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+(EngineCore pid=12100) ERROR 07-14 04:48:02 [core.py:1195]   File "/home/tarading/vllm_env/lib/python3.12/site-packages/flax/nnx/variablelib.py", line 1207, in _variable_meta_call
+(EngineCore pid=12100) ERROR 07-14 04:48:02 [core.py:1195]     variable = super().__call__(*args, **kwargs)
+(EngineCore pid=12100) ERROR 07-14 04:48:02 [core.py:1195]                ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+(EngineCore pid=12100) ERROR 07-14 04:48:02 [core.py:1195]   File "/home/tarading/vllm_env/lib/python3.12/site-packages/flax/nnx/variablelib.py", line 1412, in __init__
+(EngineCore pid=12100) ERROR 07-14 04:48:02 [core.py:1195]     value = core_spmd.shard_value(
+(EngineCore pid=12100) ERROR 07-14 04:48:02 [core.py:1195]             ^^^^^^^^^^^^^^^^^^^^^^
+(EngineCore pid=12100) ERROR 07-14 04:48:02 [core.py:1195]   File "/home/tarading/vllm_env/lib/python3.12/site-packages/flax/core/spmd.py", line 61, in shard_value
+(EngineCore pid=12100) ERROR 07-14 04:48:02 [core.py:1195]     return _apply_sharding(value, NamedSharding(mesh, pspec), mesh)
+(EngineCore pid=12100) ERROR 07-14 04:48:02 [core.py:1195]            ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+(EngineCore pid=12100) ERROR 07-14 04:48:02 [core.py:1195]   File "/home/tarading/vllm_env/lib/python3.12/site-packages/flax/core/spmd.py", line 39, in _apply_sharding
+(EngineCore pid=12100) ERROR 07-14 04:48:02 [core.py:1195]     return jax.lax.with_sharding_constraint(value, sharding)
+(EngineCore pid=12100) ERROR 07-14 04:48:02 [core.py:1195]            ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+(EngineCore pid=12100) ERROR 07-14 04:48:02 [core.py:1195]   File "/home/tarading/vllm_env/lib/python3.12/site-packages/jax/_src/pjit.py", line 2086, in with_sharding_constraint
+(EngineCore pid=12100) ERROR 07-14 04:48:02 [core.py:1195]     outs.append(sharding_constraint_p.bind(
+(EngineCore pid=12100) ERROR 07-14 04:48:02 [core.py:1195]                 ^^^^^^^^^^^^^^^^^^^^^^^^^^^
+(EngineCore pid=12100) ERROR 07-14 04:48:02 [core.py:1195]   File "/home/tarading/vllm_env/lib/python3.12/site-packages/jax/_src/core.py", line 641, in bind
+(EngineCore pid=12100) ERROR 07-14 04:48:02 [core.py:1195]     return self.bind_with_trace(prev_trace, args, avals, params)
+(EngineCore pid=12100) ERROR 07-14 04:48:02 [core.py:1195]            ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+(EngineCore pid=12100) ERROR 07-14 04:48:02 [core.py:1195]   File "/home/tarading/vllm_env/lib/python3.12/site-packages/jax/_src/core.py", line 649, in bind_with_trace
+(EngineCore pid=12100) ERROR 07-14 04:48:02 [core.py:1195]     return trace.process_primitive(self, args, params)
+(EngineCore pid=12100) ERROR 07-14 04:48:02 [core.py:1195]            ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+(EngineCore pid=12100) ERROR 07-14 04:48:02 [core.py:1195]   File "/home/tarading/vllm_env/lib/python3.12/site-packages/jax/_src/core.py", line 1221, in process_primitive
+(EngineCore pid=12100) ERROR 07-14 04:48:02 [core.py:1195]     return primitive.impl(*args, **params)
+(EngineCore pid=12100) ERROR 07-14 04:48:02 [core.py:1195]            ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+(EngineCore pid=12100) ERROR 07-14 04:48:02 [core.py:1195]   File "/home/tarading/vllm_env/lib/python3.12/site-packages/jax/_src/pjit.py", line 2110, in _sharding_constraint_impl
+(EngineCore pid=12100) ERROR 07-14 04:48:02 [core.py:1195]     raise TypeError(
+(EngineCore pid=12100) ERROR 07-14 04:48:02 [core.py:1195] TypeError: The sharding on the input must be a `NamedSharding` since the target sharding has an `AbstractMesh` in it. Got sharding type <class 'jax.sharding.SingleDeviceSharding'> for shape bfloat16[2560,6144]

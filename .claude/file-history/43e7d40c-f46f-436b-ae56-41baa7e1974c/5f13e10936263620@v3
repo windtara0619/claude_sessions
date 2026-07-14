@@ -158,7 +158,11 @@ def build_inputs(q_len, kv_len, num_q_heads, num_kv_heads, head_dim, page_size, 
     kv_lens = jnp.pad(jnp.array([seq_kv_len] * num_seqs, dtype=jnp.int32),
                       (0, max_num_seq - num_seqs))
 
-    distribution = jnp.array([0, 0, 1], dtype=jnp.int32)
+    if seq_q_len == 1:
+        # 1 query token per seq: run the whole batch in the DECODE kernel.
+        distribution = jnp.array([num_seqs, num_seqs, num_seqs], dtype=jnp.int32)
+    else:
+        distribution = jnp.array([0, 0, num_seqs], dtype=jnp.int32)
 
     return q, k, v, kv_cache, kv_lens, page_indices, cu_q, distribution
 
@@ -240,12 +244,10 @@ def main():
     p.add_argument("--num-seqs", type=int, default=1,
                    help="Number of sequences in the batch (q_len and kv_len split equally)")
     p.add_argument("--dtype", default="bfloat16", choices=["bfloat16", "float32"])
-    p.add_argument("--has-rope", action="store_true", default=False)
-    p.add_argument("--rope-theta", type=float, default=10000.0)
-    p.add_argument("--has-qproj", action="store_true", default=False,
-                   help="Fuse Q projection into kernel (requires --hidden-size)")
-    p.add_argument("--has-kvproj", action="store_true", default=False,
-                   help="Fuse KV projection into kernel (implies --has-qproj; requires bq_sz==bkv_sz)")
+    p.add_argument("--rope-theta", type=float, default=10000.0,
+                   help="RoPE theta (used when --mega-kernel is set; rope is always applied with projections)")
+    p.add_argument("--mega-kernel", action="store_true", default=False,
+                   help="Fuse Q+KV projection into kernel (requires --hidden-size)")
     p.add_argument("--hidden-size", type=int, default=0,
                    help="Hidden dim for fused Q/KV projection (e.g. 2560 for Qwen3-4B)")
     p.add_argument("--vmem-limit-mb", type=int, default=100)
@@ -277,44 +279,45 @@ def main():
         args.head_dim, args.page_size, args.dtype, num_seqs=args.num_seqs)
 
     fn_kwargs = dict(
-        has_rope=args.has_rope,
         rope_theta=args.rope_theta,
         m_block_sizes=(bq_sz, bkv_sz, bq_csz, bkv_csz),
         vmem_limit_bytes=args.vmem_limit_mb * 1024 * 1024,
     )
 
-    if args.has_kvproj:
-        args.has_qproj = True  # kvproj requires qproj (shares x tile)
-    if args.has_qproj:
+    if args.mega_kernel:
         if args.hidden_size <= 0:
-            raise ValueError("--hidden-size must be set when using --has-qproj / --has-kvproj")
-        if args.has_kvproj and bq_sz != bkv_sz:
-            raise ValueError(f"--has-kvproj requires bq_sz == bkv_sz, got {bq_sz} != {bkv_sz}")
+            raise ValueError("--hidden-size must be set when using --mega-kernel")
+        if bkv_sz % bq_sz != 0:
+            raise ValueError(f"--mega-kernel requires bkv_sz % bq_sz == 0, got {bkv_sz} % {bq_sz} != 0")
         dtype = {"bfloat16": jnp.bfloat16, "float32": jnp.float32}[args.dtype]
         rng = np.random.default_rng(9999)
         max_tokens = q.shape[0]
         D, H = args.hidden_size, args.head_dim
-        x    = jnp.array(rng.random((max_tokens, D), dtype=np.float32)).astype(dtype)
-        wq   = jnp.array(rng.random((D, args.num_q_heads * H), dtype=np.float32)).astype(dtype)
-        qns  = jnp.array(rng.random((H,), dtype=np.float32)).astype(dtype)
-        fn_kwargs["has_qproj"] = True
-        fn_kwargs["qn_scale"]  = qns
-
-        if args.has_kvproj:
-            wk  = jnp.array(rng.random((D, args.num_kv_heads * H), dtype=np.float32)).astype(dtype)
-            kns = jnp.array(rng.random((H,), dtype=np.float32)).astype(dtype)
-            wv  = jnp.array(rng.random((D, args.num_kv_heads * H), dtype=np.float32)).astype(dtype)
-            fn_kwargs["has_kvproj"] = True
-            fn_kwargs["w_k"]  = wk
-            fn_kwargs["kn_scale"] = kns
-            fn_kwargs["w_v"]  = wv
+        x   = jnp.array(rng.random((max_tokens, D), dtype=np.float32)).astype(dtype)
+        # w_qkv = [W_q | W_k | W_v] pre-concatenated, matching what
+        # weight_utils.fuse_qkv_weights_for_mega_kernel builds at load time.
+        wqkv = jnp.array(rng.random(
+            (D, (args.num_q_heads + 2 * args.num_kv_heads) * H),
+            dtype=np.float32)).astype(dtype)
+        qns = jnp.array(rng.random((H,), dtype=np.float32)).astype(dtype)
+        kns = jnp.array(rng.random((H,), dtype=np.float32)).astype(dtype)
+        fn_kwargs["mega_kernel"] = True
+        fn_kwargs["qn_scale"] = qns
+        # Pass wqkv and kns as fn args (NOT in fn_kwargs) so they are treated
+        # as dynamic inputs, not compile-time constants.  Closing over large
+        # JAX arrays in fn_kwargs embeds them as jaxpr literals, causing XLA to
+        # constant-fold 10MB+ of weights, which hangs for minutes.
 
         @jax.jit
-        def fn(q, k, v, kv_cache, kv_lens, page_indices, cu_q, dist, x, wq):
+        def fn(q, k, v, kv_cache, kv_lens, page_indices, cu_q, dist,
+               x, wqkv, kns):
             return ragged_paged_attention(q, k, v, kv_cache, kv_lens, page_indices,
-                                         cu_q, dist, x=x, w_q=wq, **fn_kwargs)
+                                         cu_q, dist, x=x, w_qkv=wqkv,
+                                         kn_scale=kns,
+                                         **fn_kwargs)
 
-        fn_args = (q, k, v, kv_cache, kv_lens, page_indices, cu_q, distribution, x, wq)
+        fn_args = (q, k, v, kv_cache, kv_lens, page_indices, cu_q, distribution,
+                   x, wqkv, kns)
     else:
         @jax.jit
         def fn(q, k, v, kv_cache, kv_lens, page_indices, cu_q, dist):
@@ -354,7 +357,7 @@ def main():
         "tag": args.tag,
         "q_len": args.q_len,
         "kv_len": args.kv_len,
-        "has_rope": args.has_rope,
+        "mega_kernel": args.mega_kernel,
         "ablation": args.ablation,
         "stats": stats,
     }

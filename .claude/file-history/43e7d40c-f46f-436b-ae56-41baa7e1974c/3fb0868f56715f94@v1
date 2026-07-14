@@ -3,3 +3,4 @@
 - [RoPE fusion investigation](project_rope_fusion_investigation.md) — Full findings from FUSE_ROPE_INTO_ATTN_KERNEL regression on mega_kernel branch; root causes, ablations, cost accounting
 - [Q projection fusion (has_qproj)](project_qproj_fusion.md) — has_qproj=True implementation: fused Q projection in RPA kernel, 3D x HBM layout trick, key gotchas
 - [KV projection fusion race condition fix](project_kvproj_fusion.md) — has_kvproj=True bug: cache READ before WRITE race; two-part fix: move prefetch after write + explicit cross-slot wait
+- [mega_kernel XLA buffer aliasing bug](project_bkv_update_ids_xla_buffer_bug.md) — hang at input-len=992: shared init_bkv_update_ids constant aliased by XLA; fixed by moving init arrays inside run_rpa_kernel

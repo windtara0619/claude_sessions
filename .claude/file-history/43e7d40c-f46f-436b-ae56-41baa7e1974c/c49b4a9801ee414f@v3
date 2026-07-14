@@ -167,24 +167,26 @@ class Qwen3Attention(JaxModule):
     ) -> Tuple[jax.Array, jax.Array]:
         md = attention_metadata
         # q: (T, N, H)
-        # Always compute external q/k/v even when mega_kernel=True.
-        # The decode kernel always runs with has_qproj=False (bq_sz=1 violates
-        # VMEM tile alignment for fused proj), so it needs real projected q/k/v
-        # at the decode token positions.  The prefill/mixed kernel (has_qproj=True)
-        # ignores these external arrays and re-derives q/k/v from x internally.
-        q = self.q_proj(x)
-        q = self.q_norm(q)
-        q = apply_rope(q, md.input_positions, self.head_dim_original,
-                       self.rope_theta, self.rope_scaling)
+        if md.mega_kernel:
+            # Fused path: kernel handles proj + norm + rope for both Q and KV.
+            # Pass dummy q/k/v (ignored by kernel) plus x and weight matrices.
+            q = jnp.zeros((x.shape[0], self.num_heads, self.head_dim), dtype=x.dtype)
+            k = jnp.zeros((x.shape[0], self.num_kv_heads, self.head_dim), dtype=x.dtype)
+            v = k
+        else:
+            q = self.q_proj(x)
+            q = self.q_norm(q)
+            q = apply_rope(q, md.input_positions, self.head_dim_original,
+                           self.rope_theta, self.rope_scaling)
 
-        # k: (T, K, H)
-        k = self.k_proj(x)
-        k = self.k_norm(k)
-        k = apply_rope(k, md.input_positions, self.head_dim_original,
-                       self.rope_theta, self.rope_scaling)
+            # k: (T, K, H)
+            k = self.k_proj(x)
+            k = self.k_norm(k)
+            k = apply_rope(k, md.input_positions, self.head_dim_original,
+                           self.rope_theta, self.rope_scaling)
 
-        # v: (T, K, H)
-        v = self.v_proj(x)
+            # v: (T, K, H)
+            v = self.v_proj(x)
         # o: (T, N, H)
         q_scale = k_scale = v_scale = None
         if self.kv_cache_quantized_dtype:

@@ -1,0 +1,31 @@
+---
+name: decode-batched-mega-kernel
+description: "Batched decode mega_kernel design (2026-07): bq_sz counts sequences; one x fetch + one Q/KV GEMM per batch head; known pre-existing test failures on mega_kernel branch"
+metadata: 
+  node_type: memory
+  type: project
+  originSessionId: 43e7d40c-f46f-436b-ae56-41baa7e1974c
+---
+
+Batched decode mega_kernel (implemented 2026-07-13, `kernel.py` on `mega_kernel` branch), replacing an earlier per-seq decode approach the user rejected twice as too slow / too much new flow.
+
+**User's required design**: reuse `start/wait_fetch_x`, `compute_q_proj`, `compute_kv_from_x_tile` unchanged; only change *when* they fire and the indexing. For decode, `bq_sz` counts **sequences** (decode x rows are contiguous since q_len=1 each): batch head (`(seq-start) % bq_sz == 0`) does one x wait + one Q GEMM + one KV GEMM for the whole batch; seqs 1..bq_sz-1 skip fetch/projection; next batch's x prefetched at offset `bq_sz-2`. Attention stays per-seq (`static_q_len=1`).
+
+Key mechanics:
+- x slot = `batch_idx % 3` (existing x_tile_x3_ref), Q slot = `batch_idx % 2` (bq_x2_ref); slots derived arithmetically, no SMEM state.
+- RoPE positions per row = `kv_lens[batch_head+i]-1`, not affine → `build_decode_positions` gathers from SMEM via fori_loop; passed as `positions=` override to `compute_q_rope_norm` / `compute_kv_from_x_tile`.
+- Batched KV rows land in new `kv_batch_ref` scratch (`batch_ref=` override, same strided_store packing); `copy_kv_from_batch` copies one row into the seq's bkv tile when `update_sz>0` (existing `_fetch_bkv` math already yields update_sz=1 for the new-token tile with bq_idx=0).
+- bo/l/m/acc scratch sized `min(bq_sz, static_q_len)` so decode doesn't pay bq_sz× init/store per seq; out_ref reshape uses `bo_x2_ref.shape[2]`.
+- `_fetch_x` clamps DMA size to token budget; `bkv_sz % bq_sz` assert relaxed for DECODE; default decode `bq_sz = min(64, next_power_of_2(max_num_seqs))` when d_block_sizes is None.
+
+Test: `test_ragged_paged_attention_mega_kernel_decode` (4 variants: default sizes, partial batches bq_sz=4, one big batch bq_sz=16, degenerate bq_sz=1) — all pass on v6e.
+
+**Profiling findings (2026-07-13, Qwen3-4B, in=1000/out=1000/bs=256)**: MEGA was net slower than base (mixed step 156 vs 139ms, decode step 36.8 vs 32.2ms). XLA-side overheads found in trace: (1) `jnp.concatenate([w_q,w_k,w_v])` inside run_rpa_kernel re-materialized a [D,6144] buffer via 3 dynamic-update-slice fusions per layer per step (~1.4ms/step); (2) the caller's `jnp.zeros` dummy q (qwen3.py) was zero-filled 8.4MB per layer as the donated output buffer of the first (DECODE) kernel (`broadcast.1100.clone`, ~3.2ms/mixed step); (3) empty prefill-kernel calls cost 42us vs 7us (mega prologue runs with no work — NOT yet fixed). Fixes applied 2026-07-14: kernel takes w_q/w_k/w_v as 3 separate VMEM refs (KV = two GEMMs); mega passes tiny dummy for kv_hbm (never read) and, for DECODE, tiny dummy q with alias {9:1} only (output 0 uninitialized; MIXED aliases it and fills prefill rows; padding rows are garbage, not zeros — tests slice to valid tokens). Dims in kernel body now derive from o_hbm_ref, not q_hbm_ref. Remaining known regressions: fused-projection RPAm prefill kernel is ~2.7x base attention kernel (projection doesn't overlap attention on MXU); RPAd +87us/layer vs base decode.
+
+**Fixes verified by profile 2026_07_14_05_15_30** (vs baseline 05_30_34): w_qkv now fused at weight load (`weight_utils.fuse_qkv_weights_for_mega_kernel`, nnx.Param per attention layer, per-shard shard_map concat, returns created names for vLLM's track_weights_loading); q/kv dummy operand slots reuse x_input. Result: mixed step 156.4→150.6ms, decode 36.8→34.0ms (baseline 138.9/32.2). All per-step weight staging ops gone; only 20 ops before first RPA (embedding+norm + 2 x-layout copies + 3 tiny broadcasts).
+
+**Failed experiment (don't retry)**: reshaping x to [T, D//128, 128] at the producer in qwen3.py to let XLA fold the {0,1}→{2,1,0} relayout (copy.220, ~27us/layer at 4096 tokens) into the RMSNorm fusion — user profiled it, no change in the trace; XLA layout assignment keeps the residual/norm region {0,1} regardless and still inserts the copy at the pallas boundary. Reverted 2026-07-14. Remaining known gaps to baseline: RPAm prefill fused-projection kernel ~2.7x (1498 vs 553us/layer), RPAd +70us/layer, empty prefill kernel 42 vs 7us/call (unguarded mega prologue).
+
+**Known pre-existing failures on mega_kernel branch** (verified identical at HEAD 501f6309, NOT from this change): 39 non-mega tests fail with small numeric tolerance violations — basic0-7, quantized_attention1/3, quantized_kv_cache1/3, decode_only0-1, prefill_only0-1, mixed0-1, soft_capping0-1, sliding_window0-2, complex16-31 (complex0-15 pass; the failing half is likely the float32/other-dtype half). Don't chase these when validating future mega_kernel work — compare failure sets against HEAD via git stash.
+
+Related: [[project-rope-fusion-investigation]], [[project-qproj-fusion]], [[project-kvproj-fusion]]

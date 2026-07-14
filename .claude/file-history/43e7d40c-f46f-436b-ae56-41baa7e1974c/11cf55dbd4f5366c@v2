@@ -1,0 +1,81 @@
+#!/usr/bin/env python3
+"""Benchmark the BASELINE (non-mega) XLA-side q/k/v projection + norm + rope
+exactly as qwen3.py does it, at the same shape as the kernel benchmarks:
+T=2048 tokens, D=2560, 32 Q heads / 8 KV heads, head_dim=128, bf16.
+
+Run with XLA_FLAGS=--xla_dump_to=<dir> to dump the optimized HLO.
+"""
+import time
+
+import jax
+import jax.numpy as jnp
+import numpy as np
+
+from tpu_inference.layers.jax.rope_interface import apply_rope
+
+T, D, N, K, H = 2048, 2560, 32, 8, 128
+ROPE_THETA = 1e6
+
+rng = np.random.default_rng(0)
+
+
+def gen(shape, dtype=jnp.bfloat16):
+    return jnp.array(rng.random(size=shape, dtype=np.float32)).astype(dtype)
+
+
+x = gen((T, D))
+w_q = gen((D, N, H))
+w_k = gen((D, K, H))
+w_v = gen((D, K, H))
+qn_scale = gen((H, ))
+kn_scale = gen((H, ))
+positions = jnp.arange(T, dtype=jnp.int32)
+
+
+def rms_norm(v, scale):
+    v32 = v.astype(jnp.float32)
+    var = jnp.mean(v32 * v32, axis=-1, keepdims=True)
+    return (v32 * jax.lax.rsqrt(var + 1e-6) * scale.astype(jnp.float32)).astype(v.dtype)
+
+
+@jax.jit
+def proj_norm_rope(x, w_q, w_k, w_v, qn_scale, kn_scale, positions):
+    # Mirrors Qwen3Attention.__call__ non-mega path (qwen3.py:177-189)
+    q = jnp.einsum("TD,DNH->TNH", x, w_q)
+    q = rms_norm(q, qn_scale)
+    q = apply_rope(q, positions, H, ROPE_THETA, None)
+
+    k = jnp.einsum("TD,DKH->TKH", x, w_k)
+    k = rms_norm(k, kn_scale)
+    k = apply_rope(k, positions, H, ROPE_THETA, None)
+
+    v = jnp.einsum("TD,DKH->TKH", x, w_v)
+    return q, k, v
+
+
+args = (x, w_q, w_k, w_v, qn_scale, kn_scale, positions)
+jax.block_until_ready(proj_norm_rope(*args))  # compile
+
+# time
+reps = 100
+t0 = time.perf_counter()
+for _ in range(reps):
+    out = proj_norm_rope(*args)
+jax.block_until_ready(out)
+t1 = time.perf_counter()
+print(f"proj+norm+rope (q,k,v) wall: {(t1-t0)/reps*1e6:.1f} us/iter over {reps} reps")
+
+# also time projection GEMMs alone
+@jax.jit
+def proj_only(x, w_q, w_k, w_v):
+    return (jnp.einsum("TD,DNH->TNH", x, w_q),
+            jnp.einsum("TD,DKH->TKH", x, w_k),
+            jnp.einsum("TD,DKH->TKH", x, w_v))
+
+jax.block_until_ready(proj_only(x, w_q, w_k, w_v))
+t0 = time.perf_counter()
+for _ in range(reps):
+    out = proj_only(x, w_q, w_k, w_v)
+jax.block_until_ready(out)
+t1 = time.perf_counter()
+print(f"proj GEMMs only wall:        {(t1-t0)/reps*1e6:.1f} us/iter")

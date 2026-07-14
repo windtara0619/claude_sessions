@@ -159,6 +159,22 @@ class Qwen3Attention(JaxModule):
             self.kv_cache_quantized_dtype = utils.get_jax_dtype_from_str_dtype(
                 kv_cache_dtype)
 
+        # Pre-flattened weights for mega_kernel fused projection.
+        # Populated at weight-loading time via _cache_mega_kernel_weights().
+        self._w_q_flat: jax.Array | None = None
+        self._w_k_flat: jax.Array | None = None
+        self._w_v_flat: jax.Array | None = None
+
+    def _cache_mega_kernel_weights(self) -> None:
+        D = self.hidden_size
+        w_q = jnp.asarray(self.q_proj.weight)
+        if envs.LAYOUT_Q_PROJ_AS_NDH:
+            # (N, D, H) -> (D, N, H) -> (D, N*H)
+            w_q = w_q.transpose(1, 0, 2)
+        self._w_q_flat = w_q.reshape(D, -1)
+        self._w_k_flat = jnp.asarray(self.k_proj.weight).reshape(D, -1)
+        self._w_v_flat = jnp.asarray(self.v_proj.weight).reshape(D, -1)
+
     def __call__(
         self,
         kv_cache: Optional[jax.Array],
@@ -205,24 +221,16 @@ class Qwen3Attention(JaxModule):
             rope_scaling=None,
         )
         if md.mega_kernel:
-            # Reshape weights from [D,N,H] / [N,D,H] to [D, N*H] for the kernel.
-            # Use jnp.asarray() to extract raw JAX arrays from NNX Param objects.
-            D = self.hidden_size
-            H = self.head_dim
-            w_q = jnp.asarray(self.q_proj.weight)
-            if envs.LAYOUT_Q_PROJ_AS_NDH:
-                # weight shape: (N, D, H) -> (D, N, H) -> (D, N*H)
-                w_q = w_q.transpose(1, 0, 2)
-            w_q = w_q.reshape(D, -1)   # (D, N*H)
-            w_k = jnp.asarray(self.k_proj.weight).reshape(D, -1)   # (D, K*H)
-            w_v = jnp.asarray(self.v_proj.weight).reshape(D, -1)   # (D, K*H)
+            if self._w_q_flat is None:
+                # Fallback for dummy-weight paths (profiling, tests).
+                self._cache_mega_kernel_weights()
             attn_kwargs.update(dict(
                 x=x,
-                w_q=w_q,
+                w_q=self._w_q_flat,
                 qn_scale=jnp.asarray(self.q_norm.weight),
-                w_k=w_k,
+                w_k=self._w_k_flat,
                 kn_scale=jnp.asarray(self.k_norm.weight),
-                w_v=w_v,
+                w_v=self._w_v_flat,
                 rope_theta=self.rope_theta,
                 rope_scaling=(tuple(self.rope_scaling.items())
                               if self.rope_scaling else None),
@@ -387,6 +395,13 @@ class Qwen3ForCausalLM(JaxModule, LoadableWithIterator):
                 self.lm_head = PPMissingLayer()
         else:
             self.lm_head = PPMissingLayer()
+
+    def load_weights(self, weights) -> set[str]:
+        result = super().load_weights(weights)
+        for layer in self.model.layers:
+            if not isinstance(layer, PPMissingLayer):
+                layer.self_attn._cache_mega_kernel_weights()
+        return result
 
     def __call__(
         self,

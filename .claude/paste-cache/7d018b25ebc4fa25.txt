@@ -1,0 +1,41 @@
+(EngineCore pid=12931) ERROR 07-14 04:51:38 [core.py:1195] EngineCore failed to start.
+(EngineCore pid=12931) ERROR 07-14 04:51:38 [core.py:1195] Traceback (most recent call last):
+(EngineCore pid=12931) ERROR 07-14 04:51:38 [core.py:1195]   File "/home/tarading/vllm/vllm/v1/engine/core.py", line 1164, in run_engine_core
+(EngineCore pid=12931) ERROR 07-14 04:51:38 [core.py:1195]     engine_core = EngineCoreProc(*args, engine_index=dp_rank, **kwargs)
+(EngineCore pid=12931) ERROR 07-14 04:51:38 [core.py:1195]                   ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+(EngineCore pid=12931) ERROR 07-14 04:51:38 [core.py:1195]   File "/home/tarading/vllm/vllm/tracing/otel.py", line 178, in sync_wrapper
+(EngineCore pid=12931) ERROR 07-14 04:51:38 [core.py:1195]     return func(*args, **kwargs)
+(EngineCore pid=12931) ERROR 07-14 04:51:38 [core.py:1195]            ^^^^^^^^^^^^^^^^^^^^^
+(EngineCore pid=12931) ERROR 07-14 04:51:38 [core.py:1195]   File "/home/tarading/vllm/vllm/v1/engine/core.py", line 930, in __init__
+(EngineCore pid=12931) ERROR 07-14 04:51:38 [core.py:1195]     super().__init__(
+(EngineCore pid=12931) ERROR 07-14 04:51:38 [core.py:1195]   File "/home/tarading/vllm/vllm/v1/engine/core.py", line 122, in __init__
+(EngineCore pid=12931) ERROR 07-14 04:51:38 [core.py:1195]     self.model_executor = executor_class(vllm_config)
+(EngineCore pid=12931) ERROR 07-14 04:51:38 [core.py:1195]                           ^^^^^^^^^^^^^^^^^^^^^^^^^^^
+(EngineCore pid=12931) ERROR 07-14 04:51:38 [core.py:1195]   File "/home/tarading/vllm/vllm/tracing/otel.py", line 178, in sync_wrapper
+(EngineCore pid=12931) ERROR 07-14 04:51:38 [core.py:1195]     return func(*args, **kwargs)
+(EngineCore pid=12931) ERROR 07-14 04:51:38 [core.py:1195]            ^^^^^^^^^^^^^^^^^^^^^
+(EngineCore pid=12931) ERROR 07-14 04:51:38 [core.py:1195]   File "/home/tarading/vllm/vllm/v1/executor/abstract.py", line 109, in __init__
+(EngineCore pid=12931) ERROR 07-14 04:51:38 [core.py:1195]     self._init_executor()
+(EngineCore pid=12931) ERROR 07-14 04:51:38 [core.py:1195]   File "/home/tarading/vllm/vllm/v1/executor/uniproc_executor.py", line 68, in _init_executor
+(EngineCore pid=12931) ERROR 07-14 04:51:38 [core.py:1195]     self.driver_worker.load_model()
+(EngineCore pid=12931) ERROR 07-14 04:51:38 [core.py:1195]   File "/home/tarading/tpu-inference/tpu_inference/worker/tpu_worker.py", line 527, in load_model
+(EngineCore pid=12931) ERROR 07-14 04:51:38 [core.py:1195]     self.model_runner.load_model()
+(EngineCore pid=12931) ERROR 07-14 04:51:38 [core.py:1195]   File "/home/tarading/tpu-inference/tpu_inference/runner/tpu_runner.py", line 782, in load_model
+(EngineCore pid=12931) ERROR 07-14 04:51:38 [core.py:1195]     model = get_model(
+(EngineCore pid=12931) ERROR 07-14 04:51:38 [core.py:1195]             ^^^^^^^^^^
+(EngineCore pid=12931) ERROR 07-14 04:51:38 [core.py:1195]   File "/home/tarading/tpu-inference/tpu_inference/models/common/model_loader.py", line 614, in get_model
+(EngineCore pid=12931) ERROR 07-14 04:51:38 [core.py:1195]     return get_flax_model(vllm_config, rng, mesh,
+(EngineCore pid=12931) ERROR 07-14 04:51:38 [core.py:1195]            ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+(EngineCore pid=12931) ERROR 07-14 04:51:38 [core.py:1195]   File "/home/tarading/tpu-inference/tpu_inference/models/common/model_loader.py", line 341, in get_flax_model
+(EngineCore pid=12931) ERROR 07-14 04:51:38 [core.py:1195]     jit_model = _get_nnx_model(model_class,
+(EngineCore pid=12931) ERROR 07-14 04:51:38 [core.py:1195]                 ^^^^^^^^^^^^^^^^^^^^^^^^^^^
+(EngineCore pid=12931) ERROR 07-14 04:51:38 [core.py:1195]   File "/home/tarading/tpu-inference/tpu_inference/models/common/model_loader.py", line 278, in _get_nnx_model
+(EngineCore pid=12931) ERROR 07-14 04:51:38 [core.py:1195]     loader.load_weights(model, model_config)
+(EngineCore pid=12931) ERROR 07-14 04:51:38 [core.py:1195]   File "/home/tarading/vllm/vllm/tracing/otel.py", line 178, in sync_wrapper
+(EngineCore pid=12931) ERROR 07-14 04:51:38 [core.py:1195]     return func(*args, **kwargs)
+(EngineCore pid=12931) ERROR 07-14 04:51:38 [core.py:1195]            ^^^^^^^^^^^^^^^^^^^^^
+(EngineCore pid=12931) ERROR 07-14 04:51:38 [core.py:1195]   File "/home/tarading/vllm/vllm/model_executor/model_loader/default_loader.py", line 412, in load_weights
+(EngineCore pid=12931) ERROR 07-14 04:51:38 [core.py:1195]     self.track_weights_loading(model, loaded_weights)
+(EngineCore pid=12931) ERROR 07-14 04:51:38 [core.py:1195]   File "/home/tarading/vllm/vllm/model_executor/model_loader/default_loader.py", line 434, in track_weights_loading
+(EngineCore pid=12931) ERROR 07-14 04:51:38 [core.py:1195]     raise ValueError(
+(EngineCore pid=12931) ERROR 07-14 04:51:38 [core.py:1195] ValueError: Following weights were not initialized from checkpoint: {'model.layers.26.self_attn.w_qkv', 'model.layers.23.self_attn.w_qkv', 'model.layers.33.self_attn.w_qkv', 'model.layers.0.self_attn.w_qkv', 'model.layers.17.self_attn.w_qkv', 'model.layers.34.self_attn.w_qkv', 'model.layers.5.self_attn.w_qkv', 'model.layers.10.self_attn.w_qkv', 'model.layers.19.self_attn.w_qkv', 'model.layers.28.self_attn.w_qkv', 'model.layers.29.self_attn.w_qkv', 'model.layers.18.self_attn.w_qkv', 'model.layers.21.self_attn.w_qkv', 'model.layers.11.self_attn.w_qkv', 'model.layers.4.self_attn.w_qkv', 'model.layers.22.self_attn.w_qkv', 'model.layers.13.self_attn.w_qkv', 'model.layers.7.self_attn.w_qkv', 'model.layers.30.self_attn.w_qkv', 'model.layers.6.self_attn.w_qkv', 'model.layers.20.self_attn.w_qkv', 'model.layers.8.self_attn.w_qkv', 'model.layers.35.self_attn.w_qkv', 'model.layers.3.self_attn.w_qkv', 'model.layers.25.self_attn.w_qkv', 'model.layers.24.self_attn.w_qkv', 'model.layers.12.self_attn.w_qkv', 'model.layers.32.self_attn.w_qkv', 'model.layers.2.self_attn.w_qkv', 'model.layers.15.self_attn.w_qkv', 'model.layers.27.self_attn.w_qkv', 'model.layers.14.self_attn.w_qkv', 'model.layers.16.self_attn.w_qkv', 'model.layers.31.self_attn.w_qkv', 'model.layers.9.self_attn.w_qkv', 'model.layers.1.self_attn.w_qkv'}

@@ -1,0 +1,51 @@
+(EngineCore pid=10660) ERROR 07-14 04:45:33 [core.py:1195] EngineCore failed to start.
+(EngineCore pid=10660) ERROR 07-14 04:45:33 [core.py:1195] Traceback (most recent call last):
+(EngineCore pid=10660) ERROR 07-14 04:45:33 [core.py:1195]   File "/home/tarading/vllm/vllm/v1/engine/core.py", line 1164, in run_engine_core
+(EngineCore pid=10660) ERROR 07-14 04:45:33 [core.py:1195]     engine_core = EngineCoreProc(*args, engine_index=dp_rank, **kwargs)
+(EngineCore pid=10660) ERROR 07-14 04:45:33 [core.py:1195]                   ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+(EngineCore pid=10660) ERROR 07-14 04:45:33 [core.py:1195]   File "/home/tarading/vllm/vllm/tracing/otel.py", line 178, in sync_wrapper
+(EngineCore pid=10660) ERROR 07-14 04:45:33 [core.py:1195]     return func(*args, **kwargs)
+(EngineCore pid=10660) ERROR 07-14 04:45:33 [core.py:1195]            ^^^^^^^^^^^^^^^^^^^^^
+(EngineCore pid=10660) ERROR 07-14 04:45:33 [core.py:1195]   File "/home/tarading/vllm/vllm/v1/engine/core.py", line 930, in __init__
+(EngineCore pid=10660) ERROR 07-14 04:45:33 [core.py:1195]     super().__init__(
+(EngineCore pid=10660) ERROR 07-14 04:45:33 [core.py:1195]   File "/home/tarading/vllm/vllm/v1/engine/core.py", line 122, in __init__
+(EngineCore pid=10660) ERROR 07-14 04:45:33 [core.py:1195]     self.model_executor = executor_class(vllm_config)
+(EngineCore pid=10660) ERROR 07-14 04:45:33 [core.py:1195]                           ^^^^^^^^^^^^^^^^^^^^^^^^^^^
+(EngineCore pid=10660) ERROR 07-14 04:45:33 [core.py:1195]   File "/home/tarading/vllm/vllm/tracing/otel.py", line 178, in sync_wrapper
+(EngineCore pid=10660) ERROR 07-14 04:45:33 [core.py:1195]     return func(*args, **kwargs)
+(EngineCore pid=10660) ERROR 07-14 04:45:33 [core.py:1195]            ^^^^^^^^^^^^^^^^^^^^^
+(EngineCore pid=10660) ERROR 07-14 04:45:33 [core.py:1195]   File "/home/tarading/vllm/vllm/v1/executor/abstract.py", line 109, in __init__
+(EngineCore pid=10660) ERROR 07-14 04:45:33 [core.py:1195]     self._init_executor()
+(EngineCore pid=10660) ERROR 07-14 04:45:33 [core.py:1195]   File "/home/tarading/vllm/vllm/v1/executor/uniproc_executor.py", line 68, in _init_executor
+(EngineCore pid=10660) ERROR 07-14 04:45:33 [core.py:1195]     self.driver_worker.load_model()
+(EngineCore pid=10660) ERROR 07-14 04:45:33 [core.py:1195]   File "/home/tarading/tpu-inference/tpu_inference/worker/tpu_worker.py", line 527, in load_model
+(EngineCore pid=10660) ERROR 07-14 04:45:33 [core.py:1195]     self.model_runner.load_model()
+(EngineCore pid=10660) ERROR 07-14 04:45:33 [core.py:1195]   File "/home/tarading/tpu-inference/tpu_inference/runner/tpu_runner.py", line 782, in load_model
+(EngineCore pid=10660) ERROR 07-14 04:45:33 [core.py:1195]     model = get_model(
+(EngineCore pid=10660) ERROR 07-14 04:45:33 [core.py:1195]             ^^^^^^^^^^
+(EngineCore pid=10660) ERROR 07-14 04:45:33 [core.py:1195]   File "/home/tarading/tpu-inference/tpu_inference/models/common/model_loader.py", line 614, in get_model
+(EngineCore pid=10660) ERROR 07-14 04:45:33 [core.py:1195]     return get_flax_model(vllm_config, rng, mesh,
+(EngineCore pid=10660) ERROR 07-14 04:45:33 [core.py:1195]            ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+(EngineCore pid=10660) ERROR 07-14 04:45:33 [core.py:1195]   File "/home/tarading/tpu-inference/tpu_inference/models/common/model_loader.py", line 341, in get_flax_model
+(EngineCore pid=10660) ERROR 07-14 04:45:33 [core.py:1195]     jit_model = _get_nnx_model(model_class,
+(EngineCore pid=10660) ERROR 07-14 04:45:33 [core.py:1195]                 ^^^^^^^^^^^^^^^^^^^^^^^^^^^
+(EngineCore pid=10660) ERROR 07-14 04:45:33 [core.py:1195]   File "/home/tarading/tpu-inference/tpu_inference/models/common/model_loader.py", line 278, in _get_nnx_model
+(EngineCore pid=10660) ERROR 07-14 04:45:33 [core.py:1195]     loader.load_weights(model, model_config)
+(EngineCore pid=10660) ERROR 07-14 04:45:33 [core.py:1195]   File "/home/tarading/vllm/vllm/tracing/otel.py", line 178, in sync_wrapper
+(EngineCore pid=10660) ERROR 07-14 04:45:33 [core.py:1195]     return func(*args, **kwargs)
+(EngineCore pid=10660) ERROR 07-14 04:45:33 [core.py:1195]            ^^^^^^^^^^^^^^^^^^^^^
+(EngineCore pid=10660) ERROR 07-14 04:45:33 [core.py:1195]   File "/home/tarading/vllm/vllm/model_executor/model_loader/default_loader.py", line 394, in load_weights
+(EngineCore pid=10660) ERROR 07-14 04:45:33 [core.py:1195]     loaded_weights = model.load_weights(self.get_all_weights(model_config, model))
+(EngineCore pid=10660) ERROR 07-14 04:45:33 [core.py:1195]                      ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+(EngineCore pid=10660) ERROR 07-14 04:45:33 [core.py:1195]   File "/home/tarading/tpu-inference/tpu_inference/models/jax/utils/weight_utils.py", line 1071, in load_weights
+(EngineCore pid=10660) ERROR 07-14 04:45:33 [core.py:1195]     fuse_qkv_weights_for_mega_kernel(self)
+(EngineCore pid=10660) ERROR 07-14 04:45:33 [core.py:1195]   File "/home/tarading/tpu-inference/tpu_inference/models/jax/utils/weight_utils.py", line 653, in fuse_qkv_weights_for_mega_kernel
+(EngineCore pid=10660) ERROR 07-14 04:45:33 [core.py:1195]     _walk(model)
+(EngineCore pid=10660) ERROR 07-14 04:45:33 [core.py:1195]   File "/home/tarading/tpu-inference/tpu_inference/models/jax/utils/weight_utils.py", line 651, in _walk
+(EngineCore pid=10660) ERROR 07-14 04:45:33 [core.py:1195]     _walk(sub)
+(EngineCore pid=10660) ERROR 07-14 04:45:33 [core.py:1195]   File "/home/tarading/tpu-inference/tpu_inference/models/jax/utils/weight_utils.py", line 651, in _walk
+(EngineCore pid=10660) ERROR 07-14 04:45:33 [core.py:1195]     _walk(sub)
+(EngineCore pid=10660) ERROR 07-14 04:45:33 [core.py:1195]   File "/home/tarading/tpu-inference/tpu_inference/models/jax/utils/weight_utils.py", line 642, in _walk
+(EngineCore pid=10660) ERROR 07-14 04:45:33 [core.py:1195]     w_q = jnp.asarray(module.q_proj.weight)
+(EngineCore pid=10660) ERROR 07-14 04:45:33 [core.py:1195]                       ^^^^^^^^^^^^^^^^^^^^
+(EngineCore pid=10660) ERROR 07-14 04:45:33 [core.py:1195] AttributeError: 'NoneType' object has no attribute 'weight'
