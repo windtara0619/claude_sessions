@@ -1,0 +1,319 @@
+#!/usr/bin/env python3
+"""Regenerate docs/rpa_timeline.html for the current mega_kernel design.
+
+Panels:
+  c0 BASELINE prefill (kept from the old file's calibrated model, 253us)
+  c1 MEGA prefill (current design: w_qkv prologue copy, Q GEMM t+1 overlap,
+     per-bq-tile KV compute + eager cache write, deferred bkv prefetch)
+  c2 XLA external projections (baseline path context, 198us)
+  c3 BASE decode 256 seqs (DMA-bound, 694us)
+  c4 MEGA batched decode 256 seqs, bq_sz=64 (batch-head Q/KV GEMM, 746us)
+
+Timeline blocks are a calibrated *model* (constants from kernel_bench /
+op_bench measurements), not a raw trace.
+"""
+import json
+
+# ---------------------------------------------------------------- constants
+# Prefill (2048 tok, bq=256 -> 8 tiles, bkv=1024, fresh causal)
+T_X_DMA = 1.4        # x_bq tile 256x2560 bf16
+T_WQKV_DMA = 19.6    # 31.4MB w_qkv HBM->VMEM (prologue async copy)
+T_Q = 18.65          # Q GEMM 256x2560 @ 2560x4096 (measured)
+T_QNORM = 6.35       # Q norm+rope VPU
+T_KV = 3.5           # KV GEMM 256 rows @ 2560x2048
+T_KNORM = 3.3        # K norm+rope+pack VPU (256 rows)
+T_CACHE_WR = 2.72    # 256 new rows -> cache
+T_CACHE_RD = 2.72    # cached part of a bkv tile
+T_AQK = 5.793        # attn QK matmul per 512-kv loop
+T_APV = 6.057        # attn PV matmul per loop
+T_AAC = 1.141        # attn acc VPU per loop
+T_OUT = 2.0          # out norm VPU per bq tile
+T_ROPE_TS = 2.0
+NBQ, BQ, BKV, CSZ = 8, 256, 1024, 512
+
+# Decode (256 seqs, kv=1024/seq, bq_sz=64 -> 4 batches)
+NSEQ, DBQ = 256, 64
+D_CACHE_RD = 2.71    # 4.2MB kv tile per seq (DMA-bound: 694/256)
+D_ATTN = 0.35        # 1-token QK+PV MXU
+D_VPU = 0.30         # acc + out
+D_XF = 0.25          # x fetch, 64 rows
+D_POS = 2.0          # build_decode_positions fori_loop (VPU/SMEM)
+D_QG = 6.0           # Q GEMM 64x2560 @ 2560x4096 (small-M, MXU-inefficient)
+D_QN = 2.0           # Q norm+rope 64 rows
+D_KVG = 3.0          # KV GEMM 64 rows
+D_KN = 1.5           # K norm+rope+pack into kv_batch_ref
+D_ROW_CP = 0.05      # copy_kv_from_batch single row
+D_WR = 0.10          # 1-row cache write
+
+
+def sched(mxu, vpu, t):
+    """tiny helper holders"""
+
+
+def gen_mega_prefill():
+    ops = []
+    mxu = vpu = 0.0
+
+    def m(dur, key, lbl, dep=0.0):
+        nonlocal mxu
+        s = max(mxu, dep)
+        ops.append([round(s, 3), round(s + dur, 3), "MXU", "mxu", key, lbl])
+        mxu = s + dur
+        return mxu
+
+    def v(dur, key, lbl, dep=0.0):
+        nonlocal vpu
+        s = max(vpu, dep)
+        ops.append([round(s, 3), round(s + dur, 3), "VPU", "vpu", key, lbl])
+        vpu = s + dur
+        return vpu
+
+    def d(t0, dur, sub, key, lbl):
+        ops.append([round(t0, 3), round(t0 + dur, 3), "DMA", sub, key, lbl])
+        return t0 + dur
+
+    # prologue: w_qkv copy first, then x[0], x[1]; rope_ts on VPU
+    wqkv_done = d(0, T_WQKV_DMA, "q_reads", "WQ", "w_qkv HBM->VMEM (async)")
+    x_done = [d(0, T_X_DMA, "q_reads", "DXQ", "x_bq[0]"),
+              d(0, T_X_DMA, "q_reads", "DXQ", "x_bq[1]")]
+    v(T_ROPE_TS, "r", "rope_ts")
+    qmat_done = [0.0] * NBQ
+    qnorm_done = [0.0] * NBQ
+    # prologue Q GEMM: needs x[0] and the leading W_q slice of the w_qkv
+    # copy (arrives long before the full 19.6us copy completes) — measured
+    # +5us vs VMEM-operand entry, so model the effective wait as 5us.
+    qmat_done[0] = m(T_Q, "Q", "Q_mat[0]", dep=max(x_done[0], 5.0))
+
+    kv_ready = {}    # bkv tile j -> time K/V rows usable for attention
+    cache_wr_end = 0.0
+
+    for t in range(NBQ):
+        # prefetch x[t+2]
+        if t + 2 < NBQ:
+            x_done.append(d(mxu, T_X_DMA, "q_reads", "DXQ", f"x_bq[{t+2}]"))
+        # Q GEMM for t+1 (overlaps this tile's attention in program order)
+        if t + 1 < NBQ:
+            qmat_done[t + 1] = m(T_Q, "q", f"Q_mat[{t+1}]",
+                                 dep=x_done[t + 1])
+        # Q norm+rope for t (VPU)
+        qnorm_done[t] = v(T_QNORM, "N" if t == 0 else "n", f"Q_norm[{t}]",
+                          dep=qmat_done[t])
+
+        kv_new = (t * BQ) // BKV      # bkv tile getting this tile's new rows
+        ntiles = ((t + 1) * BQ + BKV - 1) // BKV
+        for j in range(ntiles):
+            if j != kv_new:
+                # fully cached tile: read was prefetched during the previous
+                # tile's attention, so it never stalls the MXU.
+                d(max(0.0, mxu - 24), T_CACHE_RD, "kv_reads", "DKC",
+                  f"KVcache_rd[{t},{j}]")
+                ready = kv_ready.get(j, 0.0)
+            else:
+                # cached front of the tile (rows from earlier bq tiles)
+                if t * BQ > j * BKV:
+                    d(max(0.0, mxu - 24),
+                      T_CACHE_RD * (t * BQ - j * BKV) / BKV,
+                      "kv_reads", "DKC", f"KVcache_rd[{t},{j}]")
+                # K/V for this tile's new 256 rows from x[t]
+                g = m(T_KV, "K" if t == 0 else "k", f"KV_gemm[{t}]",
+                      dep=x_done[t])
+                kn = v(T_KNORM, "n", f"K_norm[{t}]", dep=g)
+                cache_wr_end = d(kn, T_CACHE_WR, "kv_writes", "DKW",
+                                 f"KVcache_wr[{t}]")
+                # norm+pack pipelines with the first QK chunk; effective
+                # readiness is ~1us after the GEMM.
+                ready = g + 1.0
+                kv_ready[j] = kn
+            # attention loops over this tile
+            kv_here = min((t + 1) * BQ - j * BKV, BKV)
+            nloops = (kv_here + CSZ - 1) // CSZ
+            for l in range(nloops):
+                qk = m(T_AQK, "AQK" if t == 0 else "aqk",
+                       f"Attn[{t},{j}] QK loop{l}",
+                       dep=max(qnorm_done[t], ready))
+                m(T_APV, "APV" if t == 0 else "apv",
+                  f"Attn[{t},{j}] PV loop{l}")
+                v(T_AAC, "AAC" if t == 0 else "aac",
+                  f"Attn[{t},{j}] acc loop{l}", dep=qk)
+        v(T_OUT, "O" if t == 0 else "o", f"out[{t}]", dep=mxu)
+    tot = max(mxu, vpu, cache_wr_end)
+    return ops, round(tot, 2)
+
+
+def gen_decode(mega):
+    ops = []
+    dma = 0.0   # cache-read pipe (the bottleneck resource)
+    mxu = vpu = 0.0
+    per = []
+
+    def d(dur, key, lbl, dep=0.0, sub="kv_reads"):
+        nonlocal dma
+        s = max(dma, dep)
+        ops.append([round(s, 3), round(s + dur, 3), "DMA", sub, key, lbl])
+        dma = s + dur
+        return dma
+
+    def m(dur, key, lbl, dep=0.0):
+        nonlocal mxu
+        s = max(mxu, dep)
+        ops.append([round(s, 3), round(s + dur, 3), "MXU", "mxu", key, lbl])
+        mxu = s + dur
+        return mxu
+
+    def v(dur, key, lbl, dep=0.0):
+        nonlocal vpu
+        s = max(vpu, dep)
+        ops.append([round(s, 3), round(s + dur, 3), "VPU", "vpu", key, lbl])
+        vpu = s + dur
+        return vpu
+
+    if mega:
+        ops.append([0, T_WQKV_DMA, "DMA", "q_reads", "WQ",
+                    "w_qkv HBM->VMEM (async)"])
+        v(T_ROPE_TS, "r", "rope_ts")
+
+    qready = 0.0
+    for s in range(NSEQ):
+        if mega and s % DBQ == 0:
+            b = s // DBQ
+            xf = max(mxu, dma - 2.0)
+            ops.append([round(xf, 3), round(xf + D_XF, 3), "DMA", "q_reads",
+                        "DXQ", f"x[batch{b}] (64 seqs)"])
+            pos = v(D_POS, "PG", f"positions[batch{b}] (SMEM gather)",
+                    dep=xf + D_XF)
+            dep_w = T_WQKV_DMA if b == 0 else 0.0
+            qg = m(D_QG, "Q", f"Q_gemm[batch{b}] (64x)",
+                   dep=max(xf + D_XF, dep_w))
+            qn = v(D_QN, "N", f"Q_norm+rope[batch{b}]", dep=max(qg, pos))
+            kg = m(D_KVG, "K", f"KV_gemm[batch{b}] (64x)")
+            kn = v(D_KN, "n", f"K_norm+rope+pack[batch{b}]", dep=kg)
+            qready = max(qn, kn)
+            # The double-buffered cache-read pipe stalls while the batch
+            # head's GEMM chain completes (the in-flight read's consumer is
+            # blocked, so the next read can't be issued): ~13us/batch bubble.
+            dma = max(dma, qready - 2.0)
+        elif not mega:
+            ops.append([round(max(0.0, dma - 1.0), 3),
+                        round(max(0.0, dma - 1.0) + 0.15, 3), "DMA",
+                        "q_reads", "DQ", f"q_hbm[{s}]"])
+        rd = d(D_CACHE_RD, "DKC", f"KVcache_rd[seq{s}]")
+        if mega:
+            v(D_ROW_CP, "cp", f"copy_kv row[seq{s}]", dep=max(rd, qready))
+            ops.append([round(rd, 3), round(rd + D_WR, 3), "DMA",
+                        "kv_writes", "DKW", f"cache_wr row[seq{s}]"])
+        a = m(D_ATTN, "aqk" if s else "AQK", f"Attn[seq{s}] (1 tok)",
+              dep=max(rd, qready))
+        v(D_VPU, "aac" if s else "AAC", f"acc+out[seq{s}]", dep=a)
+    tot = max(dma, mxu, vpu)
+    return ops, round(tot, 2)
+
+
+mega_pre, mega_tot = gen_mega_prefill()
+base_dec, base_dec_tot = gen_decode(False)
+mega_dec, mega_dec_tot = gen_decode(True)
+print(f"mega prefill model total: {mega_tot} (measured 429)")
+print(f"base decode model total:  {base_dec_tot} (measured 694)")
+print(f"mega decode model total:  {mega_dec_tot} (measured 746)")
+
+# baseline prefill + XLA panels: reuse the calibrated data from the old file
+old = open("docs/rpa_timeline.html").read()
+import re
+m = re.search(r'const DATA=\[\n(.*?)\n\];', old, re.S)
+old_rows = m.group(1).split('\n')
+base_prefill_row = old_rows[0].rstrip(',')
+xla_row = old_rows[2].rstrip(',')
+
+def row(ops, tot, scale):
+    return '{ops:' + json.dumps(ops) + f',tot:{tot},scale:{scale}}}'
+
+SCALE = max(mega_tot, base_dec_tot, mega_dec_tot)
+rows = [
+    base_prefill_row,
+    row(mega_pre, mega_tot, SCALE),
+    xla_row,
+    row(base_dec, base_dec_tot, SCALE),
+    row(mega_dec, mega_dec_tot, SCALE),
+]
+
+html = old
+html = html.replace(m.group(1), ',\n'.join('  ' + r.strip() for r in rows))
+html = html.replace('const SCALE=543.62;', f'const SCALE={SCALE};')
+
+# --- colors / labels for new keys
+html = html.replace('"XWQP": "#6b7280"};',
+                    '"XWQP": "#6b7280", "WQ": "#22d3ee", "PG": "#c084fc", "cp": "#fbbf24"};')
+html = html.replace('"XWQP": "W_q (prev layer)"};',
+                    '"XWQP": "W_q (prev layer)", "WQ": "w_qkv HBM\\u2192VMEM", "PG": "positions gather", "cp": "copy_kv row"};')
+
+# --- headings / notes
+html = html.replace(
+    '<h1>RPAm Kernel — DMA / MXU / VPU Timeline</h1>',
+    '<h1>RPA mega_kernel — DMA / MXU / VPU Timeline</h1>')
+html = html.replace(
+    'Constants from op_bench.py</div>',
+    'Constants from op_bench.py / kernel_bench.py · timelines are calibrated models, not raw traces</div>')
+html = html.replace(
+    '<h2>FUSED (has_qproj + has_kvproj) — model 544µs vs 545µs measured</h2>',
+    f'<h2>MEGA PREFILL (fused Q+KV proj, w_qkv prologue copy) — model {mega_tot:.0f}µs vs 429µs measured</h2>')
+html = html.replace(
+    '<div class="warn">△1µs gap = DMA wait for x_bkv (5.8µs×2) + pipeline stalls not modelled</div>',
+    '<div class="warn">first Q GEMM waits w_qkv copy (19.6µs, async, overlaps x fetch) — later tiles unaffected</div>')
+html = html.replace(
+    '<div class="note">T_Q=25.0µs · T_KV=26.6µs + 3.0µs barrier/tile · VPU always occupied: Q_norm → softmax+acc interleaved → out_norm</div>',
+    '<div class="note">T_Q=18.65µs (t+1 GEMM issued before tile t attention) · KV computed per bq tile from x_tile (256 new rows, 3.5µs) + eager cache write; later tiles re-read from cache · bkv prefetch deferred until after cache write (write→read FIFO ordering)</div>')
+
+# insert the two decode cards after the XLA card
+xla_card_end = html.index('</div>', html.index('id="c2"'))
+xla_card_end = html.index('</div>', html.index('<div class="note">x loaded once')) + 6
+decode_cards = f'''
+
+<div class="card">
+  <h2>BASE DECODE — 256 seqs × 1 token (kv=1024/seq) — model {base_dec_tot:.0f}µs ≈ 694µs measured</h2>
+  <div class="scroll"><canvas id="c3" height="115"></canvas></div>
+  <div class="note">DMA-bound: 4.2MB KV-cache read per seq back-to-back (double-buffered); MXU/VPU nearly idle (1-token attention)</div>
+</div>
+
+<div class="card">
+  <h2>MEGA BATCHED DECODE — bq_sz=64 (4 batch heads) — model {mega_dec_tot:.0f}µs vs 746µs measured</h2>
+  <div class="scroll"><canvas id="c4" height="115"></canvas></div>
+  <div class="note">Batch head (every 64 seqs): one x fetch + positions gather + one Q GEMM + one KV GEMM covering 64 seqs; seqs 1–63 skip projection · per-seq: 1-row copy_kv from kv_batch_ref + 1-row cache write · early bkv prefetch kept (decode seqs own disjoint pages)</div>
+  <div class="warn">+52µs vs base = batch-head GEMMs serializing the DMA pipe (small-M MXU efficiency); w_qkv copy overlaps batch 0 reads</div>
+</div>'''
+html = html[:xla_card_end] + decode_cards + html[xla_card_end:]
+
+# zoom row: replace third zoom with decode zooms
+html = html.replace(
+    '  <div class="zoom-card"><h2>BASELINE — 0–80µs zoom</h2><canvas id="z0" height="115"></canvas></div>\n'
+    '  <div class="zoom-card"><h2>FUSED — 0–80µs zoom</h2><canvas id="z1" height="115"></canvas></div>\n'
+    '  <div class="zoom-card"><h2>XLA external — 0–200µs zoom</h2><canvas id="z2" height="115"></canvas></div>',
+    '  <div class="zoom-card"><h2>BASELINE PREFILL — 0–80µs zoom</h2><canvas id="z0" height="115"></canvas></div>\n'
+    '  <div class="zoom-card"><h2>MEGA PREFILL — 0–80µs zoom</h2><canvas id="z1" height="115"></canvas></div>\n'
+    '  <div class="zoom-card"><h2>MEGA DECODE — 0–80µs zoom (batch 0 head)</h2><canvas id="z2" height="115"></canvas></div>')
+
+html = html.replace(
+    """function init(){
+  draw('c0',DATA[0].ops,DATA[0].tot,DATA[0].scale,0);
+  draw('c1',DATA[1].ops,DATA[1].tot,DATA[1].scale,0);
+  draw('c2',DATA[2].ops,DATA[2].tot,DATA[2].scale,0);
+  draw('z0',DATA[0].ops,DATA[0].tot,DATA[0].scale,80);
+  draw('z1',DATA[1].ops,DATA[1].tot,DATA[1].scale,80);
+  draw('z2',DATA[2].ops,DATA[2].tot,DATA[2].scale,200.0);
+  ['c0','c1','c2','z0','z1','z2'].forEach(wireHover);""",
+    """function init(){
+  draw('c0',DATA[0].ops,DATA[0].tot,DATA[0].scale,0);
+  draw('c1',DATA[1].ops,DATA[1].tot,DATA[1].scale,0);
+  draw('c2',DATA[2].ops,DATA[2].tot,DATA[2].scale,0);
+  draw('c3',DATA[3].ops,DATA[3].tot,DATA[3].scale,0);
+  draw('c4',DATA[4].ops,DATA[4].tot,DATA[4].scale,0);
+  draw('z0',DATA[0].ops,DATA[0].tot,DATA[0].scale,80);
+  draw('z1',DATA[1].ops,DATA[1].tot,DATA[1].scale,80);
+  draw('z2',DATA[4].ops,DATA[4].tot,DATA[4].scale,80);
+  ['c0','c1','c2','c3','c4','z0','z1','z2'].forEach(wireHover);""")
+
+# subtitle: mega decode config
+html = html.replace(
+    'Qwen3-4B · 2048 tokens · bq_sz=256 · bkv_sz=1024 · v6e-1 · causal mask ·',
+    'Qwen3-4B · v6e-1 · prefill: 2048 tok, bq=256, bkv=1024 · decode: 256 seqs × 1 tok, kv=1024/seq, bq_sz=64 (seqs/batch) ·')
+
+open("docs/rpa_timeline.html", "w").write(html)
+print("written docs/rpa_timeline.html", len(html), "bytes")

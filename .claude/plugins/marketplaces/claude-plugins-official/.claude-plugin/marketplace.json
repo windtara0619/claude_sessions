@@ -198,7 +198,7 @@
       "source": {
         "source": "url",
         "url": "https://github.com/apollographql/skills.git",
-        "sha": "7df6a608dd71f937e664b19183fb60d101bb13a1"
+        "sha": "98c99fdf95fa2108786786d7f17d06868be3ebf9"
       },
       "homepage": "https://www.apollographql.com"
     },
@@ -574,7 +574,7 @@
         "url": "https://github.com/carta/plugins.git",
         "path": "plugins/carta-cap-table",
         "ref": "main",
-        "sha": "6a67756ef25da26d6a84a5b55cbd861526ffef23"
+        "sha": "60f8c4e467b9aeca94cf8c8aca63137fe488b0df"
       },
       "homepage": "https://carta.com"
     },
@@ -606,7 +606,7 @@
         "url": "https://github.com/carta/plugins.git",
         "path": "plugins/carta-investors",
         "ref": "main",
-        "sha": "fdc57d653abf38cc0a70ddd9e4f23c273af86a7b"
+        "sha": "7285fefdc9384b40ecbb87ab97d0c257ea3af043"
       },
       "homepage": "https://carta.com"
     },
@@ -1142,6 +1142,21 @@
       "homepage": "https://github.com/microsoft/Dataverse-skills"
     },
     {
+      "name": "deepeval",
+      "description": "Skills for adding DeepEval evaluations, tracing, datasets, Confident AI reports, and iterative improvement loops to AI applications.",
+      "author": {
+        "name": "Confident AI",
+        "email": "open-source@confident-ai.com"
+      },
+      "category": "development",
+      "source": {
+        "source": "url",
+        "url": "https://github.com/confident-ai/deepeval.git",
+        "sha": "11375f81ea2ed8d39478f7c4cbaa7871d69ff698"
+      },
+      "homepage": "https://github.com/confident-ai/deepeval"
+    },
+    {
       "name": "deploy-on-aws",
       "description": "Deploy applications to AWS with architecture recommendations, cost estimates, and IaC deployment.",
       "category": "deployment",
@@ -1510,6 +1525,7 @@
     },
     {
       "name": "hostinger",
+      "displayName": "Hostinger",
       "description": "Deploy, manage and monitor Hostinger services — Websites, Domains, Ecommerce, Email Marketing, Subscriptions & Payments, and VPS. Authenticate via browser (OAuth) or API token.",
       "author": {
         "name": "Hostinger"
@@ -1543,7 +1559,7 @@
       "source": {
         "source": "url",
         "url": "https://github.com/hunter-io/claude-plugin.git",
-        "sha": "220021447c6575bdd75d58916d7a7499ad28eb08"
+        "sha": "9d0de1d526ce0dd0ea0c6d595753f456bbc67c5a"
       },
       "homepage": "https://hunter.io"
     },
@@ -1557,7 +1573,7 @@
       "source": {
         "source": "url",
         "url": "https://github.com/heygen-com/hyperframes.git",
-        "sha": "d7204ac47fceff0551de64312ed6affc41892ddc"
+        "sha": "10b3351974766b0effd99dce6be356787c6af89c"
       },
       "homepage": "https://hyperframes.heygen.com"
     },
@@ -1972,7 +1988,7 @@
       "source": {
         "source": "url",
         "url": "https://github.com/mergifyio/mergify-cli.git",
-        "sha": "1ae8a0b23ea558d8e23fd5d869580bb3c263cbcb"
+        "sha": "0ee9362947bfa8b9f414282baf40d4f3908440a7"
       },
       "homepage": "https://mergify.com"
     },
@@ -2434,7 +2450,7 @@
         "url": "https://github.com/pydantic/skills.git",
         "path": "plugins/ai",
         "ref": "main",
-        "sha": "dbfb31fc1ea103dcd544b6454be4d81bcb636626"
+        "sha": "2ca99fef84cb8603a425bccb1f1456b01e6b1c52"
       },
       "homepage": "https://github.com/pydantic/skills/tree/main/plugins/ai"
     },
@@ -2472,7 +2488,7 @@
       "source": {
         "source": "url",
         "url": "https://github.com/qdrant/skills.git",
-        "sha": "2a06cb1e9b614fca0f902eed79edd049c24877c5"
+        "sha": "5ea598defd15447062ad2873bc2f464ac4cde606"
       },
       "homepage": "https://skills.qdrant.tech"
     },
@@ -2901,20 +2917,6 @@
       "homepage": "https://github.com/anthropics/claude-plugins-official/tree/main/plugins/session-report"
     },
     {
-      "name": "shopify",
-      "description": "Shopify developer tools for Claude Code — search Shopify docs, generate and validate GraphQL, Liquid, and UI extension code",
-      "author": {
-        "name": "Shopify"
-      },
-      "category": "development",
-      "source": {
-        "source": "url",
-        "url": "https://github.com/Shopify/shopify-plugins.git",
-        "sha": "5631b93b88759561fec321192b6b083dbf0a2fd2"
-      },
-      "homepage": "https://shopify.dev/docs/apps/build/devmcp"
-    },
-    {
       "name": "shopify-ai-toolkit",
       "description": "Shopify's AI Toolkit provides 18 development skills for building on the Shopify platform, covering documentation search, API schema access, GraphQL and Liquid code validation, Hydrogen storefronts, Polaris UI extensions, store management via CLI, and onboarding guidance for both developers and merchants.",
       "author": {
@@ -3149,7 +3151,7 @@
       "source": {
         "source": "url",
         "url": "https://github.com/togethercomputer/skills.git",
-        "sha": "062e98b96a9c836c513f2172ff32bedcc88ebd68"
+        "sha": "d53c5f424904d715d27e4dc1bdd64169edb089e7"
       },
       "homepage": "https://www.together.ai"
     },
@@ -3422,7 +3424,7 @@
         "url": "https://github.com/zapier/zapier-mcp.git",
         "path": "plugins/zapier",
         "ref": "main",
-        "sha": "11bfb606bd1984beef15f6e16257f99ee47c7f29"
+        "sha": "217d65a980f9b75536babf89ba64bf03ad95beea"
       },
       "homepage": "https://github.com/zapier/zapier-mcp/tree/main/plugins/zapier"
     },

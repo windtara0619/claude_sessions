@@ -1,0 +1,330 @@
+<title>KernelSage — Auto-Research: 545µs → 420µs</title>
+<style>
+:root{
+  --accent-primary:#4F46E5;--accent-secondary:#8B5CF6;--accent-tertiary:#C4B5FD;
+  --accent-light:rgba(79,70,229,.1);--accent-glow:rgba(139,92,246,.3);
+  --bg-primary:#0a0a0b;--bg-secondary:#111113;--bg-card:#18181b;--bg-card-hover:#1f1f23;
+  --text-primary:#fafafa;--text-secondary:#a1a1aa;--text-muted:#71717a;
+  --border-color:#27272a;--border-light:#3f3f46;
+  --lane-dma:#38bdf8;--lane-mxu:#2ebd7e;--lane-vpu:#a855f7;--bubble:rgba(250,250,250,.06);
+}
+@media (prefers-color-scheme: light){
+  :root{--bg-primary:#ffffff;--bg-secondary:#f8f9fa;--bg-card:#ffffff;--bg-card-hover:#f8f9fa;
+  --text-primary:#0a0a0b;--text-secondary:#52525b;--text-muted:#a1a1aa;
+  --border-color:#e4e4e7;--border-light:#d4d4d8;--accent-light:rgba(79,70,229,.08);
+  --accent-glow:rgba(139,92,246,.15);--bubble:rgba(10,10,11,.05)}
+}
+:root[data-theme="dark"]{--bg-primary:#0a0a0b;--bg-secondary:#111113;--bg-card:#18181b;
+  --bg-card-hover:#1f1f23;--text-primary:#fafafa;--text-secondary:#a1a1aa;--text-muted:#71717a;
+  --border-color:#27272a;--border-light:#3f3f46;--accent-light:rgba(79,70,229,.1);
+  --accent-glow:rgba(139,92,246,.3);--bubble:rgba(250,250,250,.06)}
+:root[data-theme="light"]{--bg-primary:#ffffff;--bg-secondary:#f8f9fa;--bg-card:#ffffff;
+  --bg-card-hover:#f8f9fa;--text-primary:#0a0a0b;--text-secondary:#52525b;--text-muted:#a1a1aa;
+  --border-color:#e4e4e7;--border-light:#d4d4d8;--accent-light:rgba(79,70,229,.08);
+  --accent-glow:rgba(139,92,246,.15);--bubble:rgba(10,10,11,.05)}
+
+*{box-sizing:border-box;margin:0;padding:0}
+body{font-family:'DM Sans',-apple-system,BlinkMacSystemFont,sans-serif;
+  background:var(--bg-primary);color:var(--text-primary);line-height:1.7;
+  -webkit-font-smoothing:antialiased}
+.mono{font-family:'Space Mono',ui-monospace,'SF Mono',Menlo,monospace}
+.wrap{max-width:840px;margin:0 auto;padding:0 24px}
+
+nav{border-bottom:1px solid var(--border-color);padding:20px 0;position:sticky;top:0;
+  background:var(--bg-primary);z-index:10}
+nav .wrap{display:flex;align-items:center;justify-content:space-between}
+.logo{font-family:'Space Mono',ui-monospace,monospace;font-weight:700;font-size:17px;
+  color:var(--text-primary);text-decoration:none;letter-spacing:-.5px}
+.logo b{color:var(--accent-secondary)}
+.nav-tag{font-family:'Space Mono',ui-monospace,monospace;font-size:12px;
+  color:var(--text-muted);letter-spacing:2px;text-transform:uppercase}
+
+header.hero{padding:88px 0 56px}
+.hero-badge{display:inline-flex;align-items:center;gap:8px;padding:8px 16px;
+  background:var(--accent-light);border:1px solid var(--accent-primary);border-radius:100px;
+  font-family:'Space Mono',ui-monospace,monospace;font-size:12px;color:var(--accent-secondary);
+  margin-bottom:32px;letter-spacing:.5px}
+.hero-badge .dot{width:6px;height:6px;border-radius:50%;background:var(--accent-secondary)}
+h1{font-family:'Instrument Serif',Georgia,serif;font-weight:400;
+  font-size:clamp(38px,6vw,64px);line-height:1.12;letter-spacing:-1.5px;margin-bottom:24px}
+h1 em{font-style:italic;color:var(--accent-tertiary)}
+.hero-subtitle{font-size:19px;color:var(--text-secondary);max-width:640px;line-height:1.7;
+  margin-bottom:32px}
+.meta{font-family:'Space Mono',ui-monospace,monospace;font-size:12px;color:var(--text-muted);
+  letter-spacing:1px}
+.meta span+span::before{content:"·";margin:0 10px;color:var(--border-light)}
+
+.stats{display:grid;grid-template-columns:repeat(auto-fit,minmax(180px,1fr));gap:1px;
+  background:var(--border-color);border:1px solid var(--border-color);border-radius:12px;
+  overflow:hidden;margin:24px 0 0}
+.stat{background:var(--bg-card);padding:28px 24px}
+.stat-number{font-family:'Instrument Serif',Georgia,serif;font-size:40px;line-height:1;
+  color:var(--text-primary);font-variant-numeric:tabular-nums}
+.stat-number b{color:var(--accent-secondary);font-weight:400}
+.stat-label{font-family:'Space Mono',ui-monospace,monospace;font-size:11px;
+  color:var(--text-muted);text-transform:uppercase;letter-spacing:1.5px;margin-top:10px}
+
+section{padding:56px 0;border-top:1px solid var(--border-color)}
+.section-label{font-family:'Space Mono',ui-monospace,monospace;font-size:12px;
+  color:var(--accent-primary);text-transform:uppercase;letter-spacing:2px;margin-bottom:16px}
+h2{font-family:'Instrument Serif',Georgia,serif;font-size:clamp(28px,4vw,40px);
+  font-weight:400;line-height:1.2;letter-spacing:-1px;margin-bottom:20px}
+p{color:var(--text-secondary);margin-bottom:18px;font-size:16.5px}
+p strong{color:var(--text-primary);font-weight:600}
+code{font-family:'Space Mono',ui-monospace,monospace;font-size:.85em;background:var(--bg-card);
+  border:1px solid var(--border-color);border-radius:5px;padding:1px 6px;color:var(--accent-tertiary)}
+@media (prefers-color-scheme: light){ code{color:var(--accent-primary)} }
+:root[data-theme="light"] code{color:var(--accent-primary)}
+
+.tablewrap{overflow-x:auto;border:1px solid var(--border-color);border-radius:12px;margin:26px 0}
+table{width:100%;border-collapse:collapse;font-size:14px;min-width:520px}
+th{font-family:'Space Mono',ui-monospace,monospace;font-size:11px;text-transform:uppercase;
+  letter-spacing:1.5px;color:var(--text-muted);text-align:left;padding:14px 18px;
+  background:var(--bg-secondary);border-bottom:1px solid var(--border-color)}
+td{padding:13px 18px;border-bottom:1px solid var(--border-color);color:var(--text-secondary);
+  font-variant-numeric:tabular-nums}
+tr:last-child td{border-bottom:none}
+td.n{font-family:'Space Mono',ui-monospace,monospace;color:var(--text-primary)}
+td .win{color:var(--accent-secondary)}
+
+.viz{border:1px solid var(--border-color);border-radius:12px;background:var(--bg-card);
+  padding:22px 22px 16px;margin:26px 0}
+.viz-title{font-family:'Space Mono',ui-monospace,monospace;font-size:11px;letter-spacing:1.5px;
+  text-transform:uppercase;color:var(--text-muted);margin-bottom:14px}
+.viz-title b{color:var(--text-primary);font-weight:700}
+.lane{display:grid;grid-template-columns:44px 1fr;align-items:center;gap:12px;margin-bottom:8px}
+.lane-name{font-family:'Space Mono',ui-monospace,monospace;font-size:10px;color:var(--text-muted);
+  text-align:right;letter-spacing:1px}
+.bar{display:flex;height:20px;border-radius:4px;overflow:hidden;background:var(--bubble)}
+.seg{height:100%;flex-shrink:0}
+.seg.dma{background:var(--lane-dma)}.seg.mxu{background:var(--lane-mxu)}
+.seg.mxu2{background:color-mix(in srgb,var(--lane-mxu) 55%,transparent)}
+.seg.vpu{background:var(--lane-vpu)}
+.seg.vpu2{background:color-mix(in srgb,var(--lane-vpu) 55%,transparent)}
+.seg.gap{background:transparent}
+.viz-note{font-size:12.5px;color:var(--text-muted);margin-top:12px;line-height:1.6}
+.viz-note i{color:var(--accent-tertiary);font-style:normal}
+
+.cards{display:grid;grid-template-columns:1fr;gap:16px;margin:26px 0}
+.card{background:var(--bg-card);border:1px solid var(--border-color);border-radius:12px;
+  padding:24px 26px;transition:border-color .2s}
+.card:hover{border-color:var(--accent-primary);background:var(--bg-card-hover)}
+.card-number{font-family:'Space Mono',ui-monospace,monospace;font-size:28px;font-weight:700;
+  color:var(--accent-primary);opacity:.25;line-height:1;margin-bottom:12px}
+.card h3{font-size:17px;font-weight:600;color:var(--text-primary);margin-bottom:8px}
+.card h3 .delta{font-family:'Space Mono',ui-monospace,monospace;font-size:13px;
+  color:var(--accent-secondary);font-weight:400;margin-left:8px}
+.card p{font-size:14.5px;margin-bottom:0;color:var(--text-secondary)}
+
+.pull{border-left:2px solid var(--accent-primary);padding:6px 0 6px 22px;margin:30px 0}
+.pull p{font-family:'Instrument Serif',Georgia,serif;font-size:23px;line-height:1.45;
+  color:var(--text-primary);margin:0;letter-spacing:-.3px}
+
+footer{border-top:1px solid var(--border-color);padding:48px 0 64px;margin-top:24px}
+footer p{font-size:14px;color:var(--text-muted)}
+footer .logo{font-size:14px}
+.foot-row{display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:12px}
+</style>
+
+<nav><div class="wrap">
+  <a class="logo" href="#">Kernel<b>Sage</b></a>
+  <span class="nav-tag">Engineering Blog</span>
+</div></nav>
+
+<header class="hero"><div class="wrap">
+  <div class="hero-badge"><span class="dot"></span>CASE STUDY — AUTO-RESEARCH</div>
+  <h1>Teaching the machine to find its own <em>pipeline bubbles</em></h1>
+  <p class="hero-subtitle">How our auto-research loop benchmarks every unit op inside an opaque
+  Pallas TPU kernel, reconstructs its DMA / MXU / VPU pipeline as a calibrated timeline, and
+  drove a fused attention kernel from 545&thinsp;µs to 420&thinsp;µs — without a profiler ever
+  seeing inside it.</p>
+  <div class="meta"><span>TPU v6e</span><span>Ragged Paged Attention</span><span>12 min read</span></div>
+  <div class="stats">
+    <div class="stat"><div class="stat-number">545<b>→420</b></div><div class="stat-label">kernel latency, µs</div></div>
+    <div class="stat"><div class="stat-number"><b>−23%</b></div><div class="stat-label">prefill kernel</div></div>
+    <div class="stat"><div class="stat-number"><b>−325</b>µs</div><div class="stat-label">decode pipeline, same method</div></div>
+    <div class="stat"><div class="stat-number">21<b>→0.4</b></div><div class="stat-label">empty-kernel entry, µs</div></div>
+  </div>
+</div></header>
+
+<section><div class="wrap">
+  <div class="section-label">01 — The Problem</div>
+  <h2>A fusion that made everything slower</h2>
+  <p>Our ragged paged attention kernel serves mixed prefill/decode batches for LLM inference on
+  TPU. The experiment: fuse the <strong>QKV projection, RMS-norm, and RoPE</strong> — normally
+  separate XLA ops between transformer layers — directly into the attention kernel. On paper,
+  fewer HBM round-trips for Q/K/V and less per-layer overhead. In practice, the first working
+  version measured <span class="mono">545µs</span> against a <span class="mono">253µs</span>
+  attention-only baseline — adding 292&thinsp;µs to absorb work XLA did in ~200&thinsp;µs.</p>
+  <p>Somewhere inside the kernel, time was leaking. But a Pallas kernel is opaque: the profiler
+  shows one 545&thinsp;µs custom-call block and nothing inside it.</p>
+</div></section>
+
+<section><div class="wrap">
+  <div class="section-label">02 — Benchmark Every Unit Op</div>
+  <h2>If you can't see inside, rebuild it from parts</h2>
+  <p>The auto-research harness measures each primitive the kernel is made of, at the kernel's
+  <strong>exact tile shapes</strong> — GEMM efficiency at <code>M=256</code> is not GEMM
+  efficiency at <code>M=64</code>:</p>
+  <div class="tablewrap"><table>
+    <tr><th>Unit op</th><th>Resource</th><th>Measured</th></tr>
+    <tr><td>Q projection GEMM <span class="mono">[256,2560]@[2560,4096]</span></td><td>MXU</td><td class="n">18.65 µs</td></tr>
+    <tr><td>KV projection GEMM (per tile)</td><td>MXU</td><td class="n">3.5 µs</td></tr>
+    <tr><td>Attention QK / PV matmul (per 512-token chunk)</td><td>MXU</td><td class="n">5.79 / 6.06 µs</td></tr>
+    <tr><td>Q norm + RoPE / K norm + RoPE</td><td>VPU</td><td class="n">6.35 / 3.3 µs</td></tr>
+    <tr><td>Softmax accumulate (hides under PV matmul)</td><td>VPU</td><td class="n">1.14 µs</td></tr>
+    <tr><td>x tile fetch / KV-cache tile read or write</td><td>DMA</td><td class="n">1.4 / 2.7 µs</td></tr>
+    <tr><td>Fused weight matrix, 31 MB HBM→VMEM</td><td>DMA</td><td class="n">19.6 µs</td></tr>
+  </table></div>
+  <p>These constants are the vocabulary. Summed, they come to far less than 545&thinsp;µs —
+  and that gap between <em>sum of parts</em> and <em>measured whole</em> is the whole game:
+  it is all stalls.</p>
+</div></section>
+
+<section><div class="wrap">
+  <div class="section-label">03 — Reconstruct the Pipeline</div>
+  <h2>The diagram that names every bubble</h2>
+  <p>A TPU core has three engines that can run concurrently: the <strong>MXU</strong> (matrix),
+  the <strong>VPU</strong> (vector), and the <strong>DMA engines</strong>. A kernel is fast
+  exactly when all three are busy at once. Our tooling replays the kernel's program order —
+  every GEMM, norm, and DMA with its true dependencies — through a small event scheduler built
+  on the unit-op constants, and renders it as an interactive timeline: one swimlane per engine,
+  one hoverable block per op.</p>
+  <div class="pull"><p>The discipline that makes it trustworthy: the model's total must match the
+  measured total. When it does, every gap in the swimlanes is a real bubble with a name.</p></div>
+
+  <div class="viz">
+    <div class="viz-title"><b>BEFORE</b> — first fused version, 545 µs (schematic)</div>
+    <div class="lane"><div class="lane-name">DMA</div><div class="bar">
+      <span class="seg dma" style="width:4%"></span><span class="seg gap" style="width:12%"></span>
+      <span class="seg dma" style="width:5%"></span><span class="seg gap" style="width:20%"></span>
+      <span class="seg dma" style="width:4%"></span><span class="seg gap" style="width:23%"></span>
+      <span class="seg dma" style="width:5%"></span><span class="seg gap" style="width:19%"></span>
+      <span class="seg dma" style="width:4%"></span></div></div>
+    <div class="lane"><div class="lane-name">MXU</div><div class="bar">
+      <span class="seg gap" style="width:4%"></span><span class="seg mxu2" style="width:13%"></span>
+      <span class="seg gap" style="width:7%"></span><span class="seg mxu" style="width:11%"></span>
+      <span class="seg gap" style="width:6%"></span><span class="seg mxu2" style="width:9%"></span>
+      <span class="seg gap" style="width:8%"></span><span class="seg mxu" style="width:14%"></span>
+      <span class="seg gap" style="width:7%"></span><span class="seg mxu" style="width:12%"></span></div></div>
+    <div class="lane"><div class="lane-name">VPU</div><div class="bar">
+      <span class="seg gap" style="width:17%"></span><span class="seg vpu" style="width:7%"></span>
+      <span class="seg gap" style="width:15%"></span><span class="seg vpu2" style="width:6%"></span>
+      <span class="seg gap" style="width:22%"></span><span class="seg vpu" style="width:7%"></span>
+      <span class="seg gap" style="width:14%"></span><span class="seg vpu2" style="width:5%"></span></div></div>
+    <div class="viz-note">MXU idles while the VPU norms each projection; K/V computed in a
+    separate pass behind a second x fetch; attention blocked behind both.
+    <i>Gaps = engine idle.</i></div>
+  </div>
+
+  <div class="viz">
+    <div class="viz-title"><b>AFTER</b> — pipelined, 420 µs (schematic)</div>
+    <div class="lane"><div class="lane-name">DMA</div><div class="bar">
+      <span class="seg dma" style="width:15%"></span><span class="seg gap" style="width:3%"></span>
+      <span class="seg dma" style="width:6%"></span><span class="seg gap" style="width:5%"></span>
+      <span class="seg dma" style="width:5%"></span><span class="seg gap" style="width:6%"></span>
+      <span class="seg dma" style="width:6%"></span><span class="seg gap" style="width:5%"></span>
+      <span class="seg dma" style="width:5%"></span></div></div>
+    <div class="lane"><div class="lane-name">MXU</div><div class="bar">
+      <span class="seg gap" style="width:2%"></span><span class="seg mxu2" style="width:14%"></span>
+      <span class="seg mxu" style="width:15%"></span><span class="seg mxu2" style="width:5%"></span>
+      <span class="seg mxu" style="width:17%"></span><span class="seg mxu2" style="width:14%"></span>
+      <span class="seg mxu" style="width:18%"></span><span class="seg mxu2" style="width:13%"></span></div></div>
+    <div class="lane"><div class="lane-name">VPU</div><div class="bar">
+      <span class="seg vpu2" style="width:3%"></span><span class="seg gap" style="width:12%"></span>
+      <span class="seg vpu" style="width:9%"></span><span class="seg vpu2" style="width:8%"></span>
+      <span class="seg gap" style="width:5%"></span><span class="seg vpu" style="width:10%"></span>
+      <span class="seg vpu2" style="width:9%"></span><span class="seg gap" style="width:6%"></span>
+      <span class="seg vpu" style="width:9%"></span></div></div>
+    <div class="viz-note">Projection GEMM for tile <i>t+1</i> issued before tile <i>t</i>'s
+    attention; norms run in the shadow of matmuls; the 31 MB weight copy streams under the
+    prologue fetches. <i>MXU duty cycle is the ceiling now.</i></div>
+  </div>
+
+  <p>Three bubbles were obvious the moment the first calibrated diagram rendered: the MXU lane
+  had a gap after <em>every</em> Q projection (waiting on the VPU norm), K/V for each
+  1024-token block stalled attention behind its own DMA + GEMM + norm chain, and the same
+  x&nbsp;tile was fetched twice — once for Q, once for K/V. None of this is visible in a
+  profiler trace. All of it is obvious in the picture.</p>
+</div></section>
+
+<section><div class="wrap">
+  <div class="section-label">04 — Fix · Measure · Recalibrate</div>
+  <h2>Every fix earns its place with a number</h2>
+  <p>Each iteration follows the same loop: roofline-check the idea (if the math says it can't
+  win, don't prototype it), patch the kernel, benchmark, re-fit the diagram. The wins, in the
+  order they landed:</p>
+  <div class="cards">
+    <div class="card"><div class="card-number">01</div>
+      <h3>Overlap the Q projection with attention<span class="delta">−28 µs</span></h3>
+      <p>Issue tile <em>t+1</em>'s projection GEMM before tile <em>t</em>'s attention loops. The MXU
+      runs them back-to-back while the VPU norms tile <em>t+1</em> under the attention matmuls.
+      The MXU lane closed up; the VPU lane went from bursty to continuously occupied.</p></div>
+    <div class="card"><div class="card-number">02</div>
+      <h3>Compute K/V per tile from already-resident x<span class="delta">−1 DMA stream, −1 GEMM stall</span></h3>
+      <p>Each 256-row x tile — already in VMEM for the Q projection — produces its K/V rows,
+      written eagerly to the KV cache; later tiles re-read them as ordinary cached tokens.
+      One x load instead of two, and the 3.5 µs KV GEMM tucks between attention loops instead
+      of damming them.</p></div>
+    <div class="card"><div class="card-number">03</div>
+      <h3>Fuse the weights once, at load time<span class="delta">−1.4 ms / model step</span></h3>
+      <p>Concatenating [W<sub>q</sub>&thinsp;|&thinsp;W<sub>k</sub>&thinsp;|&thinsp;W<sub>v</sub>]
+      inside the jitted step made XLA re-materialize ~30 MB per layer, every step. Building it
+      once after checkpoint load turned the weights into a pass-through operand — found by the
+      diagram's XLA-side sibling: dumping the compiled HLO and reading what surrounds the kernel.</p></div>
+    <div class="card"><div class="card-number">04</div>
+      <h3>Stream the weights under the prologue<span class="delta">21 → 0.4 µs empty-kernel entry</span></h3>
+      <p>Declaring the fused weights as a VMEM operand made Pallas block-copy 31 MB on
+      <em>every kernel entry — including empty ones</em>. Roofline arithmetic caught it:
+      an "empty" kernel measured 21 µs ≈ 31.4 MB ÷ 1.6 TB/s. Now an async DMA issued as the
+      prologue's first instruction overlaps the x and KV fetches, with a one-shot semaphore
+      wait before first use.</p></div>
+    <div class="card"><div class="card-number">05</div>
+      <h3>Ablate, don't assume<span class="delta">the −65 µs that wasn't</span></h3>
+      <p>The harness patches any region out of the kernel, measures, and auto-reverts. It
+      attributed the remaining cost precisely (Q GEMM 67 µs, KV GEMM 29 µs, RoPE ~20 µs — all
+      near roofline) and produced our favorite negative result: <em>removing</em> the Q norm made
+      the kernel 65 µs <em>slower</em>. Its store pattern was load-bearing for the pipeline.
+      Intuition would never guess that; the harness measured it in two minutes.</p></div>
+  </div>
+</div></section>
+
+<section><div class="wrap">
+  <div class="section-label">05 — Results</div>
+  <h2>Faster than XLA at XLA's own job</h2>
+  <div class="tablewrap"><table>
+    <tr><th></th><th>Baseline</th><th>First fused</th><th>After auto-research</th></tr>
+    <tr><td>RPA prefill kernel (2048 tok, v6e-1)</td><td class="n">253 µs</td><td class="n">545 µs</td><td class="n"><span class="win">~420 µs</span></td></tr>
+    <tr><td>Work absorbed into the kernel</td><td>—</td><td>proj + norm + RoPE</td><td>proj + norm + RoPE</td></tr>
+    <tr><td>Same work done externally in XLA</td><td class="n">~200 µs</td><td>—</td><td>—</td></tr>
+  </table></div>
+  <p>The fused kernel now performs the projection + norm + RoPE work <strong>faster than XLA
+  does it standalone</strong> (~170 µs marginal vs ~200 µs) while also eliminating the Q/K/V
+  HBM round-trips and per-layer op overhead. Pointed at the decode kernel, the same method
+  found a different class of bug — a DMA prefetch serialized behind a cache write it didn't
+  depend on — and recovered <span class="mono">325µs</span> there. The diagram's DMA lane
+  showed reads queuing behind writes; the fix was three conditions.</p>
+</div></section>
+
+<section><div class="wrap">
+  <div class="section-label">06 — Takeaways</div>
+  <h2>What generalizes</h2>
+  <div class="cards">
+    <div class="card"><div class="card-number">01</div><h3>A calibrated model beats a profiler for opaque kernels</h3>
+      <p>When the model total matches the measured total, every swimlane gap is a real bubble with a name.</p></div>
+    <div class="card"><div class="card-number">02</div><h3>Benchmark unit ops at exact shapes</h3>
+      <p>The constants must come from the kernel's actual tile sizes, or the model lies to you politely.</p></div>
+    <div class="card"><div class="card-number">03</div><h3>Gate ideas with a roofline before prototyping</h3>
+      <p>Half our ideas died for the price of a division. The other half arrived pre-quantified.</p></div>
+    <div class="card"><div class="card-number">04</div><h3>Watch the edges of the kernel</h3>
+      <p>Two of the biggest wins were about how operands cross the XLA↔Pallas boundary, not the kernel body at all.</p></div>
+  </div>
+  <p>The whole loop — unit benchmarks, ablation harness, roofline checker, trace differ, and
+  the timeline generator — runs unattended: describe a kernel idea, and the tooling benchmarks
+  it, models it, and reports whether the silicon agrees.</p>
+</div></section>
+
+<footer><div class="wrap foot-row">
+  <a class="logo" href="#">Kernel<b>Sage</b></a>
+  <p class="mono">The Intelligence Layer for AI Infrastructure</p>
+</div></footer>
